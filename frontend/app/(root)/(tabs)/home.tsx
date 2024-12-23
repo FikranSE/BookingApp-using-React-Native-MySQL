@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Image, ScrollView, Modal } from "react-na
 import { SafeAreaView } from "react-native-safe-area-context";
 import DatePicker from "react-native-date-picker";
 import { icons, images } from "@/constants";
+import Header from "@/components/Header";
 
 interface Meeting {
   date: string; // Format: YYYY-MM-DD
@@ -10,7 +11,6 @@ interface Meeting {
   endTime: string; // Format: HH:mm
   title: string;
   room: string;
-  participants: (string | any)[];
   now: boolean;
   borderColor: string;
 }
@@ -38,7 +38,6 @@ const Home = () => {
       endTime: "11:00",
       title: "Designers Meeting",
       room: "Small meeting room",
-      participants: [images.profile1, images.profile1, "RT"],
       now: true,
       borderColor: "border-blue-900",
     },
@@ -48,7 +47,6 @@ const Home = () => {
       endTime: "14:00",
       title: "Daily Project Meeting",
       room: "Big meeting room",
-      participants: [images.profile1, images.profile1, "+3"],
       now: false,
       borderColor: "border-yellow-600",
     },
@@ -58,7 +56,6 @@ const Home = () => {
       endTime: "12:00",
       title: "Team Retrospective",
       room: "Main Hall",
-      participants: [images.profile1, "JD", "+5"],
       now: false,
       borderColor: "border-green-700",
     },
@@ -109,43 +106,27 @@ const Home = () => {
   );
 
   return (
-    <SafeAreaView className="bg-white flex-1">
+    <SafeAreaView className="bg-slate-100 flex-1">
       {/* Static Content Section */}
       <View>
         {/* Header Section */}
-        <View className="px-5 py-4 flex flex-row justify-between items-center bg-white shadow-sm">
-          <TouchableOpacity className="border border-gray-200 p-2 rounded-lg">
-            <Image
-              source={icons.menu}
-              className="w-4 h-4"
-              resizeMode="contain"
-              tintColor="#52525b"
-            />
-          </TouchableOpacity>
-          <Text className="font-bold text-xl text-gray-800">
-            <Text className="text-blue-900">S</Text>
-            <Text>Book</Text>
-          </Text>
-          <TouchableOpacity className="border border-gray-200 p-2 rounded-lg">
-            <Image
-              source={icons.bell}
-              className="w-4 h-4"
-              resizeMode="contain"
-              tintColor="#52525b"
-            />
-          </TouchableOpacity>
-        </View>
+        <Header/>
 
         {/* Date Section */}
-        <View className="px-5 mt-5">
+        <View className="px-6 mt-6">
           {isToday(selectedDate) && (
-            <Text className="text-blue-900 font-JakartaBold text-sm">TODAY</Text>
+            <Text className="text-blue-900 font-JakartaBold text-sm shadow-sm">TODAY</Text>
           )}
-          <Text className="text-2xl font-JakartaMedium text-gray-700">{month} {day}, {year}</Text>
-          <Text className="text-2xl font-JakartaMedium text-gray-700 mt-[-6px]">{dayName}</Text>
+          <Text className="text-3xl font-JakartaMedium text-blue-900 mb-1">{month} {day}, {year}</Text>
+          <Text className="text-lg font-JakartaMedium text-blue-700 italic">{dayName}</Text>
 
           {/* Month ScrollView */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="mt-5"
+            contentContainerStyle={{ paddingHorizontal: 15 }}
+          >
             {monthNames.map((monthName, index) => (
               <TouchableOpacity
                 key={index}
@@ -154,13 +135,13 @@ const Home = () => {
                   newDate.setMonth(index);
                   setSelectedDate(newDate);
                 }}
-                className={`border border-gray-300 px-4 py-1 rounded-full mx-1 ${
-                  index === selectedDate.getMonth() ? "border-blue-900 bg-white" : "bg-white"
+                className={`border px-4 py-2 rounded-full mx-2 transition-transform duration-300 shadow-lg ${
+                  index === selectedDate.getMonth() ? "border-blue-900 bg-blue-900" : "bg-white border-blue-900"
                 }`}
               >
                 <Text
-                  className={`text-sm font-medium ${
-                    index === selectedDate.getMonth() ? "text-blue-900" : "text-gray-400"
+                  className={`text-sm font-semibold ${
+                    index === selectedDate.getMonth() ? "text-white" : "text-blue-900"
                   }`}
                 >
                   {monthName.substring(0, 3)}
@@ -170,7 +151,12 @@ const Home = () => {
           </ScrollView>
 
           {/* Days ScrollView */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="mt-5"
+            contentContainerStyle={{ paddingHorizontal: 15 }}
+          >
             {Array.from({ length: new Date(year, selectedDate.getMonth() + 1, 0).getDate() }, (_, index) => {
               const tempDay = index + 1;
               const isSelected = tempDay === selectedDate.getDate();
@@ -184,19 +170,23 @@ const Home = () => {
                     newDate.setDate(tempDay);
                     setSelectedDate(newDate);
                   }}
-                  className="mx-2 flex items-center"
+                  className="mx-3 flex items-center transition-transform duration-300 hover:scale-105"
                 >
-                  <Text className="text-sm font-medium text-gray-400">
+                  <Text
+                    className={`text-sm font-medium ${
+                      isSelected ? "text-blue-900" : "text-blue-900"
+                    }`}
+                  >
                     {dayName}
                   </Text>
                   <View
-                    className={`rounded-full px-3 py-2 mt-1 ${
-                      isSelected ? "bg-blue-900" : "bg-white border border-gray-200"
+                    className={`rounded-full px-5 py-2 mt-1 shadow-lg transition-all duration-300 ${
+                      isSelected ? "bg-blue-900" : "bg-white border border-blue-900"
                     }`}
                   >
                     <Text
                       className={`text-lg font-bold ${
-                        isSelected ? "text-white" : "text-gray-800"
+                        isSelected ? "text-white" : "text-blue-800"
                       }`}
                     >
                       {tempDay}
@@ -207,9 +197,13 @@ const Home = () => {
             })}
           </ScrollView>
 
-
           {/* Year ScrollView */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="mt-5"
+            contentContainerStyle={{ paddingHorizontal: 15 }}
+          >
             {Array.from({ length: 10 }, (_, index) => {
               const tempYear = today.getFullYear() - 5 + index;
               const isSelected = tempYear === selectedDate.getFullYear();
@@ -222,11 +216,11 @@ const Home = () => {
                     newDate.setFullYear(tempYear);
                     setSelectedDate(newDate);
                   }}
-                  className="mx-2 flex items-center"
+                  className="mx-3 flex items-center transition-transform duration-300 hover:scale-105"
                 >
                   <Text
-                    className={`text-lg font-bold ${
-                      isSelected ? "text-blue-900" : "text-gray-400"
+                    className={`text-lg font-semibold ${
+                      isSelected ? "text-blue-900" : "text-blue-900 opacity-20"
                     }`}
                   >
                     {tempYear}
@@ -236,9 +230,13 @@ const Home = () => {
             })}
           </ScrollView>
         </View>
+
+
+
+
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 20 }} className="p-5 mt-5 bg-slate-100">
+      <ScrollView contentContainerStyle={{ paddingBottom: 20 }} className="p-5 mt-5 bg-white">
         <View className="relative" style={{ height: 1500 }}>
           {Array.from({ length: 15 }, (_, index) => {
             const hour = 9 + index;
@@ -287,24 +285,6 @@ const Home = () => {
                       <Text> – </Text>
                       <Text>{meeting.endTime}</Text>
                     </Text>
-                    <View className="flex flex-row -ml-2">
-                      {meeting.participants.map((participant, idy) =>
-                        typeof participant === "string" ? (
-                          <View
-                            key={idy}
-                            className="w-8 h-8 rounded-full bg-gray-300 border-2 border-white flex items-center justify-center -ml-2"
-                          >
-                            <Text className="text-sm text-gray-700">{participant}</Text>
-                          </View>
-                        ) : (
-                          <Image
-                            key={idy}
-                            source={participant}
-                            className="w-8 h-8 rounded-full border-2 border-white -ml-2"
-                          />
-                        )
-                      )}
-                    </View>
                   </View>
                 </View>
               </TouchableOpacity>

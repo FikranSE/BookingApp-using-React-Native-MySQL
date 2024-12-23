@@ -22,7 +22,7 @@ const RiwayatTransaksi = () => {
         <Text className="text-lg font-bold">Riwayat Transaksi</Text>
         <TouchableOpacity
           onPress={() => {
-            router.push("/(root)/(tabs)/rooms");
+            router.push("/(root)/(tabs)/explore");
           }}
         >
           <Text className="text-gray-500">Lihat semua</Text>

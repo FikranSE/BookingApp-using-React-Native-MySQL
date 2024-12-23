@@ -70,12 +70,12 @@ export default function Layout() {
         }}
       />
       <Tabs.Screen
-        name="rooms"
+        name="explore"
         options={{
-          title: "rooms",
+          title: "Explore",
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.door} focused={focused} label="Rooms" />
+            <TabIcon source={icons.door} focused={focused} label="Explore" />
           ),
         }}
       />
@@ -87,8 +87,8 @@ export default function Layout() {
           tabBarIcon: ({ focused }) => (
             <View
               style={{
-                width: 50,
-                height: 50,
+                width: 55,
+                height: 55,
                 borderRadius: 35,
                 backgroundColor: "#003580",
                 justifyContent: "center",

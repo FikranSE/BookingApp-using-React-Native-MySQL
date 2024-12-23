@@ -8,7 +8,11 @@ import email from "@/assets/icons/email.png";
 import eyecross from "@/assets/icons/eyecross.png";
 import google from "@/assets/icons/google.png";
 import home from "@/assets/icons/home.png";
+import ac from "@/assets/icons/air-conditioner.png";
+import whiteboard from "@/assets/icons/whiteboard.png";
+import wifi from "@/assets/icons/wi-fi.png";
 import list from "@/assets/icons/list.png";
+import seat from "@/assets/icons/seat.png";
 import lock from "@/assets/icons/lock.png";
 import phone from "@/assets/icons/phone.png";
 import map from "@/assets/icons/map.png";
@@ -19,7 +23,7 @@ import menu from "@/assets/icons/menu.png";
 import facebook from "@/assets/icons/facebook.png";
 import apple from "@/assets/icons/apple.png";
 import wide from "@/assets/icons/wide.png";
-import location from "@/assets/icons/location.png";
+import tag from "@/assets/icons/tag.png";
 import marker from "@/assets/icons/marker.png";
 import out from "@/assets/icons/out.png";
 import person from "@/assets/icons/person.png";
@@ -112,7 +116,11 @@ export const icons = {
   clock,
   projector,
   mic,
-  location
+  tag,
+  seat,
+  ac,
+  wifi,
+  whiteboard
 };
 
 export const onboarding = [
