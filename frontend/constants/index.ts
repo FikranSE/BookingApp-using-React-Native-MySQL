@@ -12,8 +12,10 @@ import ac from "@/assets/icons/air-conditioner.png";
 import whiteboard from "@/assets/icons/whiteboard.png";
 import wifi from "@/assets/icons/wi-fi.png";
 import list from "@/assets/icons/list.png";
+import location from "@/assets/icons/location.png";
 import seat from "@/assets/icons/seat.png";
 import lock from "@/assets/icons/lock.png";
+import title from "@/assets/icons/text.png";
 import phone from "@/assets/icons/phone.png";
 import map from "@/assets/icons/map.png";
 import mic from "@/assets/icons/mic.png";
@@ -120,7 +122,9 @@ export const icons = {
   seat,
   ac,
   wifi,
-  whiteboard
+  whiteboard,
+  location,
+  title
 };
 
 export const onboarding = [

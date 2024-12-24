@@ -93,7 +93,7 @@ export default function Layout() {
                 backgroundColor: "#003580",
                 justifyContent: "center",
                 alignItems: "center",
-                marginBottom: 40, // Posisi naik ke atas
+                marginBottom: 40, 
               }}
             >
               <Image
