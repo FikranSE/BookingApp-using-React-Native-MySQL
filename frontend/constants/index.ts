@@ -17,6 +17,7 @@ import seat from "@/assets/icons/seat.png";
 import lock from "@/assets/icons/lock.png";
 import title from "@/assets/icons/text.png";
 import phone from "@/assets/icons/phone.png";
+import chevron from "@/assets/icons/chevron.png";
 import map from "@/assets/icons/map.png";
 import mic from "@/assets/icons/mic.png";
 import projector from "@/assets/icons/projector.png";
@@ -124,7 +125,8 @@ export const icons = {
   wifi,
   whiteboard,
   location,
-  title
+  title,
+  chevron
 };
 
 export const onboarding = [

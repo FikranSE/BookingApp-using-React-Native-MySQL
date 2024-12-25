@@ -48,7 +48,7 @@ const InputField = ({
     }),
     color: animatedValue.interpolate({
       inputRange: [0, 1],
-      outputRange: ['#9CA3AF', '#003580'],
+      outputRange: ['#003580', '#003580'],
     }),
     backgroundColor: 'white',
     paddingHorizontal: animatedValue.interpolate({
@@ -74,7 +74,7 @@ const InputField = ({
                 className={`
                   border rounded-full overflow-hidden
                   ${isFocused ? 'border-[1.5px]' : 'border-[1px]'}
-                  ${isFocused ? 'border-[#003580]' : 'border-gray-300'}
+                  ${isFocused ? 'border-[#003580]' : 'border-blue-900'}
                 `}
               >
                 {isFocused && (
@@ -88,13 +88,13 @@ const InputField = ({
                 <View className="bg-white m-[1px] rounded-full">
                   <View className="flex-row items-center">
                     {icon && (
-                      <Image source={icon} className={`w-6 h-6 ml-4 ${iconStyle}`} />
+                      <Image source={icon} className={`w-4 h-4 ml-4 ${iconStyle}`} />
                     )}
                     <TextInput
                       className={`
                         px-4 py-3 font-JakartaSemiBold text-[15px] flex-1
                         ${inputStyle}
-                        text-left
+                        text-left text-blue-900
                       `}
                       secureTextEntry={secureTextEntry}
                       value={value}
