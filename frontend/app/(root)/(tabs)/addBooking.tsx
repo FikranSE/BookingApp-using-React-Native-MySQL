@@ -1,255 +1,252 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { icons } from "@/constants";
 import Header from "@/components/Header";
+import { rooms, commonTimeSlots } from "@/lib/dummyData"; 
 import InputField from "@/components/InputField";
-import { Image } from "react-native";
+
+// Fungsi bantu: cek apakah date1 < date2 (hanya bandingkan Y/M/D, tanpa jam)
+function isSameDay(d1: Date, d2: Date) {
+  return (
+    d1.getDate() === d2.getDate() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getFullYear() === d2.getFullYear()
+  );
+}
+
+function isBeforeDay(d1: Date, d2: Date) {
+  // Apakah d1 < d2 untuk Y/M/D
+  if (d1.getFullYear() < d2.getFullYear()) return true;
+  if (d1.getFullYear() > d2.getFullYear()) return false;
+
+  // same year, cek month
+  if (d1.getMonth() < d2.getMonth()) return true;
+  if (d1.getMonth() > d2.getMonth()) return false;
+
+  // same month, cek day
+  return d1.getDate() < d2.getDate();
+}
+
+function isAfterDay(d1: Date, d2: Date) {
+  // kebalikan isBeforeDay, plus tidak sama
+  return isBeforeDay(d2, d1);
+}
 
 const NewMeeting = () => {
-  const [activeTab, setActiveTab] = useState('rooms');
+  const [activeTab, setActiveTab] = useState("rooms");
   const [name, setName] = useState("Grooming");
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [startTime, setStartTime] = useState(null);
-  const [endTime, setEndTime] = useState(null);
-  const [room, setRoom] = useState(null);
-  const [showRoomDropdown, setShowRoomDropdown] = useState(false);
+
+  // State Start/End Time
+  const [startTime, setStartTime] = useState<string | null>(null);
+  const [endTime, setEndTime] = useState<string | null>(null);
   const [showStartTimeDropdown, setShowStartTimeDropdown] = useState(false);
   const [showEndTimeDropdown, setShowEndTimeDropdown] = useState(false);
 
- 
+  // State Room
+  const [room, setRoom] = useState<string | null>(null);
+  const [showRoomDropdown, setShowRoomDropdown] = useState(false);
 
-  const TabButton = ({ title, isActive, onPress }) => (
-    <TouchableOpacity
-      onPress={onPress}
-      className={`flex-1 py-3 ${isActive ? 'border-b-2 border-blue-900' : 'border-b border-gray-200'}`}
-    >
-      <Text className={`text-center font-medium ${isActive ? 'text-blue-900' : 'text-gray-500'}`}>
-        {title}
-      </Text>
-    </TouchableOpacity>
+  // Ambil "hari ini" (tanpa jam) dan "waktu sekarang (menit)"
+  const today = new Date();                       // jam sekarang
+  const todayWithoutTime = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
   );
+  const nowMinutes = today.getHours() * 60 + today.getMinutes();
 
-  const rooms = [
-    { 
-      id: 1, 
-      name: "Big room (Melati)", 
-      capacity: 15,
-      bookings: [
-        { date: "25/12/2024", startTime: "09:00 AM", endTime: "11:00 AM" },
-        { date: "25/12/2024", startTime: "02:00 PM", endTime: "04:00 PM" },
-      ]
-    },
-    { 
-      id: 2, 
-      name: "Middle room (Mawar)", 
-      capacity: 10,
-      bookings: [
-        { date: "25/12/2024", startTime: "10:00 AM", endTime: "12:00 PM" },
-        { date: "25/12/2024", startTime: "03:00 PM", endTime: "05:00 PM" },
-      ]
-    },
-    { 
-      id: 3, 
-      name: "Small room (Anggrek)", 
-      capacity: 5,
-      bookings: [
-        { date: "25/12/2024", startTime: "11:00 AM", endTime: "01:00 PM" },
-        { date: "25/12/2024", startTime: "04:00 PM", endTime: "06:00 PM" },
-      ]
-    },
-  ];
-
-  const timeSlots = {
-    morning: [
-      "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM",
-      "11:00 AM", "11:30 AM", "12:00 PM"
-    ],
-    afternoon: [
-      "12:30 PM", "01:00 PM", "01:30 PM", "02:00 PM",
-      "02:30 PM", "03:00 PM", "03:30 PM", "04:00 PM",
-      "04:30 PM", "05:00 PM", "05:30 PM"
-    ]
-  };
-
-  const formatDate = (date) => {
-    return date.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
+  // Format date => dd/mm/yyyy
+  const formatDate = (dateVal: Date) => {
+    return dateVal.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     });
   };
 
-  // Convert time string to minutes for comparison
-  const timeToMinutes = (timeStr) => {
-    const [time, period] = timeStr.split(' ');
-    let [hours, minutes] = time.split(':').map(Number);
-    
-    if (period === 'PM' && hours !== 12) {
-      hours += 12;
-    } else if (period === 'AM' && hours === 12) {
-      hours = 0;
-    }
-    
+  // Konversi "09:00 AM" → total menit
+  const timeToMinutes = (timeStr: string): number => {
+    const [time, period] = timeStr.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+    if (period === "PM" && hours !== 12) hours += 12;
+    else if (period === "AM" && hours === 12) hours = 0;
     return hours * 60 + minutes;
   };
 
-  // Get available end times based on selected start time
-  const getAvailableEndTimes = () => {
-    if (!startTime) return [];
-    
-    const startMinutes = timeToMinutes(startTime);
-    return timeSlots.filter(time => {
-      const endMinutes = timeToMinutes(time);
-      // Ensure end time is after start time and within reasonable duration (e.g., max 4 hours)
-      return endMinutes > startMinutes && endMinutes <= startMinutes + 240;
-    });
-  };
+  // Cek apakah timeslot < jam sekarang, jika date = hari ini
+  function isSlotInPast(selectedDate: Date, slotTime: string) {
+    // Jika selectedDate < hari ini => slot past
+    if (isBeforeDay(selectedDate, todayWithoutTime)) {
+      return true; // semuana past
+    }
+    // Jika selectedDate > hari ini => semuana future => false
+    if (isAfterDay(selectedDate, todayWithoutTime)) {
+      return false; 
+    }
+    // Kalau selectedDate = hari ini, cek slotTime < now
+    const slotMinutes = timeToMinutes(slotTime);
+    return slotMinutes < nowMinutes;
+  }
 
-  const isTimeSlotAvailable = (roomId, time, isStartTime = true) => {
-    const selectedRoom = rooms.find(r => r.id === roomId);
+  // Cek ketersediaan slot untuk room
+  function isTimeSlotAvailable(roomId: number, slotTime: string, isStartTime = true) {
+    const selectedRoom = rooms.find((r) => Number(r.id) === roomId);
     if (!selectedRoom) return true;
 
-    const currentDate = formatDate(date);
-    const timeMinutes = timeToMinutes(time);
-    
-    return !selectedRoom.bookings.some(booking => {
-      if (booking.date !== currentDate) return false;
-      
-      const bookingStartMinutes = timeToMinutes(booking.startTime);
-      const bookingEndMinutes = timeToMinutes(booking.endTime);
-      
+    const slotMins = timeToMinutes(slotTime);
+
+    // Bandingkan dengan booking existing
+    return !selectedRoom.timeSlots.some((b) => {
+      const bStart = timeToMinutes(b.startTime);
+      const bEnd = timeToMinutes(b.endTime);
       if (isStartTime) {
-        // For start time: check if the selected time is within any booking
-        return timeMinutes >= bookingStartMinutes && timeMinutes < bookingEndMinutes;
+        return slotMins >= bStart && slotMins < bEnd;
       } else {
-        // For end time: check if the time slot would create an overlap
-        const selectedStartMinutes = startTime ? timeToMinutes(startTime) : 0;
-        return (selectedStartMinutes < bookingEndMinutes && timeMinutes > bookingStartMinutes);
+        const st = startTime ? timeToMinutes(startTime) : 0;
+        return (st < bEnd && slotMins > bStart);
       }
     });
-  };
+  }
 
-  const isRoomAvailable = (roomId) => {
+  // Cek ketersediaan room (butuh startTime & endTime)
+  function isRoomAvailable(roomId: number) {
     if (!startTime || !endTime) return true;
-    
-    const selectedRoom = rooms.find(r => r.id === roomId);
+    const selectedRoom = rooms.find((r) => Number(r.id) === roomId);
     if (!selectedRoom) return true;
-
-    const currentDate = formatDate(date);
-    const selectedStartMinutes = timeToMinutes(startTime);
-    const selectedEndMinutes = timeToMinutes(endTime);
-    
-    return !selectedRoom.bookings.some(booking => {
-      if (booking.date !== currentDate) return false;
-      
-      const bookingStartMinutes = timeToMinutes(booking.startTime);
-      const bookingEndMinutes = timeToMinutes(booking.endTime);
-      
-      return (selectedStartMinutes < bookingEndMinutes && selectedEndMinutes > bookingStartMinutes);
+    const stM = timeToMinutes(startTime);
+    const etM = timeToMinutes(endTime);
+    return !selectedRoom.timeSlots.some((b) => {
+      const bStart = timeToMinutes(b.startTime);
+      const bEnd = timeToMinutes(b.endTime);
+      return (stM < bEnd && etM > bStart);
     });
-  };
+  }
 
-  // Handle start time selection and reset end time if needed
-  const handleStartTimeSelect = (time) => {
+  // Reset endTime jika tak valid
+  const handleStartTimeSelect = (time: string) => {
     setStartTime(time);
-    // Reset end time if it's no longer valid with the new start time
     if (endTime) {
-      const endMinutes = timeToMinutes(endTime);
-      const startMinutes = timeToMinutes(time);
-      if (endMinutes <= startMinutes || endMinutes > startMinutes + 240) {
+      const endMins = timeToMinutes(endTime);
+      const startMins = timeToMinutes(time);
+      if (endMins <= startMins || endMins > startMins + 240) {
         setEndTime(null);
       }
     }
   };
 
-
-
-  const CustomInputField = ({ value, placeholder, rightIcon, onPress, disabled }) => (
-    <View className={`flex-row items-center bg-white rounded-full border border-blue-900 p-4 mb-4 ${disabled ? 'opacity-50' : ''}`}>
-      
-      <TouchableOpacity onPress={disabled ? null : onPress} className="flex-1">
-        <Text className="text-base text-blue-900">
-          {value || placeholder}
-        </Text>
-      </TouchableOpacity>
-      {rightIcon && (
-        <View className="ml-3">
-          <TouchableOpacity onPress={disabled ? null : onPress}>
-            <Image source={rightIcon} className="w-5 h-5" tintColor="#334155" />
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
-
-  const TimeDropdown = ({ options, onSelect, visible, onClose, isStartTime = true }) => {
+  // ---- TimeDropdown
+  const TimeDropdown = ({
+    options,
+    onSelect,
+    visible,
+    onClose,
+    isStartTime = true,
+  }: {
+    options: { morning: string[]; afternoon: string[] };
+    onSelect: (time: string) => void;
+    visible: boolean;
+    onClose: () => void;
+    isStartTime?: boolean;
+  }) => {
     if (!visible) return null;
 
-    const getRoomAvailability = (time) => {
-      const availableRooms = rooms.filter(roomItem => {
-        if (!isTimeSlotAvailable(roomItem.id, time, isStartTime)) {
-          return false;
-        }
-        return true;
-      });
-      return availableRooms;
+    // Cek room availability
+    const getRoomAvailability = (timeStr: string) => {
+      return rooms.filter((rm) =>
+        isTimeSlotAvailable(Number(rm.id), timeStr, isStartTime)
+      );
     };
 
-    const isValidEndTime = (time) => {
+    // Validasi End Time => end > start & max 4 jam
+    const isValidEndTime = (timeStr: string) => {
       if (isStartTime) return true;
       if (!startTime) return false;
-      
-      const startMinutes = timeToMinutes(startTime);
-      const endMinutes = timeToMinutes(time);
-      return endMinutes > startMinutes && endMinutes <= startMinutes + 240;
+      const st = timeToMinutes(startTime);
+      const et = timeToMinutes(timeStr);
+      return et > st && et <= st + 240;
     };
 
-    const renderTimeSection = (title, slots) => (
-      <View>
-        <Text className="px-4 py-2 bg-gray-100 font-medium text-gray-600">{title}</Text>
-        {slots.map((time, index) => {
-          const availableRooms = getRoomAvailability(time);
-          const isValid = isValidEndTime(time);
-          const showDetails = isValid && (!isStartTime ? startTime : true);
-          
+    const renderTimeSection = (title: string, slots: string[]) => (
+      <View key={title}>
+        <Text className="px-4 py-2 bg-gray-100 font-medium text-gray-600">
+          {title}
+        </Text>
+        {slots.map((slotTime, idx) => {
+          // 1) Apakah slotTime di masa lalu?
+          const inPast = isSlotInPast(date, slotTime);
+          // 2) Apakah endTime valid?
+          const validEnd = isValidEndTime(slotTime);
+          // 3) Apakah room tersedia?
+          const availableRooms = getRoomAvailability(slotTime);
+
+          // canSelect => slot tidak di masa lalu & endTime valid
+          // serta jika endTime => startTime sudah diisi
+          let canSelect = !inPast && validEnd;
+          if (!isStartTime && !startTime) canSelect = false; // EndTime butuh startTime
+
+          const disabled = !canSelect || availableRooms.length === 0;
           return (
             <TouchableOpacity
-              key={index}
-              className={`p-4 border-b border-gray-100 ${(!showDetails || availableRooms.length === 0) ? 'opacity-50' : ''}`}
+              key={idx}
+              className={`p-4 border-b border-gray-100 ${
+                disabled ? "opacity-50" : ""
+              }`}
               onPress={() => {
-                if (showDetails && availableRooms.length > 0) {
-                  if (isStartTime) {
-                    handleStartTimeSelect(time);
-                  } else {
-                    onSelect(time);
-                  }
+                if (!disabled) {
+                  if (isStartTime) handleStartTimeSelect(slotTime);
+                  else onSelect(slotTime);
                   onClose();
                 }
               }}
-              disabled={!showDetails || availableRooms.length === 0}
+              disabled={disabled}
             >
               <View className="flex-col justify-between items-start">
-                <Text className="text-blue-900 text-base">{time}</Text>
-                <View className="flex-row items-center">
-                  {showDetails && (
-                    <Text className={`text-sm ${availableRooms.length > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                      {availableRooms.length > 0 
-                        ? `${availableRooms.length} room${availableRooms.length > 1 ? 's' : ''} available`
-                        : 'No rooms available'}
+                <Text className="text-blue-900 text-base">{slotTime}</Text>
+
+                {/* Info detail */}
+                <View className="flex-row items-center mt-1">
+                  {canSelect && (
+                    <Text
+                      className={`text-sm ${
+                        availableRooms.length > 0
+                          ? "text-green-600"
+                          : "text-red-500"
+                      }`}
+                    >
+                      {availableRooms.length > 0
+                        ? `${availableRooms.length} room${
+                            availableRooms.length > 1 ? "s" : ""
+                          } available`
+                        : "No rooms available"}
                     </Text>
                   )}
-                  {!isValid && isStartTime === false && (
-                    <Text className="text-sm text-gray-500">Invalid time range</Text>
+
+                  {/* Tampilkan info "past time" jika inPast */}
+                  {inPast && (
+                    <Text className="text-sm text-gray-500 ml-2">
+                      (Past time)
+                    </Text>
+                  )}
+
+                  {/* Info invalid endTime range */}
+                  {!validEnd && !isStartTime && !inPast && (
+                    <Text className="text-sm text-gray-500 ml-2">
+                      Invalid range
+                    </Text>
                   )}
                 </View>
               </View>
-              {showDetails && availableRooms.length > 0 && (
+
+              {/* Tampilkan rooms info jika canSelect & availableRooms.length>0 */}
+              {canSelect && availableRooms.length > 0 && (
                 <View className="mt-1">
                   <Text className="text-sm text-gray-500">
-                    Available: {availableRooms.map(r => r.name.split(' ')[0]).join(', ')}
+                    Available:{" "}
+                    {availableRooms.map((r) => r.name.split(" ")[0]).join(", ")}
                   </Text>
                 </View>
               )}
@@ -262,23 +259,25 @@ const NewMeeting = () => {
     return (
       <View className="absolute z-50 w-full bg-white rounded-xl mt-1 shadow-lg">
         <ScrollView className="max-h-72">
-          {renderTimeSection('Morning', timeSlots.morning)}
-          {renderTimeSection('Afternoon', timeSlots.afternoon)}
+          {renderTimeSection("Morning", options.morning)}
+          {renderTimeSection("Afternoon", options.afternoon)}
         </ScrollView>
       </View>
     );
   };
 
+  // ---- RoomDropdown
   const RoomDropdown = () => (
     <View className="absolute z-50 w-full bg-white rounded-xl mt-1 shadow-lg">
       <ScrollView className="max-h-48">
         {rooms.map((roomItem) => {
-          const available = isRoomAvailable(roomItem.id);
-          
+          const available = isRoomAvailable(Number(roomItem.id));
           return (
             <TouchableOpacity
               key={roomItem.id}
-              className={`p-4 border-b border-gray-100 flex-row justify-between items-center ${!available ? 'opacity-50' : ''}`}
+              className={`p-4 border-b border-gray-100 flex-row justify-between items-center ${
+                !available ? "opacity-50" : ""
+              }`}
               onPress={() => {
                 if (available) {
                   setRoom(roomItem.id.toString());
@@ -289,10 +288,16 @@ const NewMeeting = () => {
             >
               <View>
                 <Text className="text-blue-900 text-base">{roomItem.name}</Text>
-                <Text className="text-gray-500 text-sm">Capacity: {roomItem.capacity}</Text>
+                <Text className="text-gray-500 text-sm">
+                  Capacity: {roomItem.capacity}
+                </Text>
               </View>
-              <Text className={`text-sm ${available ? 'text-green-600' : 'text-red-500'}`}>
-                {available ? 'Available' : 'Booked'}
+              <Text
+                className={`text-sm ${
+                  available ? "text-green-600" : "text-red-500"
+                }`}
+              >
+                {available ? "Available" : "Booked"}
               </Text>
             </TouchableOpacity>
           );
@@ -304,55 +309,79 @@ const NewMeeting = () => {
   return (
     <SafeAreaView className="flex-1 bg-slate-100">
       <Header />
-      
+
       <ScrollView className="flex-1 px-4">
         {/* Tabs */}
         <View className="flex-row bg-white rounded-t-xl">
-          <TabButton
-            title="Rooms"
-            isActive={activeTab === 'rooms'}
-            onPress={() => setActiveTab('rooms')}
-          />
-          <TabButton
-            title="Transportation"
-            isActive={activeTab === 'transportation'}
-            onPress={() => setActiveTab('transportation')}
-          />
+          <TouchableOpacity
+            onPress={() => setActiveTab("rooms")}
+            className={`flex-1 py-3 ${
+              activeTab === "rooms"
+                ? "border-b-2 border-blue-900"
+                : "border-b border-gray-200"
+            }`}
+          >
+            <Text
+              className={`text-center font-medium ${
+                activeTab === "rooms" ? "text-blue-900" : "text-gray-500"
+              }`}
+            >
+              Rooms
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setActiveTab("transportation")}
+            className={`flex-1 py-3 ${
+              activeTab === "transportation"
+                ? "border-b-2 border-blue-900"
+                : "border-b border-gray-200"
+            }`}
+          >
+            <Text
+              className={`text-center font-medium ${
+                activeTab === "transportation"
+                  ? "text-blue-900"
+                  : "text-gray-500"
+              }`}
+            >
+              Transportation
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Form Card */}
         <View className="bg-white px-4 py-6 rounded-b-xl shadow-sm">
-          {activeTab === 'rooms' ? (
+          {activeTab === "rooms" ? (
             <View className="space-y-6">
+              {/* 1) Meeting Name */}
               <InputField
-                label="Name of meeting"
+                label="Meeting Name"
                 value={name}
                 onChangeText={setName}
-                placeholder=""
-                containerStyle="mb-2"
               />
 
-              <View>
-                <Text className="text-gray-500 text-sm mb-1">Date</Text>
-                <CustomInputField
-                  value={formatDate(date)}
-                  icon={icons.calendar}
-                  onPress={() => setShowDatePicker(true)}
-                />
-              </View>
+              {/* 2) Date */}
+              <InputField
+                label="Select Date"
+                value={formatDate(date)}
+                icon={icons.calendar}
+                editable={false}
+                onPress={() => setShowDatePicker(true)}
+              />
 
+              {/* 3) Start & End Time */}
               <View className="flex-row">
-                <View className="flex-1 mr-2 relative">
-                  <Text className="text-gray-500 text-sm mb-1">Start time</Text>
-                  <CustomInputField
-                    value={startTime}
-                    placeholder="Select"
-                    icon={icons.clock}
-                    rightIcon={icons.arrowDown}
+                {/* Start Time */}
+                <View className="flex-1 mr-2 relative overflow-visible">
+                  <InputField
+                    label="Start Time"
+                    value={startTime || ""}
+                    icon={icons.arrowDown}
+                    editable={false}
                     onPress={() => setShowStartTimeDropdown(!showStartTimeDropdown)}
                   />
                   <TimeDropdown
-                    options={timeSlots}
+                    options={commonTimeSlots}
                     onSelect={handleStartTimeSelect}
                     visible={showStartTimeDropdown}
                     onClose={() => setShowStartTimeDropdown(false)}
@@ -360,19 +389,18 @@ const NewMeeting = () => {
                   />
                 </View>
 
-                <View className="flex-1 ml-2 relative">
-                  <Text className="text-gray-500 text-sm mb-1">End time</Text>
-                  <CustomInputField
-                    value={endTime}
-                    placeholder="Select"
-                    icon={icons.clock}
-                    rightIcon={icons.arrowDown}
+                {/* End Time */}
+                <View className="flex-1 ml-2 relative overflow-visible">
+                  <InputField
+                    label="End Time"
+                    value={endTime || ""}
+                    icon={icons.arrowDown}
+                    editable={false}
                     onPress={() => setShowEndTimeDropdown(!showEndTimeDropdown)}
-                    disabled={!startTime}
                   />
                   <TimeDropdown
-                    options={timeSlots}
-                    onSelect={setEndTime}
+                    options={commonTimeSlots}
+                    onSelect={(time) => setEndTime(time)}
                     visible={showEndTimeDropdown}
                     onClose={() => setShowEndTimeDropdown(false)}
                     isStartTime={false}
@@ -380,22 +408,31 @@ const NewMeeting = () => {
                 </View>
               </View>
 
-              <View className="relative">
-                <Text className="text-gray-500 text-sm mb-1">Room</Text>
-                <CustomInputField
-                  value={room ? rooms.find(r => r.id.toString() === room)?.name : null}
-                  placeholder="Select a room"
-                  icon={icons.location}
-                  rightIcon={icons.arrowDown}
+              {/* 4) Room */}
+              <View className="relative overflow-visible">
+                <InputField
+                  label="Select Room"
+                  value={
+                    room
+                      ? rooms.find((r) => r.id.toString() === room)?.name
+                      : ""
+                  }
+                  icon={icons.arrowDown}
+                  editable={false}
                   onPress={() => setShowRoomDropdown(!showRoomDropdown)}
                 />
                 {showRoomDropdown && <RoomDropdown />}
               </View>
 
+              {/* 5) Create Button */}
               <View className="pt-4">
-                <TouchableOpacity 
-                  className={`bg-blue-900 py-4 rounded-xl ${(!name || !startTime || !endTime || !room) ? 'opacity-50' : 'active:opacity-90'}`}
-                  onPress={() => console.log('Creating meeting...')}
+                <TouchableOpacity
+                  className={`bg-blue-900 py-4 rounded-xl ${
+                    !name || !startTime || !endTime || !room
+                      ? "opacity-50"
+                      : "active:opacity-90"
+                  }`}
+                  onPress={() => console.log("Creating meeting...")}
                   disabled={!name || !startTime || !endTime || !room}
                 >
                   <Text className="text-white text-center font-medium text-base">
@@ -407,17 +444,20 @@ const NewMeeting = () => {
           ) : (
             // Transportation Tab Content
             <View className="flex-1 items-center justify-center py-8">
-              <Text className="text-gray-500">Transportation booking form coming soon</Text>
+              <Text className="text-gray-500">
+                Transportation booking form coming soon
+              </Text>
             </View>
           )}
         </View>
       </ScrollView>
 
+      {/* DateTimePicker */}
       {showDatePicker && (
         <DateTimePicker
           value={date}
           mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display={Platform.OS === "ios" ? "spinner" : "default"}
           onChange={(event, selectedDate) => {
             setShowDatePicker(false);
             if (selectedDate) setDate(selectedDate);
