@@ -11,76 +11,162 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import DatePicker from "react-native-date-picker";
 
-import { icons } from "@/constants";
-import Header from "@/components/Header";
-
-// === Import dari dummyData baru ===
+// Import data & icons dari @/lib/dummyData dan @/constants
 import {
   IMeeting,
   ITransportBooking,
   meetings as dummyMeetings,
   transportBookings as dummyTransportBookings,
-  rooms,           // untuk lookup room name
-  transportList,   // untuk lookup transport name
+  rooms,
+  transportList,
   monthNames,
   dayNames,
 } from "@/lib/dummyData";
-
-// ----------------------------------------------------
-// Helper: Ambil nama room berdasarkan roomId
-// ----------------------------------------------------
+import {icons} from "@/constants";
 function getRoomName(roomId: string): string {
   const found = rooms.find((r) => r.roomId === roomId);
-  // Apabila tak ditemukan, balikin roomId aja
   return found ? `${found.sizeName} meeting room - ${found.roomName}` : roomId;
 }
 
-// ----------------------------------------------------
-// Helper: Ambil nama transport berdasarkan transportId
-// ----------------------------------------------------
 function getTransportName(transportId: string): string {
   const found = transportList.find((t) => t.transportId === transportId);
   return found ? found.transportName : transportId;
 }
 
-// Warna acak untuk border kiri jadwal
+// Palet warna
 const colorPalette = [
-  "#1E3A8A", // blue-900
-  "#5C6AC4", // indigo-600
-  "#15803D", // green-700
-  "#B91C1C", // red-700
-  "#3B82F6", // blue-500
-  "#C026D3", // fuchsia-600
-  "#DB2777", // pink-600
-  "#EA580C", // orange-600
+  "#1E3A8A",
+  "#5C6AC4",
+  "#15803D",
+  "#B91C1C",
+  "#3B82F6",
+  "#C026D3",
+  "#DB2777",
+  "#EA580C",
 ];
 
-// Fungsi random color
+// Ambil warna acak dari palet
 const getRandomColor = (): string => {
   const randomIndex = Math.floor(Math.random() * colorPalette.length);
   return colorPalette[randomIndex];
 };
 
+/**
+ * Mengembalikan string "X seconds/minutes/hours/days/weeks/months/years left/ago"
+ * @param diffMs selisih waktu (dalam milidetik) => "past" bila positif, "future" bila negatif
+ */
+function formatTimeDiff(diffMs: number): string {
+  // Past = diffMs > 0 (now - endTime)
+  // Future = diffMs < 0 (startTime - now)
+  // Kita ambil abs untuk magnitude
+  const absDiff = Math.abs(diffMs);
+
+  const second = 1000;
+  const minute = 60 * second;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  const week = 7 * day;
+  const month = 30 * day; // simplifying 1 month = 30 days
+  const year = 365 * day; // simplifying 1 year = 365 days
+
+  let result = "";
+  if (absDiff < minute) {
+    // kurang dari 1 menit -> seconds
+    const s = Math.floor(absDiff / second);
+    result = `${s} second${s > 1 ? "s" : ""}`;
+  } else if (absDiff < hour) {
+    // minutes
+    const m = Math.floor(absDiff / minute);
+    result = `${m} minute${m > 1 ? "s" : ""}`;
+  } else if (absDiff < day) {
+    // hours
+    const h = Math.floor(absDiff / hour);
+    result = `${h} hour${h > 1 ? "s" : ""}`;
+  } else if (absDiff < week) {
+    // days
+    const d = Math.floor(absDiff / day);
+    result = `${d} day${d > 1 ? "s" : ""}`;
+  } else if (absDiff < month) {
+    // weeks
+    const w = Math.floor(absDiff / week);
+    result = `${w} week${w > 1 ? "s" : ""}`;
+  } else if (absDiff < year) {
+    // months
+    const mo = Math.floor(absDiff / month);
+    result = `${mo} month${mo > 1 ? "s" : ""}`;
+  } else {
+    // years
+    const y = Math.floor(absDiff / year);
+    result = `${y} year${y > 1 ? "s" : ""}`;
+  }
+
+  if (diffMs > 0) {
+    // Sudah lewat
+    return `${result} ago`;
+  } else {
+    // Belum mulai
+    return `${result} left`;
+  }
+}
+
+/**
+ * Status:
+ *   - Sebelum startTime => X left
+ *   - Antara startTime & endTime => NOW
+ *   - Setelah endTime => X ago
+ */
+function getItemStatus(item: IMeeting | ITransportBooking): string {
+  // Ambil tanggal item
+  const itemDateStr = "meetingId" in item ? item.meetingDate : item.bookingDate;
+
+  // Parse waktu
+  const parseTime = (time: string) => {
+    const [hh, mm] = time.split(":").map(Number);
+    return { hh, mm };
+  };
+  const { hh: startH, mm: startM } = parseTime(item.startTime);
+  const { hh: endH, mm: endM } = parseTime(item.endTime);
+
+  // Bentuk Date start & end
+  const startDateTime = new Date(itemDateStr);
+  startDateTime.setHours(startH, startM, 0, 0);
+
+  const endDateTime = new Date(itemDateStr);
+  endDateTime.setHours(endH, endM, 0, 0);
+
+  // Waktu sekarang
+  const now = new Date();
+
+  // Jika masih belum mulai => perbedaan (start - now) < 0 => future
+  if (now < startDateTime) {
+    const diffMs = startDateTime.getTime() - now.getTime();
+    return formatTimeDiff(-diffMs); // negatif => left
+  }
+  // Jika sedang berlangsung
+  else if (now >= startDateTime && now <= endDateTime) {
+    return "NOW";
+  }
+  // Jika sudah lewat
+  else {
+    const diffMs = now.getTime() - endDateTime.getTime();
+    return formatTimeDiff(diffMs); // positif => ago
+  }
+}
+
 const Home = () => {
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState(today);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-
-  // Toggle jadwal "ROOM" vs "TRANSPORT"
-  const [selectedScheduleType, setSelectedScheduleType] =
-    useState<"ROOM" | "TRANSPORT">("ROOM");
-
-  // State item detail (IMeeting / ITransportBooking)
+  const [selectedScheduleType, setSelectedScheduleType] = useState<"ROOM" | "TRANSPORT">("ROOM");
   const [selectedItem, setSelectedItem] = useState<IMeeting | ITransportBooking | null>(null);
 
-  // Data Meetings & TransportBook
+  // Data dummy
   const roomsData: IMeeting[] = dummyMeetings;
   const transportData: ITransportBooking[] = dummyTransportBookings;
 
-  // Menyimpan warna border item
+  // REF untuk menyimpan color agar tetap konsisten
   const colorMapRef = useRef<Record<string, string>>({});
 
-  // Dapatkan warna per item agar tidak berubah-ubah
   const getItemColor = (item: IMeeting | ITransportBooking, idx: number) => {
     const dateStr = "meetingId" in item ? item.meetingDate : item.bookingDate;
     const key = `${selectedScheduleType}_${dateStr}_${item.startTime}_${item.endTime}_${item.title}_${idx}`;
@@ -90,7 +176,6 @@ const Home = () => {
     return colorMapRef.current[key];
   };
 
-  // Handler DatePicker
   const handleDateSelection = (date: Date) => {
     setSelectedDate(date);
     setIsDatePickerOpen(false);
@@ -100,20 +185,19 @@ const Home = () => {
     return date.toDateString() === today.toDateString();
   };
 
-  // Info date
   const day = selectedDate.getDate();
   const month = monthNames[selectedDate.getMonth()];
   const year = selectedDate.getFullYear();
   const dayName = dayNames[selectedDate.getDay()];
 
-  // Convert "HH:mm" → total menit
   const timeToMinutes = (time: string): number => {
     const [h, m] = time.split(":").map(Number);
     return h * 60 + m;
   };
 
-  // Posisi di timeline (jam 9 = 540 menit)
-  const calculatePosition = (startTime: string, endTime: string, hourHeight: number = 95) => {
+  // Menghitung posisi card di timeline
+  const calculatePosition = (startTime: string, endTime: string, hourHeight: number = 90) => {
+    // Timeline dimulai jam 9:00 -> 9 * 60 = 540
     const startOffset = timeToMinutes(startTime) - 540;
     const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
 
@@ -123,37 +207,23 @@ const Home = () => {
     };
   };
 
-  // Status: Past, Now, Today, Upcoming
-  const getItemStatus = (item: IMeeting | ITransportBooking) => {
-    const itemDateStr = "meetingId" in item ? item.meetingDate : item.bookingDate;
-    const itemDate = new Date(itemDateStr);
-
-    const currentDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const itemDateOnly = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
-
-    if (itemDateOnly < currentDateOnly) return "Past";
-    if (itemDateOnly > currentDateOnly) return "Upcoming";
-    return item.isOngoing ? "Now" : "Today";
-  };
-
-  // Filter data
+  // Filter data by date
   const selectedDateStr = selectedDate.toISOString().split("T")[0];
-
   const filteredMeetings = roomsData.filter((m) => m.meetingDate === selectedDateStr);
   const filteredTransportBookings = transportData.filter((t) => t.bookingDate === selectedDateStr);
-
-  const dataToRender =
-    selectedScheduleType === "ROOM" ? filteredMeetings : filteredTransportBookings;
+  const dataToRender = selectedScheduleType === "ROOM" ? filteredMeetings : filteredTransportBookings;
 
   return (
     <SafeAreaView className="bg-slate-100 flex-1">
-      {/* Header */}
-      <Header />
+      {/* Header Sederhana */}
+      <View className="px-4 py-4">
+        <Text className="text-2xl font-bold text-blue-900">Schedule Timeline</Text>
+      </View>
 
-      {/* ======= FILTER SECTION ======= */}
-      <View className=" px-4">
+      {/* FILTER SECTION */}
+      <View className="px-4">
         <View className="bg-white rounded-2xl shadow-md px-4 py-5 relative overflow-hidden">
-          {/* Ornament bulat (opsional) */}
+          {/* Dekorasi Latar (opsional) */}
           <View
             style={{
               position: "absolute",
@@ -181,16 +251,16 @@ const Home = () => {
             }}
           />
 
-          {/* Filter Title & Toggle */}
+          {/* Filter Atas */}
           <View className="flex-row items-center justify-between mb-3 z-10">
             <View>
               <Text className="text-xl font-extrabold text-blue-900">Filter</Text>
               {isToday(selectedDate) && (
-                <Text className="text-xs font-semibold text-green-600">It’s Today!</Text>
+                <Text className="text-xs font-semibold text-green-600">It's Today!</Text>
               )}
             </View>
 
-            {/* Toggle ROOM vs TRANSPORT */}
+            {/* Tombol Switcher */}
             <View className="flex-row">
               <TouchableOpacity
                 className={`rounded-full px-3 py-2 mr-1 flex-row items-center ${
@@ -235,9 +305,7 @@ const Home = () => {
                 />
                 <Text
                   className={`text-xs font-semibold ${
-                    selectedScheduleType === "TRANSPORT"
-                      ? "text-white"
-                      : "text-blue-900"
+                    selectedScheduleType === "TRANSPORT" ? "text-white" : "text-blue-900"
                   }`}
                 >
                   Transport
@@ -246,7 +314,7 @@ const Home = () => {
             </View>
           </View>
 
-          {/* Date Info */}
+          {/* Info Tanggal Pilihan */}
           <View className="z-10">
             <Text className="text-sm font-bold text-blue-900">
               {month} {day}, {year}
@@ -254,7 +322,7 @@ const Home = () => {
             <Text className="text-xs text-blue-700 italic mb-2">{dayName}</Text>
           </View>
 
-          {/* ScrollView: Bulan */}
+          {/* Pilih Bulan */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -287,7 +355,7 @@ const Home = () => {
             })}
           </ScrollView>
 
-          {/* ScrollView: Hari */}
+          {/* Pilih Tanggal (1..31) */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -341,7 +409,7 @@ const Home = () => {
             )}
           </ScrollView>
 
-          {/* ScrollView: Tahun */}
+          {/* Pilih Tahun */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -349,6 +417,7 @@ const Home = () => {
             contentContainerStyle={{ paddingHorizontal: 2 }}
           >
             {Array.from({ length: 10 }, (_, idx) => {
+              // Range misal: currentYear - 5 s/d +4
               const tempYear = today.getFullYear() - 5 + idx;
               const isActive = tempYear === selectedDate.getFullYear();
               return (
@@ -377,13 +446,13 @@ const Home = () => {
         </View>
       </View>
 
-      {/* ======= TIMELINE SECTION ======= */}
+      {/* TIMELINE SECTION */}
       <ScrollView
         contentContainerStyle={{ paddingBottom: 40 }}
         className="px-4 pt-3 mt-2"
       >
         <View className="relative" style={{ height: 1400 }}>
-          {/* Garis waktu jam 9 - 23 (9 + 14 = 23) */}
+          {/* Buat garis jam 9:00 s/d 23:00 */}
           {Array.from({ length: 15 }, (_, idx) => {
             const hour = 9 + idx;
             return (
@@ -393,7 +462,9 @@ const Home = () => {
                 style={{ top: idx * 90 }}
               >
                 <View className="w-12">
-                  <Text className="text-blue-300 text-[11px] font-semibold">{`${hour}:00`}</Text>
+                  <Text className="text-blue-300 text-[11px] font-semibold">
+                    {`${hour}:00`}
+                  </Text>
                 </View>
                 <View className="flex-1 relative">
                   <View className="absolute left-3 top-0 w-full h-[1px] bg-blue-100" />
@@ -402,59 +473,153 @@ const Home = () => {
             );
           })}
 
-          {/* Render Jadwal */}
+          {/* Render Item (Meeting / Transport) */}
           {dataToRender.map((item, idx) => {
-            const { startTime, endTime, title, isOngoing } = item;
-            const dateStr = "meetingId" in item ? item.meetingDate : item.bookingDate;
-            const { top } = calculatePosition(startTime, endTime, 90);
+            const { startTime, endTime, title, description, participants, driverName } = item;
+            const { top, height } = calculatePosition(startTime, endTime, 90);
             const borderColor = getItemColor(item, idx);
-
-            // ROOM vs TRANSPORT name
             const locationLabel =
-              "roomId" in item
-                ? getRoomName(item.roomId)
-                : getTransportName(item.transportId);
+              "roomId" in item ? getRoomName(item.roomId) : getTransportName(item.transportId);
+            // Dapatkan status
+            const status = getItemStatus(item);
 
             return (
               <TouchableOpacity
                 key={idx}
                 activeOpacity={0.9}
-                className="absolute left-14 right-3 bg-white shadow rounded-xl"
+                className="absolute left-14 right-3 bg-white shadow-xl rounded-2xl overflow-hidden"
                 style={{
                   top,
-                  height: 130,
-                  borderLeftWidth: 5,
-                  borderLeftColor: borderColor,
-                  paddingBottom: 3,
+                  height: height < 90 ? 90 : height,
                 }}
                 onPress={() => setSelectedItem(item)}
               >
-                <View className="p-3 pt-2">
-                  {/* Title & Badge NOW */}
-                  <View className="flex-row items-start justify-between">
-                    <Text
-                      numberOfLines={1}
-                      className="flex-1 pr-2 text-sm font-bold text-blue-900"
-                    >
-                      {title}
-                    </Text>
-                    {isOngoing && (
-                      <Text className="px-2 text-[10px] font-bold text-blue-700 bg-blue-100 rounded-full">
-                        NOW
+                {/* Garis tipis di atas */}
+                <View
+                  className="absolute top-0 left-0 right-0 h-1"
+                  style={{ 
+                    backgroundColor: borderColor,
+                    opacity: 0.8 
+                  }}
+                />
+
+                {/* Overlay Kaca (opsional) */}
+                <View className="absolute inset-0 bg-white/60 backdrop-blur-sm" />
+
+                {/* Isi Card */}
+                <View className="p-3 flex-1">
+                  {/* Header */}
+                  <View className="flex-row items-center justify-between mb-2">
+                    <View className="flex-row items-center flex-1">
+                      <View
+                        className="w-8 h-8 rounded-xl mr-2 items-center justify-center"
+                        style={{
+                          backgroundColor: borderColor,
+                          shadowColor: borderColor,
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.3,
+                          shadowRadius: 3,
+                        }}
+                      >
+                        <Image
+                          source={selectedScheduleType === "ROOM" ? icons.door : icons.car}
+                          className="w-5 h-5"
+                          resizeMode="contain"
+                          tintColor="#ffffff"
+                        />
+                      </View>
+
+                      {/* Title + Waktu */}
+                      <View className="flex-1">
+                        <Text numberOfLines={1} className="text-base font-bold text-gray-800">
+                          {title}
+                        </Text>
+                        <Text className="text-xs text-gray-500 mt-0.5">
+                          {startTime} - {endTime}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* STATUS BADGE */}
+                    <View className="bg-green-500 px-3 py-1 rounded-full ml-2">
+                      <Text className="text-[10px] font-bold text-white">{status}</Text>
+                    </View>
+                  </View>
+
+                  {/* Location & Description */}
+                  <View className="space-y-1.5">
+                    <View className="flex-row items-center">
+                      <View className="w-4 items-center mr-1">
+                        <Image
+                          source={icons.location}
+                          className="w-3.5 h-3.5"
+                          resizeMode="contain"
+                          tintColor="#6B7280"
+                        />
+                      </View>
+                      <Text className="text-xs text-gray-600 flex-1" numberOfLines={1}>
+                        {locationLabel}
                       </Text>
+                    </View>
+
+                    {description && (
+                      <View className="flex-row items-start">
+                        <View className="w-4 items-center mr-1 mt-1">
+                          <Image
+                            source={icons.info}
+                            className="w-3.5 h-3.5"
+                            resizeMode="contain"
+                            tintColor="#6B7280"
+                          />
+                        </View>
+                        <Text className="text-xs text-gray-600 flex-1" numberOfLines={2}>
+                          {description}
+                        </Text>
+                      </View>
                     )}
                   </View>
 
-                  {/* ROOM / VEHICLE */}
-                  <Text className="text-[11px] mt-1 text-gray-600 font-medium">
-                    {locationLabel}
-                  </Text>
-
-                  {/* Time range */}
-                  <View className="mt-3 flex-row items-center justify-between">
-                    <Text className="text-[11px] text-gray-500 font-semibold">
-                      {startTime} – {endTime}
-                    </Text>
+                  {/* Participants or driver */}
+                  <View className="mt-2 pt-2 border-t border-gray-100">
+                    {participants && participants.length > 0 ? (
+                      <View className="flex-row items-center">
+                        <View className="flex-row">
+                          {participants.slice(0, 3).map((participant, pIdx) => (
+                            <View
+                              key={pIdx}
+                              className="rounded-full overflow-hidden border-2 border-white"
+                              style={{
+                                marginLeft: pIdx > 0 ? -8 : 0,
+                                zIndex: 3 - pIdx,
+                              }}
+                            >
+                              <Image
+                                source={{ uri: participant.avatar }}
+                                className="w-6 h-6"
+                                resizeMode="cover"
+                              />
+                            </View>
+                          ))}
+                        </View>
+                        {participants.length > 3 && (
+                          <Text className="ml-2 text-xs text-gray-500">
+                            +{participants.length - 3} more
+                          </Text>
+                        )}
+                      </View>
+                    ) : driverName && (
+                      <View className="flex-row items-center">
+                        <Image
+                          source={icons.person}
+                          className="w-4 h-4 mr-1"
+                          resizeMode="contain"
+                          tintColor="#6B7280"
+                        />
+                        <Text className="text-xs text-gray-600">
+                          Driver: {driverName}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 </View>
               </TouchableOpacity>
@@ -463,129 +628,168 @@ const Home = () => {
         </View>
       </ScrollView>
 
-      {/* ======= MODAL DETAIL ======= */}
-      <Modal
+    {/* Modal Detail */}
+    <Modal
         visible={!!selectedItem}
         animationType="fade"
         transparent
         onRequestClose={() => setSelectedItem(null)}
       >
-        <View className="flex-1 bg-black/40">
-          <View className="flex-1 justify-end">
-            <View className="bg-white rounded-t-3xl p-5 shadow-2xl">
-              {selectedItem && (
-                <>
-                  {/* Title */}
-                  <View className="-m-5 mb-2 p-5 rounded-t-3xl">
-                    <Text numberOfLines={2} className="text-xl font-extrabold text-blue-900">
-                      {selectedItem.title}
-                    </Text>
-                  </View>
-
-                  <View className="space-y-3">
-                    {/* DATE & TIME Card */}
-                    <View className="bg-blue-50 p-3 rounded-xl flex-row items-center">
-                      <View className="bg-blue-500 p-2 rounded-lg mr-3">
-                        <Image
-                          source={icons.calendar}
-                          className="w-4 h-4"
-                          resizeMode="contain"
-                          tintColor="white"
-                        />
-                      </View>
-                      <View>
-                        <Text className="text-[10px] text-blue-500 font-semibold">
-                          DATE & TIME
-                        </Text>
-                        <Text className="text-[13px] text-gray-800 font-bold">
-                          {"meetingId" in selectedItem
-                            ? selectedItem.meetingDate
-                            : selectedItem.bookingDate}
-                          , {selectedItem.startTime} – {selectedItem.endTime}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* ROOM / VEHICLE Card */}
-                    {"roomId" in selectedItem ? (
-                      <View className="bg-purple-50 p-3 rounded-xl flex-row items-center">
-                        <View className="bg-purple-500 p-2 rounded-lg mr-3">
-                          <Image
-                            source={icons.wide}
-                            className="w-4 h-4"
-                            resizeMode="contain"
-                            tintColor="white"
-                          />
-                        </View>
-                        <View>
-                          <Text className="text-[10px] text-purple-500 font-semibold">ROOM</Text>
-                          <Text className="text-[13px] text-gray-800 font-bold">
-                            {getRoomName(selectedItem.roomId)}
-                          </Text>
-                        </View>
-                      </View>
-                    ) : (
-                      <View className="bg-purple-50 p-3 rounded-xl flex-row items-center">
-                        <View className="bg-purple-500 p-2 rounded-lg mr-3">
-                          <Image
-                            source={icons.wide}
-                            className="w-4 h-4"
-                            resizeMode="contain"
-                            tintColor="white"
-                          />
-                        </View>
-                        <View>
-                          <Text className="text-[10px] text-purple-500 font-semibold">
-                            VEHICLE
-                          </Text>
-                          <Text className="text-[13px] text-gray-800 font-bold">
-                            {getTransportName(selectedItem.transportId)}
-                          </Text>
-                        </View>
-                      </View>
-                    )}
-
-                    {/* STATUS Card */}
-                    <View className="bg-orange-50 p-3 rounded-xl flex-row items-center">
-                      <View className="bg-orange-400 p-2 rounded-lg mr-3">
-                        <Image
-                          source={icons.clock}
-                          className="w-4 h-4"
-                          resizeMode="contain"
-                          tintColor="white"
-                        />
-                      </View>
-                      <View>
-                        <Text className="text-[10px] text-orange-500 font-semibold">STATUS</Text>
-                        <Text className="text-[13px] text-gray-800 font-bold">
-                          {getItemStatus(selectedItem)}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  <Text className="mt-4 text-[10px] text-center text-gray-400">
-                    We adhere entirely to the data security standards
-                    of the booking system.
+        <View className="flex-1 bg-black/40 justify-center items-center">
+          <View className="bg-white rounded-3xl p-6 w-11/12 shadow-lg">
+            {selectedItem && (
+              <>
+                <View className="flex-row items-center justify-between mb-4">
+                  <Text numberOfLines={2} className="text-xl font-extrabold text-blue-900 flex-1">
+                    {selectedItem.title}
                   </Text>
-
-                  {/* Close Button */}
-                  <TouchableOpacity
-                    onPress={() => setSelectedItem(null)}
-                    className="bg-blue-900 mt-3 rounded-xl py-3"
-                  >
-                    <Text className="text-center text-white font-bold text-sm">
-                      Close
-                    </Text>
+                  <TouchableOpacity onPress={() => setSelectedItem(null)}>
+                    <Image
+                      source={icons.close}
+                      className="w-5 h-5"
+                      resizeMode="contain"
+                      tintColor="#6B7280"
+                    />
                   </TouchableOpacity>
-                </>
-              )}
-            </View>
+                </View>
+
+                <View className="space-y-4">
+                  <View className="bg-blue-50 p-4 rounded-xl flex-row items-center">
+                    <View className="bg-blue-500 p-3 rounded-lg mr-4">
+                      <Image
+                        source={icons.calendar}
+                        className="w-4 h-4"
+                        resizeMode="contain"
+                        tintColor="white"
+                      />
+                    </View>
+                    <View>
+                      <Text className="text-[10px] text-blue-500 font-semibold">
+                        DATE & TIME
+                      </Text>
+                      <Text className="text-[13px] text-gray-800 font-bold">
+                        {"meetingId" in selectedItem
+                          ? selectedItem.meetingDate
+                          : selectedItem.bookingDate}
+                        , {selectedItem.startTime} – {selectedItem.endTime}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {"roomId" in selectedItem ? (
+                    <View className="bg-purple-50 p-4 rounded-xl flex-row items-center">
+                      <View className="bg-purple-500 p-3 rounded-lg mr-4">
+                        <Image
+                          source={icons.wide}
+                          className="w-4 h-4"
+                          resizeMode="contain"
+                          tintColor="white"
+                        />
+                      </View>
+                      <View>
+                        <Text className="text-[10px] text-purple-500 font-semibold">ROOM</Text>
+                        <Text className="text-[13px] text-gray-800 font-bold">
+                          {getRoomName(selectedItem.roomId)}
+                        </Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <View className="bg-purple-50 p-4 rounded-xl flex-row items-center">
+                      <View className="bg-purple-500 p-3 rounded-lg mr-4">
+                        <Image
+                          source={icons.wide}
+                          className="w-4 h-4"
+                          resizeMode="contain"
+                          tintColor="white"
+                        />
+                      </View>
+                      <View>
+                        <Text className="text-[10px] text-purple-500 font-semibold">
+                          VEHICLE
+                        </Text>
+                        <Text className="text-[13px] text-gray-800 font-bold">
+                          {getTransportName(selectedItem.transportId)}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {"transportBookingId" in selectedItem && selectedItem.driverName && (
+                    <View className="bg-green-50 p-4 rounded-xl flex-row items-center">
+                      <View className="bg-green-500 p-3 rounded-lg mr-4">
+                        <Image
+                          source={icons.driver}
+                          className="w-4 h-4"
+                          resizeMode="contain"
+                          tintColor="white"
+                        />
+                      </View>
+                      <View>
+                        <Text className="text-[10px] text-green-500 font-semibold">DRIVER</Text>
+                        <Text className="text-[13px] text-gray-800 font-bold">
+                          {selectedItem.driverName}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  <View className="bg-orange-50 p-4 rounded-xl flex-row items-center">
+                    <View className="bg-orange-400 p-3 rounded-lg mr-4">
+                      <Image
+                        source={icons.clock}
+                        className="w-4 h-4"
+                        resizeMode="contain"
+                        tintColor="white"
+                      />
+                    </View>
+                    <View>
+                      <Text className="text-[10px] text-orange-500 font-semibold">STATUS</Text>
+                      <Text className="text-[13px] text-gray-800 font-bold">
+                        {getItemStatus(selectedItem)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {selectedItem.description && (
+                  <View className="mt-4">
+                    <Text className="text-sm text-gray-700">
+                      {selectedItem.description}
+                    </Text>
+                  </View>
+                )}
+
+                {selectedItem.participants && selectedItem.participants.length > 0 && (
+                  <View className="mt-4">
+                    <Text className="text-xs font-semibold text-blue-900 mb-2">Participants</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      {selectedItem.participants.map((participant, pIdx) => (
+                        <Image
+                          key={pIdx}
+                          source={{ uri: participant.avatar }}
+                          className="w-10 h-10 rounded-full mr-2 border-2 border-white"
+                          resizeMode="cover"
+                        />
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  onPress={() => setSelectedItem(null)}
+                  className="bg-blue-900 mt-6 rounded-xl py-3"
+                >
+                  <Text className="text-center text-white font-bold text-sm">
+                    Close
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
       </Modal>
 
-      {/* DatePicker (opsional) */}
+      {/* DatePicker (jika butuh pop-up) */}
       <DatePicker
         modal
         open={isDatePickerOpen}

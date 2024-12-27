@@ -316,8 +316,7 @@ const NewMeeting = () => {
 
   // ------------------- Render -------------------
   return (
-    <SafeAreaView className="flex-1 bg-slate-100">
-      <Header />
+    <SafeAreaView className="flex-1 bg-slate-100 mt-5">
 
       <ScrollView className="flex-1 px-4">
         {/* Tabs */}

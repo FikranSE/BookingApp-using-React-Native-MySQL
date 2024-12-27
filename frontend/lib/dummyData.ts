@@ -1,8 +1,5 @@
 // dummyData.ts
 
-// -----------------------------------------------------------------------------
-// 1) Interface TimeSlot
-// -----------------------------------------------------------------------------
 export interface ITimeSlot {
   timeSlotId: string;                 // PK (misal di-UUID)
   startTime: string;                  // HH:mm
@@ -11,9 +8,6 @@ export interface ITimeSlot {
   bookedByUserId?: string;            // relasi ke User table (jika ada)
 }
 
-// -----------------------------------------------------------------------------
-// 2) Interface Room
-// -----------------------------------------------------------------------------
 export interface IRoom {
   roomId: string;                     // PK
   sizeName: string;                   // misal: 'Small', 'Middle', 'Large'
@@ -24,21 +18,16 @@ export interface IRoom {
   timeSlots: ITimeSlot[];            // slot waktu terpakai/tersedia
 }
 
-// -----------------------------------------------------------------------------
-// 3) Interface Transport
-// -----------------------------------------------------------------------------
 export interface ITransport {
   transportId: string;               // PK
   transportName: string;             // misal: 'Kijang Innova', 'Alphard'
   capacity: string;                  // '7 seats'
   image?: string;                    // opsional
+  driverName?: string;               // tambahkan field ini
   timeSlots: ITimeSlot[];            // slot waktu terpakai/tersedia
 }
 
-// -----------------------------------------------------------------------------
-// 4) Interface Meeting (tanpa 'borderColor')
-//    - Mengubah 'room' => 'roomId' agar jelas bahwa ini referensi ke Room
-// -----------------------------------------------------------------------------
+
 export interface IMeeting {
   meetingId: string;                 // PK
   meetingDate: string;               // YYYY-MM-DD
@@ -47,12 +36,12 @@ export interface IMeeting {
   title: string;
   roomId: string;                    // relasi ke IRoom
   isOngoing: boolean;                // true jika sedang berlangsung
+  description?: string;              // opsional: deskripsi meeting
+  participants?: {
+    avatar: string;                  // URL atau path ke avatar pengguna
+  }[];                               // daftar partisipan
 }
 
-// -----------------------------------------------------------------------------
-// 5) Interface TransportBooking (tanpa 'borderColor')
-//    - Mengubah 'vehicle' => 'transportId' agar jelas referensi ke Transport
-// -----------------------------------------------------------------------------
 export interface ITransportBooking {
   transportBookingId: string;        // PK
   bookingDate: string;               // YYYY-MM-DD
@@ -60,12 +49,14 @@ export interface ITransportBooking {
   endTime: string;                   // HH:mm
   title: string;
   transportId: string;               // relasi ke ITransport
+  driverName?: string;               // nama driver (opsional)
   isOngoing: boolean;
+  description?: string;              // opsional: deskripsi booking
+  participants?: {
+    avatar: string;                  // URL atau path ke avatar pengguna
+  }[];                               // daftar partisipan
 }
 
-// -----------------------------------------------------------------------------
-// Icons (opsional). Anda bisa pindahkan ke tabel "Asset" jika mau lebih relasional
-// -----------------------------------------------------------------------------
 import { icons } from "@/constants";
 export const assetIcons = {
   Mic: icons.mic,
@@ -75,9 +66,6 @@ export const assetIcons = {
   AC: icons.ac,
 };
 
-// -----------------------------------------------------------------------------
-// Contoh CommonTimeSlots (opsional, sekadar data pendukung)
-// -----------------------------------------------------------------------------
 export interface ICommonTimeSlots {
   morning: string[];
   afternoon: string[];
@@ -88,9 +76,6 @@ export const commonTimeSlots: ICommonTimeSlots = {
   afternoon: ["12:30 PM","01:00 PM","01:30 PM","02:00 PM","02:30 PM","03:00 PM","03:30 PM","04:00 PM","04:30 PM","05:00 PM","05:30 PM"]
 };
 
-// -----------------------------------------------------------------------------
-// 6) Data Rooms (contoh dummy data)
-// -----------------------------------------------------------------------------
 export const rooms: IRoom[] = [
   {
     roomId: "R1",
@@ -282,43 +267,41 @@ export const rooms: IRoom[] = [
   },
 ];
 
-// -----------------------------------------------------------------------------
-// 7) Data Transportation (contoh dummy data)
-// -----------------------------------------------------------------------------
 export const transportList: ITransport[] = [
   {
     transportId: "T1",
     transportName: "Kijang Innova Zenix",
     capacity: "7 seats",
     image: require("@/assets/images/car1.jpg"),
+    driverName: "John Doe",
     timeSlots: [
       {
         timeSlotId: "TT1",
         startTime: "08:00",
         endTime: "10:00",
         status: "Booked",
-        bookedByUserId: "U-SiteVisitTeam"
+        bookedByUserId: "U-SiteVisitTeam",
       },
       {
         timeSlotId: "TT2",
         startTime: "10:00",
         endTime: "12:00",
         status: "Booked",
-        bookedByUserId: "U-SiteVisitTeam"
+        bookedByUserId: "U-SiteVisitTeam",
       },
       {
         timeSlotId: "TT3",
         startTime: "13:00",
         endTime: "15:00",
         status: "Booked",
-        bookedByUserId: "U-SiteVisitTeam"
+        bookedByUserId: "U-SiteVisitTeam",
       },
       {
         timeSlotId: "TT4",
         startTime: "15:00",
         endTime: "17:00",
         status: "Booked",
-        bookedByUserId: "U-SiteVisitTeam"
+        bookedByUserId: "U-SiteVisitTeam",
       },
     ],
   },
@@ -327,32 +310,34 @@ export const transportList: ITransport[] = [
     transportName: "Kijang Innova Reborn 2.4 G",
     capacity: "7 seats",
     image: require("@/assets/images/car2.jpg"),
+    driverName: "Michael Brown", // contoh driver
     timeSlots: [
       {
         timeSlotId: "TT5",
         startTime: "08:00",
         endTime: "10:00",
         status: "Booked",
-        bookedByUserId: "U-SalesTeam"
+        bookedByUserId: "U-SalesTeam",
       },
       {
         timeSlotId: "TT6",
         startTime: "10:00",
         endTime: "12:00",
-        status: "Available"
+        status: "Booked",
+        bookedByUserId: "U-SiteVisitTeam",
       },
       {
         timeSlotId: "TT7",
         startTime: "13:00",
         endTime: "15:00",
         status: "Booked",
-        bookedByUserId: "U-ExecutiveVisit"
+        bookedByUserId: "U-ExecutiveVisit",
       },
       {
         timeSlotId: "TT8",
         startTime: "15:00",
         endTime: "17:00",
-        status: "Available"
+        status: "Available",
       },
     ],
   },
@@ -361,40 +346,38 @@ export const transportList: ITransport[] = [
     transportName: "Alphard",
     capacity: "6 seats",
     image: require("@/assets/images/car3.jpg"),
+    driverName: "Jane Smith", // contoh driver
     timeSlots: [
       {
         timeSlotId: "TT9",
         startTime: "08:00",
         endTime: "10:00",
-        status: "Available"
+        status: "Available",
       },
       {
         timeSlotId: "TT10",
         startTime: "10:00",
         endTime: "12:00",
-        status: "Available"
+        status: "Booked",
+        bookedByUserId: "U-VIPTransport",
       },
       {
         timeSlotId: "TT11",
         startTime: "13:00",
         endTime: "15:00",
-        status: "Available"
+        status: "Available",
       },
       {
         timeSlotId: "TT12",
         startTime: "15:00",
         endTime: "17:00",
-        status: "Booked",
-        bookedByUserId: "U-VIPTransport"
+        status: "Available",
       },
     ],
   },
 ];
 
-// -----------------------------------------------------------------------------
-// 8) Data Meetings (dummy) untuk Room
-//    - Pastikan menambahkan 'meetingId' agar jadi PK di DB
-// -----------------------------------------------------------------------------
+
 export const meetings: IMeeting[] = [
   {
     meetingId: "M1",
@@ -404,6 +387,12 @@ export const meetings: IMeeting[] = [
     title: "Designers Meeting",
     roomId: "R1",      // Room: "Small meeting room" => 'R1'
     isOngoing: true,
+    description: "Discussing the new UI/UX designs for the upcoming project.",
+    participants: [
+      { avatar: "https://randomuser.me/api/portraits/men/1.jpg" },
+      { avatar: "https://randomuser.me/api/portraits/women/2.jpg" },
+      { avatar: "https://randomuser.me/api/portraits/men/3.jpg" },
+    ],
   },
   {
     meetingId: "M2",
@@ -413,6 +402,11 @@ export const meetings: IMeeting[] = [
     title: "Daily Project Meeting",
     roomId: "R3",      // Room: "Big meeting room" => 'R3'
     isOngoing: false,
+    description: "Daily sync-up to track project progress and address any blockers.",
+    participants: [
+      { avatar: "https://randomuser.me/api/portraits/women/4.jpg" },
+      { avatar: "https://randomuser.me/api/portraits/men/5.jpg" },
+    ],
   },
   {
     meetingId: "M3",
@@ -422,12 +416,16 @@ export const meetings: IMeeting[] = [
     title: "Team Retrospective",
     roomId: "R999",    // misal: "Main Hall" => di DB ada ID lain
     isOngoing: false,
+    description: "Reflecting on the last sprint to improve team performance.",
+    participants: [
+      { avatar: "https://randomuser.me/api/portraits/men/6.jpg" },
+      { avatar: "https://randomuser.me/api/portraits/women/7.jpg" },
+      { avatar: "https://randomuser.me/api/portraits/men/8.jpg" },
+      { avatar: "https://randomuser.me/api/portraits/women/9.jpg" },
+    ],
   },
 ];
 
-// -----------------------------------------------------------------------------
-// 8a) Data Transport Booking (dummy)
-// -----------------------------------------------------------------------------
 export const transportBookings: ITransportBooking[] = [
   {
     transportBookingId: "TB1",
@@ -436,7 +434,13 @@ export const transportBookings: ITransportBooking[] = [
     endTime: "12:00",
     title: "Airport Pickup",
     transportId: "T1",   // "Kijang Innova Zenix"
+    driverName: "John Doe",
     isOngoing: false,
+    description: "Pickup from airport for new hires.",
+    participants: [
+      { avatar: "https://randomuser.me/api/portraits/men/10.jpg" },
+      { avatar: "https://randomuser.me/api/portraits/women/11.jpg" },
+    ],
   },
   {
     transportBookingId: "TB2",
@@ -445,7 +449,14 @@ export const transportBookings: ITransportBooking[] = [
     endTime: "12:00",
     title: "VIP Guest Tour",
     transportId: "T3",   // "Alphard"
+    driverName: "Jane Smith",
     isOngoing: true,
+    description: "Tour for VIP guests visiting the headquarters.",
+    participants: [
+      { avatar: "https://randomuser.me/api/portraits/women/12.jpg" },
+      { avatar: "https://randomuser.me/api/portraits/men/13.jpg" },
+      { avatar: "https://randomuser.me/api/portraits/women/14.jpg" },
+    ],
   },
   {
     transportBookingId: "TB3",
@@ -454,13 +465,18 @@ export const transportBookings: ITransportBooking[] = [
     endTime: "12:00",
     title: "Site Visit Team",
     transportId: "T2",   // "Kijang Innova Reborn 2.4 G"
+    driverName: "Michael Brown",
     isOngoing: false,
+    description: "Transport for site visit team to the new branch.",
+    participants: [
+      { avatar: "https://randomuser.me/api/portraits/men/15.jpg" },
+      { avatar: "https://randomuser.me/api/portraits/women/16.jpg" },
+      { avatar: "https://randomuser.me/api/portraits/men/17.jpg" },
+      { avatar: "https://randomuser.me/api/portraits/women/18.jpg" },
+    ],
   },
 ];
 
-// -----------------------------------------------------------------------------
-// 9) Nama bulan & hari (opsional, data pendukung)
-// -----------------------------------------------------------------------------
 export const monthNames = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
