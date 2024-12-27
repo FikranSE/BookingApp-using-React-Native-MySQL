@@ -38,6 +38,7 @@ import member from "@/assets/icons/group-chat.png";
 import door from "@/assets/icons/door.png";
 import calendar from "@/assets/icons/calendar.png";
 import filter from "@/assets/icons/filter.png";
+import car from "@/assets/icons/car.png";
 import point from "@/assets/icons/point.png";
 import cancel from "@/assets/icons/cancel.png";
 import profile from "@/assets/icons/profile.png";
@@ -126,7 +127,8 @@ export const icons = {
   whiteboard,
   location,
   title,
-  chevron
+  chevron,
+  car
 };
 
 export const onboarding = [
