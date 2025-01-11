@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { View, Text, TouchableOpacity, Image, Animated } from "react-native";
 import { useRouter } from "expo-router";
 import { INotification, notifications as dummyNotifications } from "@/lib/dummyData";
@@ -30,15 +30,13 @@ const Header = () => {
     });
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (notificationCount > 0) {
-      pulseAnimation();
+      startRadarAnimation();
     }
   }, [notificationCount]);
 
-  const userAvatar = "https://via.placeholder.com/150/003580/ffffff?text=User";
-
-  const timeOfDay = () => {
+  const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Selamat Pagi..";
     if (hour < 15) return "Selamat Siang..";
@@ -86,3 +84,4 @@ const Header = () => {
 };
 
 export default Header;
+
