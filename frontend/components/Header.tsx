@@ -1,12 +1,16 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, Image, Animated } from "react-native";
+import { useRouter } from "expo-router";
+import { INotification, notifications as dummyNotifications } from "@/lib/dummyData";
 import { icons } from "@/constants";
 
 const Header = () => {
-  const [notificationCount, setNotificationCount] = useState(3);
+  const router = useRouter();
+  const [notifications] = useState<INotification[]>(dummyNotifications);
   const [scale] = useState(new Animated.Value(1));
 
-  // Animation for bell icon when there are notifications
+  const notificationCount = notifications.length;
+
   const pulseAnimation = () => {
     Animated.sequence([
       Animated.timing(scale, {
@@ -36,53 +40,42 @@ const Header = () => {
 
   const timeOfDay = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Selamat Pagi";
-    if (hour < 15) return "Selamat Siang";
-    if (hour < 19) return "Selamat Sore";
+    if (hour < 12) return "Selamat Pagi..";
+    if (hour < 15) return "Selamat Siang..";
+    if (hour < 19) return "Selamat Sore..";
     return "Selamat Malam";
   };
 
   return (
-    <View className="px-5 py-4 bg-slate-100 mb-5">
+    <View className="bg-slate-100 rounded-b-2xl py-4 px-5 shadow-md mb-2">
       <View className="flex-row justify-between items-center">
-        {/* Left Section: User Info */}
-        <View className="flex-row items-center space-x-4">
-          <View className="relative">
-            <Image
-              source={{ uri: userAvatar }}
-              className="w-12 h-12 rounded-full border-2 border-blue-900"
-              resizeMode="cover"
-            />
-          </View>
-          
-          <View>
-            <Text className="text-[13px] tracking-wide italic font-medium font-Jakarta text-blue-900/70">
-              {timeOfDay()}
-            </Text>
-            <Text className="text-2xl tracking-tight font-black text-blue-900 ">
-              John Doe
-            </Text>
-          </View>
+        {/* Left Section: Greetings */}
+        <View>
+          <Text className="text-slate-500 text-sm italic font-medium">{timeOfDay()}</Text>
+          <Text className="text-slate-800 text-lg font-bold">John Doe</Text>
         </View>
 
-        {/* Right Section: Notifications */}
-        <View className="flex-row items-center space-x-4">
-          <TouchableOpacity className="relative">
-            <Animated.View 
-              className="w-11 h-11 items-center justify-center rounded-full bg-white shadow-sm"
+        {/* Right Section: Profile and Notifications */}
+        <View className="flex-row items-center space-x-2">
+          <TouchableOpacity onPress={() => router.push("/(root)/profile")}>
+            <Image
+              source={{ uri: userAvatar }}
+              className="w-10 h-10 rounded-full border border-white shadow-md"
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push("/(root)/notifikasi")}
+            className="bg-white p-3 rounded-full shadow-sm"
+          >
+            <Animated.Image
+              source={icons.bell}
+              className="w-5 h-5 opacity-80"
               style={{ transform: [{ scale }] }}
-            >
-              <Image
-                source={icons.bell}
-                className="w-6 h-6"
-                tintColor="#1e3a8a"  // blue-900
-              />
-            </Animated.View>
+            />
             {notificationCount > 0 && (
-              <View className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 items-center justify-center border border-slate-100">
-                <Text className="text-xs font-bold text-white">
-                  {notificationCount}
-                </Text>
+              <View className="absolute top-[-4px] right-[-4px] bg-blue-500 rounded-full min-w-[20px] h-[20px] flex justify-center items-center shadow-md">
+                <Text className="text-white text-xs font-semibold">{notificationCount}</Text>
               </View>
             )}
           </TouchableOpacity>

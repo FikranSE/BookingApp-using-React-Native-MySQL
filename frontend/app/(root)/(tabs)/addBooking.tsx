@@ -1,15 +1,10 @@
-// NewMeeting.tsx (Contoh penamaan, boleh juga "AddBooking.tsx")
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Platform } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Platform, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { icons } from "@/constants";
-
-// Komponen re-usable, misal 'Header' dan 'InputField'
 import Header from "@/components/Header";
 import InputField from "@/components/InputField";
-
-// Import data dummy
 import { rooms, commonTimeSlots } from "@/lib/dummyData";
 import type { IRoom } from "@/lib/dummyData";
 
@@ -317,77 +312,90 @@ const NewMeeting = () => {
   // ------------------- Render -------------------
   return (
     <SafeAreaView className="flex-1 bg-slate-100">
-      <Header />
+      {/* Header Section with matching Home style */}
+      <View className="bg-blue-900 px-4 pt-4 pb-8 rounded-b-[30px]">
+        <Text className="text-xl font-bold text-white mb-2">Add Booking</Text>
+        <Text className="text-blue-200 text-sm">Create a new room or transport booking</Text>
+      </View>
 
-      <ScrollView className="flex-1 px-4">
-        {/* Tabs */}
-        <View className="flex-row bg-white rounded-t-xl">
-          <TouchableOpacity
-            onPress={() => setActiveTab("rooms")}
-            className={`flex-1 py-3 ${
-              activeTab === "rooms"
-                ? "border-b-2 border-blue-900"
-                : "border-b border-gray-200"
-            }`}
-          >
-            <Text
-              className={`text-center font-medium ${
-                activeTab === "rooms" ? "text-blue-900" : "text-gray-500"
+      {/* Main Content */}
+      <ScrollView className="flex-1 px-4 -mt-4">
+        {/* Tabs - Styled like Home */}
+        <View className="bg-white rounded-xl shadow-sm mb-4 p-2">
+          <View className="flex-row">
+            <TouchableOpacity
+              onPress={() => setActiveTab("rooms")}
+              className={`flex-1 py-3 px-4 rounded-lg ${
+                activeTab === "rooms" ? "bg-blue-900" : ""
               }`}
             >
-              Rooms
-            </Text>
-          </TouchableOpacity>
+              <Text
+                className={`text-center font-medium ${
+                  activeTab === "rooms" ? "text-white" : "text-gray-500"
+                }`}
+              >
+                Rooms
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => setActiveTab("transportation")}
-            className={`flex-1 py-3 ${
-              activeTab === "transportation"
-                ? "border-b-2 border-blue-900"
-                : "border-b border-gray-200"
-            }`}
-          >
-            <Text
-              className={`text-center font-medium ${
-                activeTab === "transportation" ? "text-blue-900" : "text-gray-500"
+            <TouchableOpacity
+              onPress={() => setActiveTab("transportation")}
+              className={`flex-1 py-3 px-4 rounded-lg ${
+                activeTab === "transportation" ? "bg-blue-900" : ""
               }`}
             >
-              Transportation
-            </Text>
-          </TouchableOpacity>
+              <Text
+                className={`text-center font-medium ${
+                  activeTab === "transportation" ? "text-white" : "text-gray-500"
+                }`}
+              >
+                Transportation
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* FORM Card */}
-        <View className="bg-white px-4 py-6 rounded-b-xl shadow-sm">
+        {/* Form Card */}
+        <View className="bg-white rounded-xl shadow-sm mb-4">
           {activeTab === "rooms" ? (
-            <View className="space-y-6">
-              {/* 1) Meeting Name */}
-              <InputField
-                label="Meeting Name"
-                value={name}
-                onChangeText={setName}
-              />
-
-              {/* 2) Date */}
-              <InputField
-                label="Select Date"
-                value={formatDate(date)}
-                icon={icons.calendar}
-                editable={false}
-                onPress={() => setShowDatePicker(true)}
-              />
-
-              {/* 3) Start & End Time */}
-              <View className="flex-row">
-                {/* Start Time */}
-                <View className="flex-1 mr-2 relative overflow-visible">
+            <View className="p-4 space-y-4">
+              {/* Meeting Name */}
+              <View className="space-y-2">
+                <Text className="text-sm font-medium text-gray-600">Meeting Name</Text>
+                <View className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                   <InputField
-                    label="Start Time"
-                    value={startTime || ""}
-                    icon={icons.arrowDown}
-                    editable={false}
-                    onPress={() => setShowStartTimeDropdown(!showStartTimeDropdown)}
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Enter meeting name"
+                    className="text-gray-800"
                   />
+                </View>
+              </View>
+
+              {/* Date Picker */}
+              <View className="space-y-2">
+                <Text className="text-sm font-medium text-gray-600">Date</Text>
+                <TouchableOpacity 
+                  onPress={() => setShowDatePicker(true)}
+                  className="bg-gray-50 rounded-lg p-3 border border-gray-200 flex-row justify-between items-center"
+                >
+                  <Text className="text-gray-800">{formatDate(date)}</Text>
+                  <Image source={icons.calendar} className="w-5 h-5" style={{ tintColor: '#2563eb' }} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Time Selection */}
+              <View className="flex-row space-x-4">
+                {/* Start Time */}
+                <View className="flex-1 relative">
+                  <Text className="text-sm font-medium text-gray-600 mb-2">Start Time</Text>
+                  <TouchableOpacity 
+                    onPress={() => setShowStartTimeDropdown(!showStartTimeDropdown)}
+                    className="bg-gray-50 rounded-lg p-3 border border-gray-200 flex-row justify-between items-center"
+                  >
+                    <Text className="text-gray-800">{startTime || "Select time"}</Text>
+                    <Image source={icons.arrowDown} className="w-5 h-5" style={{ tintColor: '#2563eb' }} />
+                  </TouchableOpacity>
                   <TimeDropdown
                     options={commonTimeSlots}
                     onSelect={handleStartTimeSelect}
@@ -398,14 +406,15 @@ const NewMeeting = () => {
                 </View>
 
                 {/* End Time */}
-                <View className="flex-1 ml-2 relative overflow-visible">
-                  <InputField
-                    label="End Time"
-                    value={endTime || ""}
-                    icon={icons.arrowDown}
-                    editable={false}
+                <View className="flex-1 relative">
+                  <Text className="text-sm font-medium text-gray-600 mb-2">End Time</Text>
+                  <TouchableOpacity 
                     onPress={() => setShowEndTimeDropdown(!showEndTimeDropdown)}
-                  />
+                    className="bg-gray-50 rounded-lg p-3 border border-gray-200 flex-row justify-between items-center"
+                  >
+                    <Text className="text-gray-800">{endTime || "Select time"}</Text>
+                    <Image source={icons.arrowDown} className="w-5 h-5" style={{ tintColor: '#2563eb' }} />
+                  </TouchableOpacity>
                   <TimeDropdown
                     options={commonTimeSlots}
                     onSelect={(time) => setEndTime(time)}
@@ -416,60 +425,56 @@ const NewMeeting = () => {
                 </View>
               </View>
 
-              {/* 4) Room */}
-              <View className="relative overflow-visible">
-                <InputField
-                  label="Select Room"
-                  value={
-                    room
-                      ? rooms.find((r) => r.roomId === room)?.roomName || ""
-                      : ""
-                  }
-                  icon={icons.arrowDown}
-                  editable={false}
+              {/* Room Selection */}
+              <View className="space-y-2 relative">
+                <Text className="text-sm font-medium text-gray-600">Room</Text>
+                <TouchableOpacity 
                   onPress={() => setShowRoomDropdown(!showRoomDropdown)}
-                />
+                  className="bg-gray-50 rounded-lg p-3 border border-gray-200 flex-row justify-between items-center"
+                >
+                  <Text className="text-gray-800">
+                    {room ? rooms.find((r) => r.roomId === room)?.roomName || "" : "Select room"}
+                  </Text>
+                  <Image source={icons.arrowDown} className="w-5 h-5" style={{ tintColor: '#2563eb' }} />
+                </TouchableOpacity>
                 {showRoomDropdown && <RoomDropdown />}
               </View>
 
-              {/* 5) Create Button */}
-              <View className="pt-4">
-                <TouchableOpacity
-                  className={`bg-blue-900 py-4 rounded-xl ${
-                    !name || !startTime || !endTime || !room
-                      ? "opacity-50"
-                      : "active:opacity-90"
-                  }`}
-                  onPress={() => {
-                    console.log("Creating meeting with =>", {
-                      name,
-                      date: date.toISOString().split("T")[0],
-                      startTime,
-                      endTime,
-                      roomId: room,
-                    });
-                    // Lakukan penyimpanan / API call dsb
-                  }}
-                  disabled={!name || !startTime || !endTime || !room}
-                >
-                  <Text className="text-white text-center font-medium text-base">
-                    Create
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              {/* Create Button */}
+              <TouchableOpacity
+                className={`bg-blue-900 py-4 rounded-xl mt-6 ${
+                  !name || !startTime || !endTime || !room ? "opacity-50" : ""
+                }`}
+                onPress={() => {
+                  console.log("Creating meeting with =>", {
+                    name,
+                    date: date.toISOString().split("T")[0],
+                    startTime,
+                    endTime,
+                    roomId: room,
+                  });
+                }}
+                disabled={!name || !startTime || !endTime || !room}
+              >
+                <Text className="text-white text-center font-bold">
+                  Create Booking
+                </Text>
+              </TouchableOpacity>
             </View>
           ) : (
-            // Transportation Tab (placeholder)
-            <View className="flex-1 items-center justify-center py-8">
-              <Text className="text-gray-500">
-                Transportation booking form coming soon
-              </Text>
+            // Transportation Tab
+            <View className="p-8 items-center">
+              <View className="bg-blue-50 p-4 rounded-lg">
+                <Text className="text-blue-900 text-center">
+                  Transportation booking feature coming soon
+                </Text>
+              </View>
             </View>
           )}
         </View>
       </ScrollView>
 
-      {/* DateTimePicker untuk Date */}
+      {/* DateTimePicker */}
       {showDatePicker && (
         <DateTimePicker
           value={date}

@@ -12,6 +12,7 @@ import ac from "@/assets/icons/air-conditioner.png";
 import whiteboard from "@/assets/icons/whiteboard.png";
 import wifi from "@/assets/icons/wi-fi.png";
 import list from "@/assets/icons/list.png";
+import cs from "@/assets/icons/cs.png";
 import location from "@/assets/icons/location.png";
 import seat from "@/assets/icons/seat.png";
 import lock from "@/assets/icons/lock.png";
@@ -20,6 +21,8 @@ import phone from "@/assets/icons/phone.png";
 import chevron from "@/assets/icons/chevron.png";
 import map from "@/assets/icons/map.png";
 import mic from "@/assets/icons/mic.png";
+import faq from "@/assets/icons/faq.png";
+import password from "@/assets/icons/password.png";
 import projector from "@/assets/icons/projector.png";
 import clock from "@/assets/icons/clock.png";
 import menu from "@/assets/icons/menu.png";
@@ -39,6 +42,7 @@ import door from "@/assets/icons/door.png";
 import calendar from "@/assets/icons/calendar.png";
 import filter from "@/assets/icons/filter.png";
 import car from "@/assets/icons/car.png";
+import compass from "@/assets/icons/compass.png";
 import point from "@/assets/icons/point.png";
 import cancel from "@/assets/icons/cancel.png";
 import profile from "@/assets/icons/profile.png";
@@ -128,7 +132,11 @@ export const icons = {
   location,
   title,
   chevron,
-  car
+  car,
+  compass,
+  password,
+  faq,
+  cs
 };
 
 export const onboarding = [

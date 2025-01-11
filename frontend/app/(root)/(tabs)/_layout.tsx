@@ -65,7 +65,7 @@ export default function Layout() {
           title: "Home",
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.chats} focused={focused} label="Meetings" />
+            <TabIcon source={icons.home} focused={focused} label="Home" />
           ),
         }}
       />
@@ -75,7 +75,7 @@ export default function Layout() {
           title: "Explore",
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.door} focused={focused} label="Explore" />
+            <TabIcon source={icons.compass} focused={focused} label="Explore" />
           ),
         }}
       />
@@ -87,20 +87,22 @@ export default function Layout() {
           tabBarIcon: ({ focused }) => (
             <View
               style={{
-                width: 55,
-                height: 55,
+                width: 60,
+                height: 60,
                 borderRadius: 35,
                 backgroundColor: "#003580",
                 justifyContent: "center",
                 alignItems: "center",
                 marginBottom: 40, 
+                borderWidth: 8, 
+                borderColor: "white", 
               }}
             >
               <Image
                 source={icons.plus}
                 style={{
-                  width: 18, // Ukuran lebar ikon tombol tengah
-                  height: 18, // Ukuran tinggi ikon tombol tengah
+                  width: 18, 
+                  height: 18, 
                   tintColor: "white",
                 }}
               />
@@ -109,12 +111,12 @@ export default function Layout() {
         }}
       />
       <Tabs.Screen
-        name="chat"
+        name="schedules"
         options={{
-          title: "Chat",
+          title: "schedules",
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.member} focused={focused} label="Member" />
+            <TabIcon source={icons.calendar} focused={focused} label="Schedules" />
           ),
         }}
       />
@@ -124,7 +126,7 @@ export default function Layout() {
           title: "Profile",
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.settings} focused={focused} label="Settings" />
+            <TabIcon source={icons.person} focused={focused} label="Profile" />
           ),
         }}
       />

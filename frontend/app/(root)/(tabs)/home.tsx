@@ -1,4 +1,3 @@
-// Home.tsx
 import React, { useState, useRef } from "react";
 import {
   View,
@@ -7,55 +6,87 @@ import {
   Image,
   ScrollView,
   Modal,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DatePicker from "react-native-date-picker";
-
+import { useRouter } from "expo-router";
 import { icons } from "@/constants";
 import Header from "@/components/Header";
-
-// === Import dari dummyData baru ===
+ 
 import {
   IMeeting,
   ITransportBooking,
   meetings as dummyMeetings,
   transportBookings as dummyTransportBookings,
-  rooms,           // untuk lookup room name
-  transportList,   // untuk lookup transport name
+  rooms,
+  transportList,
   monthNames,
   dayNames,
 } from "@/lib/dummyData";
 
-// ----------------------------------------------------
-// Helper: Ambil nama room berdasarkan roomId
-// ----------------------------------------------------
+// Helper functions
 function getRoomName(roomId: string): string {
   const found = rooms.find((r) => r.roomId === roomId);
-  // Apabila tak ditemukan, balikin roomId aja
   return found ? `${found.sizeName} meeting room - ${found.roomName}` : roomId;
 }
 
-// ----------------------------------------------------
-// Helper: Ambil nama transport berdasarkan transportId
-// ----------------------------------------------------
 function getTransportName(transportId: string): string {
   const found = transportList.find((t) => t.transportId === transportId);
   return found ? found.transportName : transportId;
 }
 
-// Warna acak untuk border kiri jadwal
+function getItemStatus(item: IMeeting | ITransportBooking): string {
+  if (item.isOngoing) {
+    return "In Progress";
+  }
+
+  const itemDate = "meetingDate" in item ? item.meetingDate : item.bookingDate;
+  const today = formatDateToString(new Date());
+  
+  if (itemDate < today) {
+    return "Completed";
+  }
+  
+  if (itemDate > today) {
+    return "Upcoming";
+  }
+  
+  const currentTime = new Date().toLocaleTimeString('en-US', { 
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  
+  if (item.startTime > currentTime) {
+    return "Today, Starting Soon";
+  }
+  
+  if (item.endTime < currentTime) {
+    return "Completed Today";
+  }
+  
+  return "In Progress";
+}
+
+const formatDateToString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const colorPalette = [
-  "#1E3A8A", // blue-900
-  "#5C6AC4", // indigo-600
-  "#15803D", // green-700
-  "#B91C1C", // red-700
-  "#3B82F6", // blue-500
-  "#C026D3", // fuchsia-600
-  "#DB2777", // pink-600
-  "#EA580C", // orange-600
+  "#1E3A8A",
+  "#5C6AC4",
+  "#15803D",
+  "#B91C1C",
+  "#3B82F6",
+  "#C026D3",
+  "#DB2777",
+  "#EA580C",
 ];
 
-// Fungsi random color
 const getRandomColor = (): string => {
   const randomIndex = Math.floor(Math.random() * colorPalette.length);
   return colorPalette[randomIndex];
@@ -63,539 +94,310 @@ const getRandomColor = (): string => {
 
 const Home = () => {
   const today = new Date();
+  const router = useRouter();
   const [selectedDate, setSelectedDate] = useState(today);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"overview" | "bookings">("overview");
+  const screenWidth = Dimensions.get("window").width;
 
-  // Toggle jadwal "ROOM" vs "TRANSPORT"
-  const [selectedScheduleType, setSelectedScheduleType] =
-    useState<"ROOM" | "TRANSPORT">("ROOM");
-
-  // State item detail (IMeeting / ITransportBooking)
+  // Existing states
+  const [selectedScheduleType, setSelectedScheduleType] = useState<"ROOM" | "TRANSPORT">("ROOM");
   const [selectedItem, setSelectedItem] = useState<IMeeting | ITransportBooking | null>(null);
-
-  // Data Meetings & TransportBook
+  const colorMapRef = useRef<Record<string, string>>({});
+  
+  // Data
   const roomsData: IMeeting[] = dummyMeetings;
   const transportData: ITransportBooking[] = dummyTransportBookings;
 
-  // Menyimpan warna border item
-  const colorMapRef = useRef<Record<string, string>>({});
-
-  // Dapatkan warna per item agar tidak berubah-ubah
-  const getItemColor = (item: IMeeting | ITransportBooking, idx: number) => {
-    const dateStr = "meetingId" in item ? item.meetingDate : item.bookingDate;
-    const key = `${selectedScheduleType}_${dateStr}_${item.startTime}_${item.endTime}_${item.title}_${idx}`;
-    if (!colorMapRef.current[key]) {
-      colorMapRef.current[key] = getRandomColor();
-    }
-    return colorMapRef.current[key];
+  // Calculate dashboard metrics
+  const todayMeetings = roomsData.filter(m => m.meetingDate === formatDateToString(today));
+  const todayTransports = transportData.filter(t => t.bookingDate === formatDateToString(today));
+  const upcomingMeetings = roomsData.filter(m => new Date(m.meetingDate) > today);
+  const upcomingTransports = transportData.filter(t => new Date(t.bookingDate) > today);
+  const handleQuickBook = (item: IMeeting | ITransportBooking) => {
+    // Here you would implement the actual booking logic
+    // For now, we'll just show the details modal
+    setSelectedItem(item);
+    // You could also add a success message or confirmation
   };
+  // Dashboard Card Component
+  const DashboardCard = ({ title, value, icon, color }: { title: string; value: number; icon: any; color: string }) => (
+    <View className="bg-white rounded-xl p-4 flex-1 mx-1 shadow-sm">
+      <View className="flex-row items-center justify-between">
+        <View>
+          <Text className="text-xs text-gray-500 font-medium">{title}</Text>
+          <Text className="text-xl font-bold mt-1" style={{ color }}>{value}</Text>
+        </View>
+        <View className="p-2 rounded-lg" style={{ backgroundColor: `${color}20` }}>
+          <Image source={icon} className="w-5 h-5" style={{ tintColor: color }} />
+        </View>
+      </View>
+    </View>
+  );
 
-  // Handler DatePicker
-  const handleDateSelection = (date: Date) => {
-    setSelectedDate(date);
-    setIsDatePickerOpen(false);
+  // Recent Booking Card Component
+  const BookingCard = ({ item, isQuickBooking = false }: { item: IMeeting | ITransportBooking, isQuickBooking?: boolean }) => {
+    const isRoom = 'roomId' in item;
+    const location = isRoom ? getRoomName(item.roomId) : getTransportName((item as ITransportBooking).transportId);
+    
+    return (
+      <TouchableOpacity 
+        className="bg-white p-4 rounded-xl mb-3 shadow-sm"
+        onPress={() => isQuickBooking ? handleQuickBook(item) : setSelectedItem(item)}
+      >
+        <View className="flex-row items-center justify-between">
+          <View className="flex-1">
+            <Text className="text-sm font-bold text-gray-800" numberOfLines={1}>{item.title}</Text>
+            <Text className="text-xs text-gray-500 mt-1">{location}</Text>
+          </View>
+          <View className={`px-3 py-1 rounded-full ${isQuickBooking ? 'bg-green-100' : item.isOngoing ? 'bg-green-100' : 'bg-blue-100'}`}>
+            <Text className={`text-xs font-medium ${isQuickBooking ? 'text-green-700' : item.isOngoing ? 'text-green-700' : 'text-blue-700'}`}>
+              {isQuickBooking ? 'Book Again' : item.isOngoing ? 'NOW' : item.startTime}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
   };
-
-  const isToday = (date: Date) => {
-    return date.toDateString() === today.toDateString();
-  };
-
-  // Info date
-  const day = selectedDate.getDate();
-  const month = monthNames[selectedDate.getMonth()];
-  const year = selectedDate.getFullYear();
-  const dayName = dayNames[selectedDate.getDay()];
-
-  // Convert "HH:mm" → total menit
-  const timeToMinutes = (time: string): number => {
-    const [h, m] = time.split(":").map(Number);
-    return h * 60 + m;
-  };
-
-  // Posisi di timeline (jam 9 = 540 menit)
-  const calculatePosition = (startTime: string, endTime: string, hourHeight: number = 95) => {
-    const startOffset = timeToMinutes(startTime) - 540;
-    const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
-
-    return {
-      top: (startOffset / 60) * hourHeight,
-      height: (duration / 60) * hourHeight,
-    };
-  };
-
-  // Status: Past, Now, Today, Upcoming
-  const getItemStatus = (item: IMeeting | ITransportBooking) => {
-    const itemDateStr = "meetingId" in item ? item.meetingDate : item.bookingDate;
-    const itemDate = new Date(itemDateStr);
-
-    const currentDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const itemDateOnly = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
-
-    if (itemDateOnly < currentDateOnly) return "Past";
-    if (itemDateOnly > currentDateOnly) return "Upcoming";
-    return item.isOngoing ? "Now" : "Today";
-  };
-
-  // Filter data
-  const selectedDateStr = selectedDate.toISOString().split("T")[0];
-
-  const filteredMeetings = roomsData.filter((m) => m.meetingDate === selectedDateStr);
-  const filteredTransportBookings = transportData.filter((t) => t.bookingDate === selectedDateStr);
-
-  const dataToRender =
-    selectedScheduleType === "ROOM" ? filteredMeetings : filteredTransportBookings;
 
   return (
     <SafeAreaView className="bg-slate-100 flex-1">
-      {/* Header */}
       <Header />
-
-      {/* ======= FILTER SECTION ======= */}
-      <View className=" px-4">
-        <View className="bg-white rounded-2xl shadow-md px-4 py-5 relative overflow-hidden">
-          {/* Ornament bulat (opsional) */}
-          <View
-            style={{
-              position: "absolute",
-              top: -50,
-              right: -50,
-              width: 120,
-              height: 120,
-              backgroundColor: "#dbeafe",
-              borderRadius: 60,
-              opacity: 0.4,
-              transform: [{ scale: 1.5 }],
-            }}
-          />
-          <View
-            style={{
-              position: "absolute",
-              bottom: -70,
-              left: -50,
-              width: 200,
-              height: 200,
-              backgroundColor: "#e0f2fe",
-              borderRadius: 100,
-              opacity: 0.4,
-              transform: [{ scale: 1.2 }],
-            }}
-          />
-
-          {/* Filter Title & Toggle */}
-          <View className="flex-row items-center justify-between mb-3 z-10">
-            <View>
-              <Text className="text-xl font-extrabold text-blue-900">Filter</Text>
-              {isToday(selectedDate) && (
-                <Text className="text-xs font-semibold text-green-600">It’s Today!</Text>
-              )}
-            </View>
-
-            {/* Toggle ROOM vs TRANSPORT */}
-            <View className="flex-row">
-              <TouchableOpacity
-                className={`rounded-full px-3 py-2 mr-1 flex-row items-center ${
-                  selectedScheduleType === "ROOM"
-                    ? "bg-blue-900"
-                    : "border border-blue-900 bg-white"
-                }`}
-                onPress={() => setSelectedScheduleType("ROOM")}
-              >
-                <Image
-                  source={icons.door}
-                  className="w-4 h-4 mr-1"
-                  resizeMode="contain"
-                  style={{
-                    tintColor: selectedScheduleType === "ROOM" ? "#fff" : "#1E3A8A",
-                  }}
-                />
-                <Text
-                  className={`text-xs font-semibold ${
-                    selectedScheduleType === "ROOM" ? "text-white" : "text-blue-900"
-                  }`}
-                >
-                  Rooms
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className={`rounded-full px-3 py-2 flex-row items-center ${
-                  selectedScheduleType === "TRANSPORT"
-                    ? "bg-blue-900"
-                    : "border border-blue-900 bg-white"
-                }`}
-                onPress={() => setSelectedScheduleType("TRANSPORT")}
-              >
-                <Image
-                  source={icons.car}
-                  className="w-4 h-4 mr-1"
-                  resizeMode="contain"
-                  style={{
-                    tintColor: selectedScheduleType === "TRANSPORT" ? "#fff" : "#1E3A8A",
-                  }}
-                />
-                <Text
-                  className={`text-xs font-semibold ${
-                    selectedScheduleType === "TRANSPORT"
-                      ? "text-white"
-                      : "text-blue-900"
-                  }`}
-                >
-                  Transport
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Date Info */}
-          <View className="z-10">
-            <Text className="text-sm font-bold text-blue-900">
-              {month} {day}, {year}
+      
+      {/* Tabs */}
+      <View className="flex-row px-4 pb-3 mt-2">
+        {(['overview', 'bookings'] as const).map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            onPress={() => setActiveTab(tab)}
+            className={`mr-2 px-4 py-2 rounded-lg ${
+              activeTab === tab ? 'bg-blue-900' : 'bg-white'
+            }`}
+          >
+            <Text className={`text-sm font-semibold ${
+              activeTab === tab ? 'text-white' : 'text-gray-600'
+            }`}>
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </Text>
-            <Text className="text-xs text-blue-700 italic mb-2">{dayName}</Text>
-          </View>
-
-          {/* ScrollView: Bulan */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="mt-2 z-10"
-            contentContainerStyle={{ paddingHorizontal: 2 }}
-          >
-            {monthNames.map((mn, index) => {
-              const isActive = index === selectedDate.getMonth();
-              return (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => {
-                    const newDate = new Date(selectedDate);
-                    newDate.setMonth(index);
-                    setSelectedDate(newDate);
-                  }}
-                  className={`px-3 py-1 rounded-full mr-1 mb-1 ${
-                    isActive ? "bg-blue-800" : "border border-blue-700 bg-white"
-                  }`}
-                >
-                  <Text
-                    className={`text-xs font-semibold ${
-                      isActive ? "text-white" : "text-blue-900/80"
-                    }`}
-                  >
-                    {mn.substring(0, 3)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* ScrollView: Hari */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="mt-1 z-10"
-            contentContainerStyle={{ paddingHorizontal: 2 }}
-          >
-            {Array.from(
-              {
-                length: new Date(year, selectedDate.getMonth() + 1, 0).getDate(),
-              },
-              (_, idx) => {
-                const tempDay = idx + 1;
-                const isSelected = tempDay === selectedDate.getDate();
-                const shortDayName = dayNames[
-                  new Date(year, selectedDate.getMonth(), tempDay).getDay()
-                ].substring(0, 3);
-
-                return (
-                  <TouchableOpacity
-                    key={idx}
-                    onPress={() => {
-                      const newDate = new Date(selectedDate);
-                      newDate.setDate(tempDay);
-                      setSelectedDate(newDate);
-                    }}
-                    className="items-center mr-2 mb-1"
-                  >
-                    <Text
-                      className={`text-[10px] font-medium ${
-                        isSelected ? "text-blue-900" : "text-blue-900/60"
-                      }`}
-                    >
-                      {shortDayName}
-                    </Text>
-                    <View
-                      className={`mt-1 rounded-full w-7 h-7 items-center justify-center ${
-                        isSelected ? "bg-blue-800" : "bg-white border border-blue-700"
-                      }`}
-                    >
-                      <Text
-                        className={`text-[12px] font-bold ${
-                          isSelected ? "text-white" : "text-blue-900"
-                        }`}
-                      >
-                        {tempDay}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              }
-            )}
-          </ScrollView>
-
-          {/* ScrollView: Tahun */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="mt-2 z-10"
-            contentContainerStyle={{ paddingHorizontal: 2 }}
-          >
-            {Array.from({ length: 10 }, (_, idx) => {
-              const tempYear = today.getFullYear() - 5 + idx;
-              const isActive = tempYear === selectedDate.getFullYear();
-              return (
-                <TouchableOpacity
-                  key={idx}
-                  onPress={() => {
-                    const newDate = new Date(selectedDate);
-                    newDate.setFullYear(tempYear);
-                    setSelectedDate(newDate);
-                  }}
-                  className={`px-3 py-1 rounded-full mr-1 mb-1 ${
-                    isActive ? "bg-blue-800" : "border border-blue-700 bg-white"
-                  }`}
-                >
-                  <Text
-                    className={`text-xs font-semibold ${
-                      isActive ? "text-white" : "text-blue-900/80"
-                    }`}
-                  >
-                    {tempYear}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
+          </TouchableOpacity>
+        ))}
       </View>
 
-      {/* ======= TIMELINE SECTION ======= */}
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 40 }}
-        className="px-4 pt-3 mt-2"
-      >
-        <View className="relative" style={{ height: 1400 }}>
-          {/* Garis waktu jam 9 - 23 (9 + 14 = 23) */}
-          {Array.from({ length: 15 }, (_, idx) => {
-            const hour = 9 + idx;
-            return (
-              <View
-                key={idx}
-                className="absolute left-0 right-0 flex-row items-start"
-                style={{ top: idx * 90 }}
-              >
-                <View className="w-12">
-                  <Text className="text-blue-300 text-[11px] font-semibold">{`${hour}:00`}</Text>
-                </View>
-                <View className="flex-1 relative">
-                  <View className="absolute left-3 top-0 w-full h-[1px] bg-blue-100" />
-                </View>
+      <ScrollView className="flex-1 px-4 pt-4">
+        {activeTab === 'overview' ? (
+          <>
+            {/* Welcome Section */}
+            <View className="bg-blue-900 rounded-2xl p-5 mb-4">
+              <Text className="text-white text-xl font-bold">Welcome back! 👋</Text>
+              <Text className="text-blue-200 mt-1">Here's your booking overview</Text>
+            </View>
+
+            {/* Dashboard Metrics */}
+            <View className="flex-row mb-4">
+              <DashboardCard
+                title="Today's"
+                value={todayMeetings.length}
+                icon={icons.door}
+                color="#3B82F6"
+              />
+              <DashboardCard
+                title="Today's"
+                value={todayTransports.length}
+                icon={icons.car}
+                color="#10B981"
+              />
+            </View>
+
+            <View className="flex-row mb-6">
+              <DashboardCard
+                title="Upcoming"
+                value={upcomingMeetings.length}
+                icon={icons.door}
+                color="#8B5CF6"
+              />
+              <DashboardCard
+                title="Upcoming"
+                value={upcomingTransports.length}
+                icon={icons.car}
+                color="#F59E0B"
+              />
+            </View>
+
+            {/* Recent Bookings */}
+            <View className="mb-4">
+              <View className="flex-row justify-between items-center mb-3">
+                <Text className="text-lg font-bold text-gray-800">Recent Bookings</Text>
+                <TouchableOpacity 
+                  onPress={() => router.push('/(root)/my-booking')}
+                  className="bg-blue-900 px-3 py-1 rounded-lg"
+                >
+                  <Text className="text-white text-sm font-medium">See All</Text>
+                </TouchableOpacity>
               </View>
-            );
-          })}
+              {[...roomsData, ...transportData]
+                .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+                .slice(0, 3)
+                .map((item, index) => (
+                  <BookingCard key={index} item={item} />
+                ))
+              }
+            </View>
 
-          {/* Render Jadwal */}
-          {dataToRender.map((item, idx) => {
-            const { startTime, endTime, title, isOngoing } = item;
-            const dateStr = "meetingId" in item ? item.meetingDate : item.bookingDate;
-            const { top } = calculatePosition(startTime, endTime, 90);
-            const borderColor = getItemColor(item, idx);
-
-            // ROOM vs TRANSPORT name
-            const locationLabel =
-              "roomId" in item
-                ? getRoomName(item.roomId)
-                : getTransportName(item.transportId);
-
-            return (
-              <TouchableOpacity
-                key={idx}
-                activeOpacity={0.9}
-                className="absolute left-14 right-3 bg-white shadow rounded-xl"
-                style={{
-                  top,
-                  height: 130,
-                  borderLeftWidth: 5,
-                  borderLeftColor: borderColor,
-                  paddingBottom: 3,
-                }}
-                onPress={() => setSelectedItem(item)}
-              >
-                <View className="p-3 pt-2">
-                  {/* Title & Badge NOW */}
-                  <View className="flex-row items-start justify-between">
-                    <Text
-                      numberOfLines={1}
-                      className="flex-1 pr-2 text-sm font-bold text-blue-900"
-                    >
-                      {title}
-                    </Text>
-                    {isOngoing && (
-                      <Text className="px-2 text-[10px] font-bold text-blue-700 bg-blue-100 rounded-full">
-                        NOW
-                      </Text>
-                    )}
-                  </View>
-
-                  {/* ROOM / VEHICLE */}
-                  <Text className="text-[11px] mt-1 text-gray-600 font-medium">
-                    {locationLabel}
-                  </Text>
-
-                  {/* Time range */}
-                  <View className="mt-3 flex-row items-center justify-between">
-                    <Text className="text-[11px] text-gray-500 font-semibold">
-                      {startTime} – {endTime}
-                    </Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+            {/* Quick Actions */}
+            <View className="mb-[200px]">
+              <Text className="text-lg font-bold text-gray-800 mb-3">Quick Booking</Text>
+              <View className="space-y-2">
+                {[...roomsData, ...transportData]
+                  .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+                  .slice(0, 4)
+                  .map((item, index) => (
+                    <BookingCard key={index} item={item} isQuickBooking={true} />
+                  ))
+                }
+              </View>
+            </View>
+          </>
+        ) : (
+          // Bookings Tab - Your existing timeline view code here
+          <View>
+            {/* Your existing timeline implementation */}
+          </View>
+        )}
       </ScrollView>
 
-      {/* ======= MODAL DETAIL ======= */}
+      {/* Keep your existing Modal components */}
       <Modal
-        visible={!!selectedItem}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setSelectedItem(null)}
-      >
-        <View className="flex-1 bg-black/40">
-          <View className="flex-1 justify-end">
-            <View className="bg-white rounded-t-3xl p-5 shadow-2xl">
-              {selectedItem && (
-                <>
-                  {/* Title */}
-                  <View className="-m-5 mb-2 p-5 rounded-t-3xl">
-                    <Text numberOfLines={2} className="text-xl font-extrabold text-blue-900">
-                      {selectedItem.title}
-                    </Text>
-                  </View>
-
-                  <View className="space-y-3">
-                    {/* DATE & TIME Card */}
-                    <View className="bg-blue-50 p-3 rounded-xl flex-row items-center">
-                      <View className="bg-blue-500 p-2 rounded-lg mr-3">
-                        <Image
-                          source={icons.calendar}
-                          className="w-4 h-4"
-                          resizeMode="contain"
-                          tintColor="white"
-                        />
-                      </View>
-                      <View>
-                        <Text className="text-[10px] text-blue-500 font-semibold">
-                          DATE & TIME
+              visible={!!selectedItem}
+              animationType="fade"
+              transparent
+              onRequestClose={() => setSelectedItem(null)}
+            >
+              <View className="flex-1 bg-black/40">
+                <View className="flex-1 justify-end">
+                  <View className="bg-white rounded-t-3xl p-5 shadow-2xl">
+                    {selectedItem && (
+                      <>
+                        {/* Title */}
+                        <View className="-m-5 mb-2 p-5 rounded-t-3xl">
+                          <Text numberOfLines={2} className="text-xl font-extrabold text-blue-900">
+                            {selectedItem.title}
+                          </Text>
+                        </View>
+      
+                        <View className="space-y-3">
+                          {/* DATE & TIME Card */}
+                          <View className="bg-blue-50 p-3 rounded-xl flex-row items-center">
+                            <View className="bg-blue-500 p-2 rounded-lg mr-3">
+                              <Image
+                                source={icons.calendar}
+                                className="w-4 h-4"
+                                resizeMode="contain"
+                                tintColor="white"
+                              />
+                            </View>
+                            <View>
+                              <Text className="text-[10px] text-blue-500 font-semibold">
+                                DATE & TIME
+                              </Text>
+                              <Text className="text-[13px] text-gray-800 font-bold">
+                                {"meetingId" in selectedItem
+                                  ? selectedItem.meetingDate
+                                  : selectedItem.bookingDate}
+                                , {selectedItem.startTime} – {selectedItem.endTime}
+                              </Text>
+                            </View>
+                          </View>
+      
+                          {/* ROOM / VEHICLE Card */}
+                          {"roomId" in selectedItem ? (
+                            <View className="bg-purple-50 p-3 rounded-xl flex-row items-center">
+                              <View className="bg-purple-500 p-2 rounded-lg mr-3">
+                                <Image
+                                  source={icons.wide}
+                                  className="w-4 h-4"
+                                  resizeMode="contain"
+                                  tintColor="white"
+                                />
+                              </View>
+                              <View>
+                                <Text className="text-[10px] text-purple-500 font-semibold">ROOM</Text>
+                                <Text className="text-[13px] text-gray-800 font-bold">
+                                  {getRoomName(selectedItem.roomId)}
+                                </Text>
+                              </View>
+                            </View>
+                          ) : (
+                            <View className="bg-purple-50 p-3 rounded-xl flex-row items-center">
+                              <View className="bg-purple-500 p-2 rounded-lg mr-3">
+                                <Image
+                                  source={icons.wide}
+                                  className="w-4 h-4"
+                                  resizeMode="contain"
+                                  tintColor="white"
+                                />
+                              </View>
+                              <View>
+                                <Text className="text-[10px] text-purple-500 font-semibold">
+                                  VEHICLE
+                                </Text>
+                                <Text className="text-[13px] text-gray-800 font-bold">
+                                  {getTransportName(selectedItem.transportId)}
+                                </Text>
+                              </View>
+                            </View>
+                          )}
+      
+                          {/* STATUS Card */}
+                          <View className="bg-orange-50 p-3 rounded-xl flex-row items-center">
+                            <View className="bg-orange-400 p-2 rounded-lg mr-3">
+                              <Image
+                                source={icons.clock}
+                                className="w-4 h-4"
+                                resizeMode="contain"
+                                tintColor="white"
+                              />
+                            </View>
+                            <View>
+                              <Text className="text-[10px] text-orange-500 font-semibold">STATUS</Text>
+                              <Text className="text-[13px] text-gray-800 font-bold">
+                                {getItemStatus(selectedItem)}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+      
+                        <Text className="mt-4 text-[10px] text-center text-gray-400">
+                          We adhere entirely to the data security standards
+                          of the booking system.
                         </Text>
-                        <Text className="text-[13px] text-gray-800 font-bold">
-                          {"meetingId" in selectedItem
-                            ? selectedItem.meetingDate
-                            : selectedItem.bookingDate}
-                          , {selectedItem.startTime} – {selectedItem.endTime}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* ROOM / VEHICLE Card */}
-                    {"roomId" in selectedItem ? (
-                      <View className="bg-purple-50 p-3 rounded-xl flex-row items-center">
-                        <View className="bg-purple-500 p-2 rounded-lg mr-3">
-                          <Image
-                            source={icons.wide}
-                            className="w-4 h-4"
-                            resizeMode="contain"
-                            tintColor="white"
-                          />
-                        </View>
-                        <View>
-                          <Text className="text-[10px] text-purple-500 font-semibold">ROOM</Text>
-                          <Text className="text-[13px] text-gray-800 font-bold">
-                            {getRoomName(selectedItem.roomId)}
+      
+                        {/* Close Button */}
+                        <TouchableOpacity
+                          onPress={() => setSelectedItem(null)}
+                          className="bg-blue-900 mt-3 rounded-xl py-3"
+                        >
+                          <Text className="text-center text-white font-bold text-sm">
+                            Close
                           </Text>
-                        </View>
-                      </View>
-                    ) : (
-                      <View className="bg-purple-50 p-3 rounded-xl flex-row items-center">
-                        <View className="bg-purple-500 p-2 rounded-lg mr-3">
-                          <Image
-                            source={icons.wide}
-                            className="w-4 h-4"
-                            resizeMode="contain"
-                            tintColor="white"
-                          />
-                        </View>
-                        <View>
-                          <Text className="text-[10px] text-purple-500 font-semibold">
-                            VEHICLE
-                          </Text>
-                          <Text className="text-[13px] text-gray-800 font-bold">
-                            {getTransportName(selectedItem.transportId)}
-                          </Text>
-                        </View>
-                      </View>
+                        </TouchableOpacity>
+                      </>
                     )}
-
-                    {/* STATUS Card */}
-                    <View className="bg-orange-50 p-3 rounded-xl flex-row items-center">
-                      <View className="bg-orange-400 p-2 rounded-lg mr-3">
-                        <Image
-                          source={icons.clock}
-                          className="w-4 h-4"
-                          resizeMode="contain"
-                          tintColor="white"
-                        />
-                      </View>
-                      <View>
-                        <Text className="text-[10px] text-orange-500 font-semibold">STATUS</Text>
-                        <Text className="text-[13px] text-gray-800 font-bold">
-                          {getItemStatus(selectedItem)}
-                        </Text>
-                      </View>
-                    </View>
                   </View>
-
-                  <Text className="mt-4 text-[10px] text-center text-gray-400">
-                    We adhere entirely to the data security standards
-                    of the booking system.
-                  </Text>
-
-                  {/* Close Button */}
-                  <TouchableOpacity
-                    onPress={() => setSelectedItem(null)}
-                    className="bg-blue-900 mt-3 rounded-xl py-3"
-                  >
-                    <Text className="text-center text-white font-bold text-sm">
-                      Close
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* DatePicker (opsional) */}
+                </View>
+              </View>
+            </Modal>
+      
+      {/* DatePicker */}
       <DatePicker
         modal
         open={isDatePickerOpen}
         date={selectedDate}
-        onConfirm={handleDateSelection}
+        onConfirm={(date) => {
+          setSelectedDate(date);
+          setIsDatePickerOpen(false);
+        }}
         onCancel={() => setIsDatePickerOpen(false)}
         mode="date"
-        title="Select a Date"
-        confirmText="Confirm"
-        cancelText="Cancel"
       />
     </SafeAreaView>
   );

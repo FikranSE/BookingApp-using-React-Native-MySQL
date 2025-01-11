@@ -398,7 +398,7 @@ export const transportList: ITransport[] = [
 export const meetings: IMeeting[] = [
   {
     meetingId: "M1",
-    meetingDate: "2024-12-21",
+    meetingDate: "2025-01-04",
     startTime: "09:30",
     endTime: "11:00",
     title: "Designers Meeting",
@@ -407,7 +407,7 @@ export const meetings: IMeeting[] = [
   },
   {
     meetingId: "M2",
-    meetingDate: "2024-12-21",
+    meetingDate: "2025-01-21",
     startTime: "12:00",
     endTime: "14:00",
     title: "Daily Project Meeting",
@@ -416,7 +416,7 @@ export const meetings: IMeeting[] = [
   },
   {
     meetingId: "M3",
-    meetingDate: "2024-12-22",
+    meetingDate: "2025-12-22",
     startTime: "10:00",
     endTime: "12:00",
     title: "Team Retrospective",
@@ -431,7 +431,7 @@ export const meetings: IMeeting[] = [
 export const transportBookings: ITransportBooking[] = [
   {
     transportBookingId: "TB1",
-    bookingDate: "2024-12-27",
+    bookingDate: "2025-01-12",
     startTime: "10:00",
     endTime: "12:00",
     title: "Airport Pickup",
@@ -440,16 +440,16 @@ export const transportBookings: ITransportBooking[] = [
   },
   {
     transportBookingId: "TB2",
-    bookingDate: "2024-12-21",
+    bookingDate: "2025-01-10",
     startTime: "10:00",
     endTime: "12:00",
     title: "VIP Guest Tour",
     transportId: "T3",   // "Alphard"
-    isOngoing: true,
+    isOngoing: false,
   },
   {
     transportBookingId: "TB3",
-    bookingDate: "2024-12-22",
+    bookingDate: "2025-12-22",
     startTime: "09:00",
     endTime: "12:00",
     title: "Site Visit Team",
@@ -468,4 +468,57 @@ export const monthNames = [
 
 export const dayNames = [
   "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+];
+
+
+export interface INotification {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  type: "ROOM" | "TRANSPORT";
+  status: "upcoming" | "ongoing" | "completed" | "cancelled";
+}
+
+export const notifications: INotification[] = [
+  {
+    id: "001",
+    title: "Meeting: Product Review",
+    description: "Small meeting room - Workspace A",
+    date: "Today, 10:00 - 11:30",
+    type: "ROOM",
+    status: "upcoming",
+  },
+  {
+    id: "002",
+    title: "Transport Booking",
+    description: "Toyota Innova - B 1234 CD",
+    date: "Today, 13:00 - 15:00",
+    type: "TRANSPORT",
+    status: "ongoing",
+  },
+  {
+    id: "003",
+    title: "Team Retrospective",
+    description: "Large meeting room - Workspace B",
+    date: "Tomorrow, 09:00 - 10:00",
+    type: "ROOM",
+    status: "upcoming",
+  },
+  {
+    id: "004",
+    title: "Client Meeting",
+    description: "Medium meeting room - Workspace C",
+    date: "Yesterday, 14:00 - 15:00",
+    type: "ROOM",
+    status: "completed",
+  },
+  {
+    id: "005",
+    title: "Site Visit Transportation",
+    description: "Honda CR-V - B 5678 EF",
+    date: "Yesterday, 09:00 - 12:00",
+    type: "TRANSPORT",
+    status: "cancelled",
+  },
 ];
