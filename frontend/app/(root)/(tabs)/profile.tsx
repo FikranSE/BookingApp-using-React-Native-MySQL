@@ -68,7 +68,9 @@ const Profile = () => {
         <View className="mx-4 mt-6">
           <Text className="text-lg font-bold text-gray-800 mb-3">Account Settings</Text>
           
-          <TouchableOpacity className="bg-white p-4 rounded-xl mb-3 shadow-sm flex-row justify-between items-center">
+          <TouchableOpacity
+          onPress={() => router.push('/(root)/change-password')}
+           className="bg-white p-4 rounded-xl mb-3 shadow-sm flex-row justify-between items-center">
             <View className="flex-row items-center">
               <View className="bg-blue-100 p-2 rounded-lg mr-3">
                 <Image source={icons.password} className="w-5 h-5" style={{ tintColor: '#2563eb' }} />
@@ -84,7 +86,9 @@ const Profile = () => {
 
           <Text className="text-lg font-bold text-gray-800 mt-6 mb-3">Support</Text>
           
-          <TouchableOpacity className="bg-white p-4 rounded-xl mb-3 shadow-sm flex-row justify-between items-center">
+          <TouchableOpacity
+          onPress={() => router.push('/(root)/faq')}
+           className="bg-white p-4 rounded-xl mb-3 shadow-sm flex-row justify-between items-center">
             <View className="flex-row items-center">
               <View className="bg-purple-100 p-2 rounded-lg mr-3">
                 <Image source={icons.faq} className="w-5 h-5" style={{ tintColor: '#7c3aed' }} />

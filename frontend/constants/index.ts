@@ -26,6 +26,7 @@ import password from "@/assets/icons/password.png";
 import projector from "@/assets/icons/projector.png";
 import clock from "@/assets/icons/clock.png";
 import menu from "@/assets/icons/menu.png";
+import eye from "@/assets/icons/eye.png";
 import facebook from "@/assets/icons/facebook.png";
 import apple from "@/assets/icons/apple.png";
 import wide from "@/assets/icons/wide.png";
@@ -136,7 +137,8 @@ export const icons = {
   compass,
   password,
   faq,
-  cs
+  cs,
+  eye
 };
 
 export const onboarding = [
