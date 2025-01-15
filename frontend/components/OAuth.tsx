@@ -1,4 +1,5 @@
-import { useOAuth } from "@clerk/clerk-expo";
+// components/OAuth.tsx
+
 import { router } from "expo-router";
 import { Alert, Image, Text, View } from "react-native";
 
@@ -7,17 +8,18 @@ import { icons } from "@/constants";
 import { googleOAuth } from "@/lib/auth";
 
 const OAuth = () => {
-  const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
-
   const handleGoogleSignIn = async () => {
-    const result = await googleOAuth(startOAuthFlow);
+    try {
+      const result = await googleOAuth();
 
-    if (result.code === "session_exists") {
-      Alert.alert("Success", "Session exists. Redirecting to home screen.");
-      router.replace("/(root)/(tabs)/home");
+      Alert.alert(result.success ? "Success" : "Error", result.message);
+
+      if (result.success) {
+        router.replace("/(root)/(tabs)/home");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Something went wrong during Google sign in.");
     }
-
-    Alert.alert(result.success ? "Success" : "Error", result.message);
   };
 
   return (

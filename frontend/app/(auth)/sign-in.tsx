@@ -1,21 +1,15 @@
-import { Link, router } from "expo-router";
-import { useState } from "react";
-import { Image, ScrollView, Text, View, TouchableOpacity } from "react-native";
+// app/(auth)/sign-in.tsx
+
+import { Link } from "expo-router";
+import { useState, useContext } from "react";
+import { Image, ScrollView, Text, View, TouchableOpacity, Alert } from "react-native";
 import InputField from "@/components/InputField";
-import { icons, images } from "@/constants";
+import { icons } from "@/constants";
 import OAuth from "@/components/OAuth";
+import { AuthContext } from "../context/AuthContext";
 
 const SignIn = () => {
-  const users = [
-    {
-      email: "user1@example.com",
-      password: "password123",
-    },
-    {
-      email: "user2@example.com",
-      password: "mypassword",
-    },
-  ];
+  const { login } = useContext(AuthContext);
 
   const [form, setForm] = useState({
     email: "",
@@ -24,15 +18,10 @@ const SignIn = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const onSignInPress = () => {
-    const user = users.find(
-      (u) => u.email === form.email && u.password === form.password
-    );
-
-    if (user) {
-      setErrorMessage("");
-      router.replace("/(root)/(tabs)/home");
-    } else {
+  const onSignInPress = async () => {
+    try {
+      await login(form.email, form.password);
+    } catch (error: any) {
       setErrorMessage("Email atau kata sandi salah. Silakan coba lagi.");
     }
   };
@@ -40,13 +29,11 @@ const SignIn = () => {
   return (
     <ScrollView className="flex-1 bg-white">
       <View className="flex-1 px-6 pt-10">
-        {/* Logo and Header */}
         <View className="mb-8">
           <Text className="text-[#003580] text-3xl font-bold mb-2">Sign In</Text>
           <Text className="text-gray-600 text-lg">Enjoy a perfect meeting room!</Text>
         </View>
 
-        {/* Login Form */}
         <View className="space-y-4">
           <View>
             <InputField
@@ -69,7 +56,7 @@ const SignIn = () => {
                 onPress={() => setShowPassword(!showPassword)}
               >
                 <Image
-                  source={showPassword ? icons.eyeOpen : icons.eyeClosed}
+                  source={showPassword ? icons.eye : icons.eyecross}
                   className="w-6 h-6"
                 />
               </TouchableOpacity>
@@ -78,6 +65,10 @@ const SignIn = () => {
               <Text className="text-gray-400">Forgot password?</Text>
             </TouchableOpacity>
           </View>
+
+          {errorMessage !== "" && (
+            <Text className="text-red-500 text-sm text-center">{errorMessage}</Text>
+          )}
 
           <TouchableOpacity
             onPress={onSignInPress}
@@ -88,14 +79,12 @@ const SignIn = () => {
             </Text>
           </TouchableOpacity>
 
-          {/* Social Login Options (Google Only) */}
           <OAuth />
 
-          {/* Sign Up Link */}
           <View className="mt-6 mb-8">
             <Text className="text-center text-gray-600">
               Don't have an account?{" "}
-              <Link href="/sign-up" className="text-[#003580] font-semibold">
+              <Link href="/(auth)/sign-up" className="text-[#003580] font-semibold">
                 Sign up
               </Link>
             </Text>

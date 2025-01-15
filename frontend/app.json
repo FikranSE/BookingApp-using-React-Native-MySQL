@@ -32,7 +32,8 @@
         {
           "origin": "https://booking.com/"
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

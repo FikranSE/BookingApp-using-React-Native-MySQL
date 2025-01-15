@@ -1,17 +1,44 @@
-import { useUser, useAuth } from "@clerk/clerk-expo";
-import { router } from "expo-router";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+// frontend/app/(root)/(tabs)/profile.tsx
+
+import { useContext, useEffect, useState } from "react";
+import { Image, ScrollView, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { images, icons } from "@/constants";
+import api from "@/lib/api";
+import { AuthContext } from "../../context/AuthContext";
+import { router } from "expo-router";
 
 const Profile = () => {
-  const { user } = useUser();
-  const { signOut } = useAuth();
+  const { logout } = useContext(AuthContext);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleSignOut = () => {
-    signOut();
-    router.replace("/(auth)/sign-in");
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await api.get('/auth/profile');
+        setUser(response.data.user);
+      } catch (error) {
+        console.error('Gagal mengambil profil:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const handleSignOut = async () => {
+    await logout();
+    // Navigasi kembali ke layar login sudah di-handle oleh context
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView className="bg-slate-100 flex-1 justify-center items-center">
+        <ActivityIndicator size="large" color="#003580" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="bg-slate-100 flex-1">
@@ -30,10 +57,10 @@ const Profile = () => {
               />
             </View>
             <Text className="text-white text-xl font-bold mt-3">
-              {user?.firstName} {user?.lastName || "User Example"}
+              {user?.name || "User Example"}
             </Text>
             <Text className="text-blue-200 text-sm mt-1">
-              {user?.primaryEmailAddress?.emailAddress || "user@example.com"}
+              {user?.email || "user@example.com"}
             </Text>
           </View>
         </View>
@@ -69,8 +96,9 @@ const Profile = () => {
           <Text className="text-lg font-bold text-gray-800 mb-3">Account Settings</Text>
           
           <TouchableOpacity
-          onPress={() => router.push('/(root)/change-password')}
-           className="bg-white p-4 rounded-xl mb-3 shadow-sm flex-row justify-between items-center">
+            onPress={() => router.push('/(root)/change-password')}
+            className="bg-white p-4 rounded-xl mb-3 shadow-sm flex-row justify-between items-center"
+          >
             <View className="flex-row items-center">
               <View className="bg-blue-100 p-2 rounded-lg mr-3">
                 <Image source={icons.password} className="w-5 h-5" style={{ tintColor: '#2563eb' }} />
@@ -87,8 +115,9 @@ const Profile = () => {
           <Text className="text-lg font-bold text-gray-800 mt-6 mb-3">Support</Text>
           
           <TouchableOpacity
-          onPress={() => router.push('/(root)/faq')}
-           className="bg-white p-4 rounded-xl mb-3 shadow-sm flex-row justify-between items-center">
+            onPress={() => router.push('/(root)/faq')}
+            className="bg-white p-4 rounded-xl mb-3 shadow-sm flex-row justify-between items-center"
+          >
             <View className="flex-row items-center">
               <View className="bg-purple-100 p-2 rounded-lg mr-3">
                 <Image source={icons.faq} className="w-5 h-5" style={{ tintColor: '#7c3aed' }} />

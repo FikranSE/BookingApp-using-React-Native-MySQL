@@ -1,10 +1,13 @@
-import { useAuth } from "@clerk/clerk-expo";
-import { Redirect } from "expo-router";
+// app/index.tsx
+
+import React, { useContext } from 'react';
+import { AuthContext } from './context/AuthContext';
+import { Redirect } from 'expo-router';
 
 const Page = () => {
-  const { isSignedIn } = useAuth();
+  const { isAuthenticated } = useContext(AuthContext);
 
-  if (isSignedIn) return <Redirect href="/(root)/(tabs)/home" />;
+  if (isAuthenticated) return <Redirect href="/(root)/(tabs)/home" />;
 
   return <Redirect href="/(auth)/welcome" />;
 };

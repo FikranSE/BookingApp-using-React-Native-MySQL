@@ -1,3 +1,5 @@
+//frontend/app/(auth)/_layout
+
 import { Stack } from "expo-router";
 
 const Layout = () => {

@@ -1,16 +1,17 @@
-import { useSignUp } from "@clerk/clerk-expo";
-import { Link, router } from "expo-router";
-import { useState } from "react";
-import { Alert, ScrollView, Text, View, TouchableOpacity } from "react-native";
-import { ReactNativeModal } from "react-native-modal";
+// app/(auth)/sign-up.tsx
 
+import { Link } from "expo-router";
+import { useState, useContext } from "react";
+import { Alert, ScrollView, Text, View, TouchableOpacity } from "react-native";
 import CustomButton from "@/components/CustomButton";
 import OAuth from "@/components/OAuth";
 import InputField from "@/components/InputField";
-import { fetchAPI } from "@/lib/fetch";
+import ReactNativeModal from "react-native-modal";
+
+import { AuthContext } from "../context/AuthContext";
 
 const SignUp = () => {
-  const { isLoaded, signUp, setActive } = useSignUp();
+  const { register } = useContext(AuthContext);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const [form, setForm] = useState({
@@ -27,55 +28,10 @@ const SignUp = () => {
   });
 
   const onSignUpPress = async () => {
-    if (!isLoaded) return;
     try {
-      await signUp.create({
-        emailAddress: form.email,
-        password: form.password,
-      });
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      setVerification({
-        ...verification,
-        state: "pending",
-      });
-    } catch (err) {
-      Alert.alert("Error", err.errors?.[0]?.longMessage || "Something went wrong");
-    }
-  };
-
-  const onPressVerify = async () => {
-    if (!isLoaded) return;
-    try {
-      const completeSignUp = await signUp.attemptEmailAddressVerification({
-        code: verification.code,
-      });
-      if (completeSignUp.status === "complete") {
-        await fetchAPI("/(api)/user", {
-          method: "POST",
-          body: JSON.stringify({
-            name: form.name,
-            email: form.email,
-            clerkId: completeSignUp.createdUserId,
-          }),
-        });
-        await setActive({ session: completeSignUp.createdSessionId });
-        setVerification({
-          ...verification,
-          state: "success",
-        });
-      } else {
-        setVerification({
-          ...verification,
-          error: "Verification failed. Please try again.",
-          state: "failed",
-        });
-      }
-    } catch (err) {
-      setVerification({
-        ...verification,
-        error: err.errors?.[0]?.longMessage || "Something went wrong",
-        state: "failed",
-      });
+      await register(form.name, form.email, form.password, form.phone);
+    } catch (err: any) {
+      Alert.alert("Registrasi Gagal", err.message || "Terjadi kesalahan saat registrasi");
     }
   };
 
@@ -124,7 +80,7 @@ const SignUp = () => {
           <View className="mt-6 mb-8">
             <Text className="text-center text-gray-600">
               Already have an account?{" "}
-              <Link href="/sign-in" className="text-[#003580] font-semibold">
+              <Link href="/(auth)/sign-in" className="text-[#003580] font-semibold">
                 Sign in
               </Link>
             </Text>
@@ -150,7 +106,9 @@ const SignUp = () => {
               </Text>
             )}
             <TouchableOpacity
-              onPress={onPressVerify}
+              onPress={() => {
+                Alert.alert("Verifikasi", "Fungsi verifikasi belum diimplementasikan.");
+              }}
               className="bg-[#006CE4] rounded-full py-3 mt-5"
             >
               <Text className="text-white text-center text-lg font-semibold">
