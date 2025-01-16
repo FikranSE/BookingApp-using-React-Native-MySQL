@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (response.data.token) {
         setToken(response.data.token);
-        router.replace("/(root)/(tabs)/home");
+        router.replace("/(auth)/sign-in");
       }
     } catch (error: any) {
       console.error('Registration error in context:', error);
