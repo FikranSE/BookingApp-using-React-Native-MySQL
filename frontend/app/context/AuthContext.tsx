@@ -58,8 +58,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       const response = await loginUser({ email, password });
       
-      if (response.token) {
-        setToken(response.token);
+      if (response.data.token) {
+        setToken(response.data.token);
         router.replace("/(root)/(tabs)/home");
       }
     } catch (error: any) {
@@ -77,8 +77,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const response = await registerUser({ name, email, password, phone });
       
-      if (response.token) {
-        setToken(response.token);
+      if (response.data.token) {
+        setToken(response.data.token);
         router.replace("/(root)/(tabs)/home");
       }
     } catch (error: any) {
@@ -100,7 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   if (loading) {
-    return null;
+    return null; // Anda bisa menampilkan loading spinner di sini
   }
 
   return (

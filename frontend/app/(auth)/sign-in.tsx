@@ -55,10 +55,11 @@ const SignIn = () => {
                 className="absolute right-4 top-3"
                 onPress={() => setShowPassword(!showPassword)}
               >
-                <Image
+                <Image 
                   source={showPassword ? icons.eye : icons.eyecross}
-                  className="w-6 h-6"
-                />
+                  className="w-6 h-6 mt-3"
+                  tintColor="#003580"
+                /> 
               </TouchableOpacity>
             </View>
             <TouchableOpacity className="self-end mt-2">

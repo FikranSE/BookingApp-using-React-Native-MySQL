@@ -1,6 +1,6 @@
 // app/users/userApi.ts
 
-const API_URL = 'http://192.168.1.100:3000:3000/api';
+const API_URL = 'https://e01c-103-212-43-216.ngrok-free.app/api';
 
 interface UserData {
   name: string;
@@ -16,7 +16,7 @@ interface Credentials {
 
 export const register = async (userData: UserData): Promise<any> => {
   try {
-    const response = await fetch(`${API_URL}/register`, {
+    const response = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -31,7 +31,7 @@ export const register = async (userData: UserData): Promise<any> => {
 
 export const login = async (credentials: Credentials): Promise<any> => {
   try {
-    const response = await fetch(`${API_URL}/login`, {
+    const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
