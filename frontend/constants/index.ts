@@ -12,6 +12,8 @@ import ac from "@/assets/icons/air-conditioner.png";
 import whiteboard from "@/assets/icons/whiteboard.png";
 import wifi from "@/assets/icons/wi-fi.png";
 import list from "@/assets/icons/list.png";
+import telephone from "@/assets/icons/telephone.png";
+import user from "@/assets/icons/user.png";
 import cs from "@/assets/icons/cs.png";
 import location from "@/assets/icons/location.png";
 import seat from "@/assets/icons/seat.png";
@@ -138,7 +140,9 @@ export const icons = {
   password,
   faq,
   cs,
-  eye
+  eye,
+  telephone,
+  user
 };
 
 export const onboarding = [

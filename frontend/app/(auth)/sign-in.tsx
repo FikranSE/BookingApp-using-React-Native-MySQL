@@ -1,11 +1,16 @@
 // app/(auth)/sign-in.tsx
 
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import { useState, useContext } from "react";
-import { Image, ScrollView, Text, View, TouchableOpacity, Alert } from "react-native";
-import InputField from "@/components/InputField";
+import {
+  ScrollView,
+  Text,
+  View,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
 import { icons } from "@/constants";
-import OAuth from "@/components/OAuth";
+import InputField from "@/components/InputField";
 import { AuthContext } from "../context/AuthContext";
 
 const SignIn = () => {
@@ -28,68 +33,88 @@ const SignIn = () => {
 
   return (
     <ScrollView className="flex-1 bg-white">
-      <View className="flex-1 px-6 pt-10">
-        <View className="mb-8">
-          <Text className="text-[#003580] text-3xl font-bold mb-2">Sign In</Text>
-          <Text className="text-gray-600 text-lg">Enjoy a perfect meeting room!</Text>
+      {/* Dekorasi lingkaran di bagian atas */}
+      <View className="relative h-40 w-full mb-8">
+        <View
+          className="absolute bg-blue-900 w-[180px] h-[180px] rounded-full left-[-60px] top-[-60px]"
+          style={{ opacity: 0.9 }}
+        />
+        <View
+          className="absolute bg-blue-900 w-[60px] h-[60px] rounded-full left-24 top-[-20px]"
+          style={{ opacity: 0.9 }}
+        />
+        <View
+          className="absolute bg-blue-900 w-[40px] h-[40px] rounded-full right-8 top-10"
+          style={{ opacity: 0.9 }}
+        />
+      </View>
+
+      <View className="px-6">
+        {/* Judul */}
+        <Text className="text-blue-900 text-3xl font-bold mb-1">Welcome!</Text>
+        <Text className="text-blue-900 text-3xl font-bold mb-8">Login</Text>
+
+        {/* Input Email */}
+        <InputField
+          label="Email"
+          icon={icons.email} // Pastikan Anda memiliki ikon user
+          value={form.email}
+          onChangeText={(value) => setForm({ ...form, email: value })}
+          keyboardType="email-address"
+        />
+
+        {/* Input Password */}
+        <View className="mb-2">
+          <InputField
+            label="Password"
+            icon={icons.lock} // Pastikan Anda memiliki ikon lock
+            secureTextEntry={!showPassword}
+            value={form.password}
+            onChangeText={(value) => setForm({ ...form, password: value })}
+            rightIcon={showPassword ? icons.eye : icons.eyecross} // Pastikan Anda memiliki ikon eye dan eyecross
+            onRightIconPress={() => setShowPassword(!showPassword)}
+           
+          />
+          <TouchableOpacity className="self-end mt-2">
+            <Text className="text-sm text-blue-900">Forgot Password?</Text>
+          </TouchableOpacity>
         </View>
 
-        <View className="space-y-4">
-          <View>
-            <InputField
-              value={form.email}
-              label="Email"
-              onChangeText={(value) => setForm({ ...form, email: value })}
-            />
-          </View>
+        {/* Error Message */}
+        {errorMessage !== "" && (
+          <Text className="text-red-500 text-sm text-center mb-4">
+            {errorMessage}
+          </Text>
+        )}
 
-          <View>
-            <View className="relative">
-              <InputField
-                value={form.password}
-                label="Password"
-                onChangeText={(value) => setForm({ ...form, password: value })}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity
-                className="absolute right-4 top-3"
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Image 
-                  source={showPassword ? icons.eye : icons.eyecross}
-                  className="w-6 h-6 mt-3"
-                  tintColor="#003580"
-                /> 
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity className="self-end mt-2">
-              <Text className="text-gray-400">Forgot password?</Text>
-            </TouchableOpacity>
-          </View>
-
-          {errorMessage !== "" && (
-            <Text className="text-red-500 text-sm text-center">{errorMessage}</Text>
-          )}
-
+        {/* Tombol Sign Up & Log In */}
+        <View className="flex-row mt-6">
           <TouchableOpacity
-            onPress={onSignInPress}
-            className="bg-[#003580] rounded-full py-3 mt-4"
+            onPress={() => router.push("/(auth)/sign-up")}
+            className="flex-1 bg-blue-900/10 py-3 rounded-full mr-2"
           >
-            <Text className="text-white text-center text-lg font-semibold">
-              Log in
+            <Text className="text-center text-blue-900 font-semibold text-lg">
+              Sign Up
             </Text>
           </TouchableOpacity>
-
-          <OAuth />
-
-          <View className="mt-6 mb-8">
-            <Text className="text-center text-gray-600">
-              Don't have an account?{" "}
-              <Link href="/(auth)/sign-up" className="text-[#003580] font-semibold">
-                Sign up
-              </Link>
+          <TouchableOpacity
+            onPress={onSignInPress}
+            className="flex-1 bg-blue-900 py-3 rounded-full ml-2"
+          >
+            <Text className="text-center text-white font-semibold text-lg">
+              Log In
             </Text>
-          </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Link jika belum punya akun (opsional) */}
+        <View className="mt-8 mb-10">
+          <Text className="text-center text-blue-900">
+            Don't have an account?{" "}
+            <Link href="/(auth)/sign-up" className="font-semibold">
+              Sign up
+            </Link>
+          </Text>
         </View>
       </View>
     </ScrollView>

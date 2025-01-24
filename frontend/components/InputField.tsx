@@ -1,4 +1,3 @@
-// InputField.tsx
 import {
   TextInput,
   View,
@@ -13,11 +12,12 @@ import {
 } from "react-native";
 import { useState, useRef, useEffect } from "react";
 import { LinearGradient } from "expo-linear-gradient";
-// import { InputFieldProps } from "@/types/type"; // Sesuaikan dengan path/type Anda
 
 interface InputFieldProps {
   label: string;               // Label untuk floating
-  icon?: any;                  // Icon di dalam input (opsional)
+  icon?: any;                  // Icon di dalam input (opsional, kiri)
+  rightIcon?: any;             // Icon di sebelah kanan input (opsional)
+  onRightIconPress?: () => void; // Event saat ikon kanan ditekan
   secureTextEntry?: boolean;
   containerStyle?: string;
   inputStyle?: string;
@@ -32,6 +32,8 @@ interface InputFieldProps {
 const InputField = ({
   label,
   icon,
+  rightIcon,
+  onRightIconPress,
   secureTextEntry = false,
   containerStyle,
   inputStyle,
@@ -59,7 +61,7 @@ const InputField = ({
   // Gaya label mengambang
   const labelStyle = {
     position: 'absolute',
-    left: 22,
+    left: 45,
     top: animatedValue.interpolate({
       inputRange: [0, 1],
       outputRange: [16, -10],
@@ -113,45 +115,28 @@ const InputField = ({
                 )}
 
                 {/* Bagian dalam input */}
-                <View className="bg-white m-[1px] rounded-full">
-                  {editable ? (
-                    // Jika editable, pakai TextInput
-                    <View className="flex-row items-center">
-                      {icon && (
-                        <Image source={icon} className={`w-4 h-4 ml-4 ${iconStyle || ''}`} />
-                      )}
-                      <TextInput
-                        className={`
-                          px-4 py-3 font-JakartaSemiBold text-[15px] flex-1
-                          text-left text-blue-900
-                          ${inputStyle || ''}
-                        `}
-                        secureTextEntry={secureTextEntry}
-                        value={value || ''}
-                        onFocus={handleFocus}
-                        onBlur={handleBlur}
-                        onChangeText={onChangeText}
-                        {...props}
-                      />
-                    </View>
-                  ) : (
-                    // Jika read-only, jadikan tombol
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={onPress}
-                      className="flex-row items-center px-4 py-3"
-                    >
-                      {icon && (
-                        <Image source={icon} className={`w-4 h-4 mr-2 ${iconStyle || ''}`} />
-                      )}
-                      <Text
-                        className={`
-                          font-JakartaSemiBold text-[15px] flex-1
-                          text-left text-blue-900
-                        `}
-                      >
-                        {value || ''}
-                      </Text>
+                <View className="bg-white m-[1px] rounded-full flex-row items-center">
+                  {icon && (
+                    <Image source={icon} tintColor="#A7A7A7FF" className={`w-4 h-4 ml-4 ${iconStyle || ''}`} />
+                  )}
+                  <TextInput
+                    className={`
+                      px-4 py-3 font-JakartaSemiBold text-[15px] flex-1
+                      text-left text-blue-900
+                      ${inputStyle || ''}
+                    `}
+                    secureTextEntry={secureTextEntry}
+                    value={value || ''}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                    onChangeText={onChangeText}
+                    editable={editable}
+                    onPress={onPress}
+                    {...props}
+                  />
+                  {rightIcon && onRightIconPress && (
+                    <TouchableOpacity onPress={onRightIconPress} className="mr-4">
+                      <Image source={rightIcon} tintColor="#1F1FAAFF" className={`w-4 h-4 ${iconStyle || ''}`} />
                     </TouchableOpacity>
                   )}
                 </View>

@@ -201,17 +201,7 @@ const Home = () => {
     <SafeAreaView className="bg-slate-100 flex-1">
       <Header />
 
-      {/* 
-        Removed the tab code. Everything below is now 
-        shown by default (formerly the "overview" section).
-      */}
-
       <ScrollView className="flex-1 px-4 pt-4">
-        {/* Welcome Section */}
-        <View className="bg-blue-900 rounded-2xl p-5 mb-4">
-          <Text className="text-white text-xl font-bold">Welcome! 👋</Text>
-          <Text className="text-blue-200 mt-1">Here's your booking overview</Text>
-        </View>
 
         {/* Dashboard Metrics */}
         <View className="flex-row mb-4">

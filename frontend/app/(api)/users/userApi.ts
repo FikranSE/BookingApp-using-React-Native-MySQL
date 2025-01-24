@@ -1,6 +1,6 @@
 // app/users/userApi.ts
 
-const API_URL = 'https://1356-103-212-43-202.ngrok-free.app/api';
+const API_URL = 'https://e4c5-103-212-43-202.ngrok-free.app/api';
 
 interface UserData {
   name: string;
