@@ -1,9 +1,9 @@
-// src/middlewares/authMiddleware.ts
+// src/middlewares/adminMiddleware.ts
 import { Request, Response, NextFunction } from 'express';
+import Admin from '../models/Admin';
 import { verifyToken } from '../utils/token';
-import User from '../models/User';
 
-const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+const adminMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return res.status(401).json({ error: 'Authorization header missing' });
@@ -16,16 +16,16 @@ const authMiddleware = async (req: Request, res: Response, next: NextFunction) =
 
   try {
     const decoded: any = verifyToken(token);
-    const user = await User.findByPk(decoded.id);
-    if (!user) {
+    const admin = await Admin.findByPk(decoded.id);
+    if (!admin) {
       return res.status(401).json({ error: 'Invalid token' });
     }
 
-    (req as any).user = user;
+    (req as any).admin = admin;
     next();
   } catch (error) {
     return res.status(401).json({ error: 'Invalid token' });
   }
 };
 
-export default authMiddleware;
+export default adminMiddleware;
