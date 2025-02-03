@@ -39,9 +39,9 @@ class RoomBookingController {
 
   public static async updateBooking(req: Request, res: Response) {
     try {
-      const [updated, bookings] = await RoomBookingService.updateBooking(Number(req.params.id), req.body);
-      if (updated) {
-        res.status(200).json(bookings[0]);
+      const [updatedCount, bookings] = await RoomBookingService.updateBooking(Number(req.params.id), req.body);
+      if (updatedCount > 0) {
+        res.status(200).json(bookings[0]); 
       } else {
         res.status(404).json({ error: 'Booking not found' });
       }
@@ -49,6 +49,9 @@ class RoomBookingController {
       res.status(400).json({ error: error.message });
     }
   }
+  
+
+  
 
   public static async deleteBooking(req: Request, res: Response) {
     try {
