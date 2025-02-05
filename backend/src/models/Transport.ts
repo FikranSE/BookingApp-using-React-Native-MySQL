@@ -1,4 +1,3 @@
-// src/models/Transport.ts
 import { Model, DataTypes, Optional } from 'sequelize';
 import sequelize from '../config/db';
 
@@ -7,6 +6,7 @@ interface TransportAttributes {
   vehicle_name: string;
   driver_name: string;
   capacity: number;
+  image?: string; // Atribut gambar
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -18,6 +18,7 @@ class Transport extends Model<TransportAttributes, TransportCreationAttributes> 
   public vehicle_name!: string;
   public driver_name!: string;
   public capacity!: number;
+  public image?: string;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -43,13 +44,17 @@ Transport.init(
       allowNull: false,
       validate: { min: 1 },
     },
+    image: {
+      type: DataTypes.STRING,
+      allowNull: true, // Image bersifat opsional
+    },
   },
   {
     sequelize,
     modelName: 'Transport',
     tableName: 'Transports',
     timestamps: true,
-    engine: 'InnoDB', // Pastikan menggunakan InnoDB
+    engine: 'InnoDB',
   }
 );
 

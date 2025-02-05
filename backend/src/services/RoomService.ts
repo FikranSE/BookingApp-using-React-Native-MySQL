@@ -1,4 +1,3 @@
-// src/services/RoomService.ts
 import Room from '../models/Room';
 
 class RoomService {
@@ -11,7 +10,7 @@ class RoomService {
   }
 
   public static async getRoomById(id: number): Promise<Room | null> {
-    return Room.findByPk(id);
+    return Room.findByPk(id); 
   }
 
   public static async updateRoom(id: number, data: Partial<Room>): Promise<[number, Room[]]> {

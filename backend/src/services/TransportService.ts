@@ -1,4 +1,3 @@
-// src/services/TransportService.ts
 import Transport from '../models/Transport';
 
 class TransportService {
@@ -11,7 +10,7 @@ class TransportService {
   }
 
   public static async getTransportById(id: number): Promise<Transport | null> {
-    return Transport.findByPk(id);
+    return Transport.findByPk(id); 
   }
 
   public static async updateTransport(id: number, data: Partial<Transport>): Promise<[number, Transport[]]> {

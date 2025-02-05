@@ -1,4 +1,3 @@
-// src/models/Room.ts
 import { Model, DataTypes, Optional } from 'sequelize';
 import sequelize from '../config/db';
 
@@ -8,6 +7,7 @@ interface RoomAttributes {
   room_type: string;
   capacity: string;
   facilities: string;
+  image?: string; // Atribut gambar
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -20,6 +20,7 @@ class Room extends Model<RoomAttributes, RoomCreationAttributes> implements Room
   public room_type!: string;
   public capacity!: string;
   public facilities!: string;
+  public image?: string;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -47,6 +48,10 @@ Room.init(
     facilities: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    image: {
+      type: DataTypes.STRING,
+      allowNull: true, // Image bersifat opsional
     },
   },
   {
