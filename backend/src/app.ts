@@ -1,6 +1,7 @@
 // src/app.ts
 import express, { Application } from 'express';
 import dotenv from 'dotenv';
+import path from 'path';
 import bodyParser from 'body-parser';
 import authRoutes from './routes/authRoutes'; // Route untuk User
 import adminAuthRoutes from './routes/adminAuthRoutes'; // Route untuk Admin
@@ -16,6 +17,7 @@ import { adminAuthMiddleware } from './middlewares/adminAuthMiddleware';
 dotenv.config();
 
 const app: Application = express();
+
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -39,6 +41,7 @@ app.use('/api/transports', transportRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/transport-bookings', transportBookingRoutes);
 app.use('/api/room-bookings', roomBookingRoutes);
+
 
 app.get('/', (req, res) => {
   res.send('API is running');

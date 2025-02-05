@@ -3,6 +3,7 @@ import RoomService from '../services/RoomService';
 import upload from '../utils/multerConfig';
 
 class RoomController {
+  
   // Create Room with image upload
   public static async createRoom(req: Request, res: Response) {
     upload.single('image')(req, res, async (err: any) => {
