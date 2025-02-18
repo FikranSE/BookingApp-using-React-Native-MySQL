@@ -15,8 +15,17 @@ class RoomBookingService {
     return RoomBooking.findByPk(id);
   }
 
-  public static async updateBooking(id: number, data: Partial<RoomBooking>): Promise<[number, RoomBooking[]]> {
-    return RoomBooking.update(data, { where: { booking_id: id }, returning: true });
+  public static async updateBooking(id: number, data: Partial<RoomBooking>): Promise<RoomBooking | null> {
+    const [affectedCount] = await RoomBooking.update(data, {
+      where: { booking_id: id }
+    });
+  
+    if (affectedCount > 0) {
+      const updatedBooking = await RoomBooking.findByPk(id);
+      return updatedBooking;
+    }
+  
+    return null;
   }
 
   public static async deleteBooking(id: number): Promise<number> {

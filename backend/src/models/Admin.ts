@@ -1,4 +1,3 @@
-// src/models/Admin.ts
 import { Model, DataTypes, Optional } from 'sequelize';
 import sequelize from '../config/db';
 
@@ -33,12 +32,10 @@ Admin.init(
     username: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
     },
     email: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
       validate: { isEmail: true },
     },
     password: {
@@ -51,7 +48,19 @@ Admin.init(
     modelName: 'Admin',
     tableName: 'Admins',
     timestamps: true,
-    engine: 'InnoDB', // Pastikan menggunakan InnoDB
+    engine: 'InnoDB',
+    indexes: [
+      {
+        unique: true,
+        fields: ['username'],
+        name: 'admin_username_unique'
+      },
+      {
+        unique: true,
+        fields: ['email'],
+        name: 'admin_email_unique'
+      }
+    ]
   }
 );
 

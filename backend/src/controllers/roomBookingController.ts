@@ -39,9 +39,9 @@ class RoomBookingController {
 
   public static async updateBooking(req: Request, res: Response) {
     try {
-      const [updatedCount, bookings] = await RoomBookingService.updateBooking(Number(req.params.id), req.body);
-      if (updatedCount > 0) {
-        res.status(200).json(bookings[0]); 
+      const updatedBooking = await RoomBookingService.updateBooking(Number(req.params.id), req.body);
+      if (updatedBooking) {
+        res.status(200).json(updatedBooking);
       } else {
         res.status(404).json({ error: 'Booking not found' });
       }

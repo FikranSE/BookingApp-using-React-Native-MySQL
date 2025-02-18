@@ -52,14 +52,14 @@ class RoomController {
       if (err) {
         return res.status(400).json({ error: err.message });
       }
-
+  
       try {
         const image = req.file ? req.file.path : null;
         const roomData = { ...req.body, image };
-        const [updated, rooms] = await RoomService.updateRoom(Number(req.params.id), roomData);
+        const updatedRoom = await RoomService.updateRoom(Number(req.params.id), roomData);
         
-        if (updated) {
-          res.status(200).json(rooms[0]);
+        if (updatedRoom) {
+          res.status(200).json(updatedRoom);
         } else {
           res.status(404).json({ error: 'Room not found' });
         }

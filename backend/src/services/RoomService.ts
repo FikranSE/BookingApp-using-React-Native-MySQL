@@ -13,8 +13,17 @@ class RoomService {
     return Room.findByPk(id); 
   }
 
-  public static async updateRoom(id: number, data: Partial<Room>): Promise<[number, Room[]]> {
-    return Room.update(data, { where: { room_id: id }, returning: true });
+  public static async updateRoom(id: number, data: Partial<Room>): Promise<Room | null> {
+    const [affectedCount] = await Room.update(data, {
+      where: { room_id: id }
+    });
+  
+    if (affectedCount > 0) {
+      const updatedRoom = await Room.findByPk(id);
+      return updatedRoom;
+    }
+  
+    return null;
   }
 
   public static async deleteRoom(id: number): Promise<number> {

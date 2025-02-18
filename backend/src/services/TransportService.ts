@@ -13,8 +13,17 @@ class TransportService {
     return Transport.findByPk(id); 
   }
 
-  public static async updateTransport(id: number, data: Partial<Transport>): Promise<[number, Transport[]]> {
-    return Transport.update(data, { where: { transport_id: id }, returning: true });
+  public static async updateTransport(id: number, data: Partial<Transport>): Promise<Transport | null> {
+    const [affectedCount] = await Transport.update(data, {
+      where: { transport_id: id }
+    });
+  
+    if (affectedCount > 0) {
+      const updatedTransport = await Transport.findByPk(id);
+      return updatedTransport;
+    }
+  
+    return null;
   }
 
   public static async deleteTransport(id: number): Promise<number> {

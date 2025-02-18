@@ -39,9 +39,9 @@ class TransportBookingController {
 
   public static async updateBooking(req: Request, res: Response) {
     try {
-      const [updated, bookings] = await TransportBookingService.updateBooking(Number(req.params.id), req.body);
-      if (updated) {
-        res.status(200).json(bookings[0]);
+      const updatedBooking = await TransportBookingService.updateBooking(Number(req.params.id), req.body);
+      if (updatedBooking) {
+        res.status(200).json(updatedBooking);
       } else {
         res.status(404).json({ error: 'Booking not found' });
       }

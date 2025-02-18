@@ -51,14 +51,14 @@ class TransportController {
       if (err) {
         return res.status(400).json({ error: err.message });
       }
-
+  
       try {
         const image = req.file ? req.file.path : null;
         const transportData = { ...req.body, image };
-        const [updated, transports] = await TransportService.updateTransport(Number(req.params.id), transportData);
+        const updatedTransport = await TransportService.updateTransport(Number(req.params.id), transportData);
         
-        if (updated) {
-          res.status(200).json(transports[0]);
+        if (updatedTransport) {
+          res.status(200).json(updatedTransport);
         } else {
           res.status(404).json({ error: 'Transport not found' });
         }

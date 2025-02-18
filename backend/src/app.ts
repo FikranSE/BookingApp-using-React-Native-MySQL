@@ -1,5 +1,6 @@
 // src/app.ts
 import express, { Application } from 'express';
+import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import bodyParser from 'body-parser';
@@ -17,6 +18,8 @@ import { adminAuthMiddleware } from './middlewares/adminAuthMiddleware';
 dotenv.config();
 
 const app: Application = express();
+app.use(cors());
+app.use(express.json());
 
 
 app.use(bodyParser.json());
@@ -48,3 +51,4 @@ app.get('/', (req, res) => {
 });
 
 export default app;
+ 
