@@ -81,7 +81,7 @@ TransportBooking.init(
       allowNull: true,
     },
     status: {
-      type: DataTypes.ENUM('pending', 'approved', 'reject'),
+      type: DataTypes.ENUM('pending', 'approved', 'rejected'),
       allowNull: false,
       defaultValue: 'pending',
     },

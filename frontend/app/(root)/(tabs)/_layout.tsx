@@ -111,12 +111,12 @@ export default function Layout() {
         }}
       />
       <Tabs.Screen
-        name="schedules"
+        name="my-booking"
         options={{
-          title: "schedules",
+          title: "my booking",
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.calendar} focused={focused} label="Schedules" />
+            <TabIcon source={icons.calendar} focused={focused} label="My Booking" />
           ),
         }}
       />

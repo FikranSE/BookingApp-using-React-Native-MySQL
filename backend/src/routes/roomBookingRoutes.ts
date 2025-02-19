@@ -7,9 +7,9 @@ import RoomBookingController from '../controllers/roomBookingController';
 const router = Router();
 
 router.post('/', authMiddleware, RoomBookingController.createBooking);
-router.get('/', authMiddleware, adminMiddleware, RoomBookingController.getAllBookings);
+router.get('/', authMiddleware, RoomBookingController.getAllBookings);
 router.get('/:id', authMiddleware, RoomBookingController.getBookingById);
-router.put('/:id', authMiddleware, adminMiddleware, RoomBookingController.updateBooking);
+router.put('/:id', authMiddleware, RoomBookingController.updateBooking);
 router.delete('/:id', authMiddleware, adminMiddleware, RoomBookingController.deleteBooking);
 
 export default router;

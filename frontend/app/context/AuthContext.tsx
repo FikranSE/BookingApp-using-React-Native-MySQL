@@ -91,13 +91,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       await tokenCache.removeToken(AUTH_TOKEN_KEY);
+      const token = await tokenCache.getToken(AUTH_TOKEN_KEY); 
+      if (!token) {
+        console.log("Token has been removed successfully.");
+      } else {
+        console.warn("Token removal failed, token still exists.");
+      }
       setToken(null);
       router.replace("/(auth)/sign-in");
+  
     } catch (error) {
       console.error('Logout error:', error);
       Alert.alert('Logout Failed', 'An error occurred during logout');
     }
   };
+  
 
   if (loading) {
     return null; // Anda bisa menampilkan loading spinner di sini
