@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
-import InputField from '@/components/InputField';
+import InputField from '@/components/Inputfield_form';
 
 interface BookingForm {
   room_id: number | null;
@@ -39,8 +39,9 @@ const AddBooking = () => {
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
-  const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWwiOiJmaWtyYW4zQGdtYWlsLmNvbSIsImlhdCI6MTczOTk1Nzg4NiwiZXhwIjoxNzM5OTYxNDg2fQ.g9G3QfDCcV4PTQ4qE6me4pCVWYOsNj5dBVIN2M8wrV0';
+  const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWwiOiJmaWtyYW4zQGdtYWlsLmNvbSIsImlhdCI6MTc0MDA0Njg2NCwiZXhwIjoxNzQwMDUwNDY0fQ.9dHtzEDAvk3JV48W9G0_kO4x8v_bmtGcoJbNq5RbJ2M';
 
+  // Keep existing useEffect and helper functions...
   useEffect(() => {
     const fetchRooms = async () => {
       try {
@@ -126,107 +127,145 @@ const AddBooking = () => {
   };
 
   const renderRooms = () => (
-    <View className="mb-4">
-      <Text className="text-gray-700 font-medium mb-2">Select Room *</Text>
-      <ScrollView className="max-h-40">
+    <View className="mb-6">
+      <Text className="text-gray-700 font-medium mb-3">Select Room *</Text>
+      <ScrollView className="max-h-full">
         {rooms.map((room) => (
           <TouchableOpacity
             key={room.room_id}
             onPress={() => setForm(prev => ({ ...prev, room_id: room.room_id }))}
-            style={{
-              padding: 10,
-              marginVertical: 5,
-              backgroundColor: room.room_id === form.room_id ? '#ddd' : '#fff',
-              borderWidth: 1,
-              borderColor: '#ccc',
-              borderRadius: 5,
-            }}
+            className={`flex-row items-center p-4 mb-2 rounded-xl border ${
+              room.room_id === form.room_id 
+                ? 'bg-blue-50 border-blue-500' 
+                : 'bg-white border-gray-200'
+            }`}
           >
-            <Text>{room.room_name}</Text>
+            <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-3">
+              <Ionicons 
+                name="business" 
+                size={20} 
+                color={room.room_id === form.room_id ? '#1E40AF' : '#64748B'}
+              />
+            </View>
+            <Text className={`flex-1 text-base ${
+              room.room_id === form.room_id ? 'text-blue-900 font-medium' : 'text-gray-700'
+            }`}>
+              {room.room_name}
+            </Text>
+            {room.room_id === form.room_id && (
+              <Ionicons name="checkmark-circle" size={24} color="#1E40AF" />
+            )}
           </TouchableOpacity>
         ))}
       </ScrollView>
+    </View> 
+  );
+
+  const SectionHeader = ({ title }: { title: string }) => (
+    <View className="flex-row items-center mb-4 mt-2">
+      <View className="flex-1 h-px bg-gray-200" />
+      <Text className="mx-4 text-gray-500 font-medium">{title}</Text>
+      <View className="flex-1 h-px bg-gray-200" />
     </View>
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <View className="flex-row items-center px-4 py-3 bg-blue-900">
-        <TouchableOpacity 
-          onPress={() => router.back()}
-          className="mr-4"
-        >
-          <Ionicons name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
-        <Text className="text-xl font-bold text-white">Add Booking</Text>
+    <SafeAreaView className="flex-1 bg-gray-50 mb-20">
+      {/* Enhanced Header */}
+      <View className="bg-white shadow-sm">
+        <View className="flex-row items-center justify-between px-4 py-4">
+          <TouchableOpacity 
+            onPress={() => router.back()}
+            className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+          >
+            <Ionicons name="arrow-back" size={24} color="#1E40AF" />
+          </TouchableOpacity>
+          <Text className="text-xl font-bold text-gray-900">New Booking</Text>
+          <View className="w-10" />
+        </View>
       </View>
 
       <ScrollView className="flex-1 p-4">
-        <InputField
-          label="PIC Name *"
-          value={form.pic}
-          onChangeText={(text: string) => setForm(prev => ({ ...prev, pic: text }))}
+        <View className="bg-white rounded-2xl p-6 shadow-sm mb-6">
+          <SectionHeader title="BASIC INFORMATION" />
           
-        />
+          <InputField
+            label="PIC Name *"
+            value={form.pic}
+            onChangeText={(text: string) => setForm(prev => ({ ...prev, pic: text }))}
+            placeholder="Enter person in charge"
+            leftIcon={<Ionicons name="person" size={20} color="#64748B" />}
+          />
 
-        <InputField
-          label="Section *"
-          value={form.section}
-          onChangeText={(text: string) => setForm(prev => ({ ...prev, section: text }))}
-          
-        />
+          <InputField
+            label="Section *"
+            value={form.section}
+            onChangeText={(text: string) => setForm(prev => ({ ...prev, section: text }))}
+            placeholder="Enter section name"
+            leftIcon={<Ionicons name="pencil" size={20} color="#64748B" />}
+          />
 
-        {renderRooms()}
+          {renderRooms()}
 
-        <View className="mb-4">
-          <Text className="text-gray-700 font-medium mb-2">Booking Date *</Text>
-          <TouchableOpacity 
-            onPress={() => setShowDatePicker(true)}
-            className="bg-white border border-gray-200 rounded-xl h-12 px-4 justify-center"
-          >
-            <Text>{form.booking_date.toLocaleDateString()}</Text>
-          </TouchableOpacity>
-        </View>
+          <SectionHeader title="DATE & TIME" />
 
-        <View className="flex-row mb-4 space-x-4">
-          <View className="flex-1">
-            <Text className="text-gray-700 font-medium mb-2">Start Time *</Text>
+          <View className="mb-6">
+            <Text className="text-gray-700 font-medium mb-3">Booking Date *</Text>
             <TouchableOpacity 
-              onPress={() => setShowStartTimePicker(true)}
-              className="bg-white border border-gray-200 rounded-xl h-12 px-4 justify-center"
+              onPress={() => setShowDatePicker(true)}
+              className="flex-row items-center space-x-2 bg-white border border-gray-200 rounded-xl p-4"
             >
-              <Text>{form.start_time || 'Select time'}</Text>
+              <Ionicons name="calendar" size={20} color="#64748B" className="mr-3" />
+              <Text className="text-gray-900">{form.booking_date.toLocaleDateString()}</Text>
             </TouchableOpacity>
           </View>
 
-          <View className="flex-1">
-            <Text className="text-gray-700 font-medium mb-2">End Time *</Text>
-            <TouchableOpacity 
-              onPress={() => setShowEndTimePicker(true)}
-              className="bg-white border border-gray-200 rounded-xl h-12 px-4 justify-center"
-            >
-              <Text>{form.end_time || 'Select time'}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+          <View className="flex-row mb-6 space-x-4">
+            <View className="flex-1">
+              <Text className="text-gray-700 font-medium mb-3">Start Time *</Text>
+              <TouchableOpacity 
+                onPress={() => setShowStartTimePicker(true)}
+                className="flex-row items-center space-x-2 bg-white border border-gray-200 rounded-xl p-4"
+              >
+                <Ionicons name="time" size={20} color="#64748B" className="mr-3" />
+                <Text className="text-gray-900">{form.start_time || 'Select time'}</Text>
+              </TouchableOpacity>
+            </View>
 
-        <InputField
-          label="Description"
-          value={form.description}
-          onChangeText={(text: string) => setForm(prev => ({ ...prev, description: text }))}
-          
-          multiline
-        />
+            <View className="flex-1">
+              <Text className="text-gray-700 font-medium mb-3">End Time *</Text>
+              <TouchableOpacity 
+                onPress={() => setShowEndTimePicker(true)}
+                className="flex-row items-center space-x-2 bg-white border border-gray-200 rounded-xl p-4"
+              >
+                <Ionicons name="time" size={20} color="#64748B" className="mr-3" />
+                <Text className="text-gray-900">{form.end_time || 'Select time'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <SectionHeader title="ADDITIONAL DETAILS" />
+
+          <InputField
+            label="Description"
+            value={form.description}
+            onChangeText={(text: string) =>setForm(prev => ({ ...prev, description: text }))}
+            placeholder="Enter booking description"
+            multiline
+            numberOfLines={4}
+            style={{ padding: 4 }} 
+          />
+        </View>
 
         <TouchableOpacity
           onPress={handleSubmit}
           disabled={loading}
-          className={`bg-blue-900 py-4 rounded-xl mt-6 ${loading ? 'opacity-70' : ''}`}
+          className={`bg-blue-900 py-4 rounded-xl mb-6 ${loading ? 'opacity-70' : ''}`}
         >
-          {loading ? (
+          {loading ? ( 
             <ActivityIndicator color="white" />
           ) : (
-            <Text className="text-white text-center font-bold">Submit Booking</Text>
+            <Text className="text-white text-center font-bold text-lg">Submit Booking</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

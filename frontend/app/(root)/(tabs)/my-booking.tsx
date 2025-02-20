@@ -17,7 +17,7 @@ import { router } from "expo-router";
 interface IApprovalStatus {
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   feedback?: string;
-  approverName?: string;
+  approverName?: string; 
   approvedAt?: string;
 }
 
@@ -38,7 +38,7 @@ const MyBooking = () => {
   const [selectedType, setSelectedType] = useState<"ALL" | "ROOM" | "TRANSPORT">("ALL");
   const [bookings, setBookings] = useState<IBooking[]>([]);
   const [loading, setLoading] = useState(true);
-  const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWwiOiJmaWtyYW4zQGdtYWlsLmNvbSIsImlhdCI6MTczOTk1Nzg4NiwiZXhwIjoxNzM5OTYxNDg2fQ.g9G3QfDCcV4PTQ4qE6me4pCVWYOsNj5dBVIN2M8wrV0';
+  const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWwiOiJmaWtyYW4zQGdtYWlsLmNvbSIsImlhdCI6MTc0MDA1MzMxNywiZXhwIjoxNzQwMDU2OTE3fQ.J3q3O8akYzLo47d1y9fZ1aG-mHmKeV-aa17lN3-lZ1A';
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -58,7 +58,7 @@ const MyBooking = () => {
           Alert.alert('Error', data.error);
           return;
         }
-
+ 
         // Assuming the data is an array of bookings
         const mappedBookings = data.map((item: any) => ({
           id: item.booking_id.toString(),
@@ -183,7 +183,7 @@ const BookingCard = ({ booking }: { booking: IBooking }) => {
         ) : bookings.length > 0 ? (
           bookings.map((booking) => (
             <BookingCard key={booking.id} booking={booking} />
-          ))
+          )) 
         ) : (
           <View className="flex-1 items-center justify-center py-12">
             <Text className="text-gray-500 text-center">No bookings found</Text>

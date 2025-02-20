@@ -15,11 +15,13 @@ interface IApprovalStatus {
 interface IBooking {
   id: string;
   type: 'ROOM' | 'TRANSPORT';
-  title: string;
+  pic: string;
+  section: string;
+  roomName: string;
   date: string;
   startTime: string;
   endTime: string;
-  location: string;
+  description: string;
   isOngoing: boolean;
   approval: IApprovalStatus;
 }
@@ -30,7 +32,7 @@ const DetailBooking = () => {
   const [loading, setLoading] = useState(true);
   const [bookingDetail, setBookingDetail] = useState<IBooking | null>(null);
 
-  const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWwiOiJmaWtyYW4zQGdtYWlsLmNvbSIsImlhdCI6MTczOTk1Nzg4NiwiZXhwIjoxNzM5OTYxNDg2fQ.g9G3QfDCcV4PTQ4qE6me4pCVWYOsNj5dBVIN2M8wrV0';
+  const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWwiOiJmaWtyYW4zQGdtYWlsLmNvbSIsImlhdCI6MTc0MDA0Njg2NCwiZXhwIjoxNzQwMDUwNDY0fQ.9dHtzEDAvk3JV48W9G0_kO4x8v_bmtGcoJbNq5RbJ2M';
 
   useEffect(() => {
     const fetchBookingDetail = async () => {
@@ -57,18 +59,46 @@ const DetailBooking = () => {
           return;
         }
 
+        // Get room details
+        const roomResponse = await axios.get(
+          `https://j9d3hc82-3001.asse.devtunnels.ms/api/rooms/${data.room_id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        // Get approver details if approved_by exists
+        let approverName = undefined;
+        if (data.approved_by) {
+          const approverResponse = await axios.get(
+            `https://j9d3hc82-3001.asse.devtunnels.ms/api/users/${data.approved_by}`,
+            {
+              headers: {
+                Authorization: `Bearer ${authToken}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+          approverName = `${approverResponse.data.first_name} ${approverResponse.data.last_name}`;
+        }
+
         const mappedBooking: IBooking = {
           id: data.booking_id.toString(),
           type: 'ROOM',
-          title: data.description || "No title",
+          pic: data.pic || "Not assigned",
+          section: data.section || "No section",
+          roomName: roomResponse.data.room_name || "Unknown Room",
           date: data.booking_date,
           startTime: data.start_time,
           endTime: data.end_time,
-          location: data.section,
+          description: data.description,
           isOngoing: false,
           approval: {
             status: data.status.toUpperCase() as 'PENDING' | 'APPROVED' | 'REJECTED',
-            approverName: data.pic,
+            approverName: approverName,
             approvedAt: data.approved_at ? new Date(data.approved_at).toISOString() : undefined,
             feedback: data.notes || undefined,
           },
@@ -121,13 +151,13 @@ const DetailBooking = () => {
     Alert.alert(
       'Cancel Booking',
       'Are you sure you want to cancel this booking?',
-      [
+      [ 
         {
           text: 'No',
           style: 'cancel',
         },
         {
-          text: 'Yes, Cancel',
+          text: 'Yes, Cancel', 
           style: 'destructive',
           onPress: () => {
             // Add cancel logic here
@@ -156,17 +186,13 @@ const DetailBooking = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      {/* Header with Back Button */}
-      <View className="px-6 pt-4 pb-4 border-b border-gray-100 bg-blue-900">
-        <View className="flex-row items-center space-x-4">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="w-10 h-10 bg-white/20 rounded-xl items-center justify-center"
-          >
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
-          <Text className="text-xl font-bold text-white">Booking Details</Text>
-        </View>
+      {/* Header */}
+      <View className="flex-row items-center justify-between px-4 py-3">
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={22} color="black" />
+        </TouchableOpacity> 
+        <Text className="text-lg font-bold text-gray-800">Add Bookings</Text>
+        <View className="w-6" />
       </View>
 
       <ScrollView className="flex-1">
@@ -176,8 +202,9 @@ const DetailBooking = () => {
           <View className="bg-blue-50 p-6 rounded-2xl mb-8">
             <View className="flex-row justify-between items-start">
               <View className="flex-1">
-                <Text className="text-2xl font-bold text-blue-900">{bookingDetail.title}</Text>
+                <Text className="text-2xl font-bold text-blue-900">{bookingDetail.section}</Text>
                 <Text className="text-blue-700/70 mt-1">Booking #{bookingDetail.id}</Text>
+                <Text className="text-blue-700/70 mt-1">{bookingDetail.roomName}</Text>
               </View>
               <View className={`px-4 py-2 rounded-xl ${getStatusColor(bookingDetail.approval.status)}`}>
                 <Text className="font-bold">{bookingDetail.approval.status}</Text>
@@ -190,9 +217,19 @@ const DetailBooking = () => {
             <Text className="text-lg font-bold text-blue-900 mb-4">Booking Information</Text>
             
             <InfoRow
-              icon="location"
-              label="Location"
-              value={bookingDetail.location}
+              icon="person"
+              label="Person in Charge"
+              value={bookingDetail.pic}
+            />
+            <InfoRow
+              icon="business"
+              label="Room"
+              value={bookingDetail.roomName}
+            />
+            <InfoRow
+              icon="newspaper"
+              label="Description"
+              value={bookingDetail.description}
             />
             <InfoRow
               icon="calendar"
@@ -209,6 +246,13 @@ const DetailBooking = () => {
                 icon="person"
                 label="Approved By"
                 value={bookingDetail.approval.approverName}
+              />
+            )}
+            {bookingDetail.approval.approvedAt && (
+              <InfoRow
+                icon="time"
+                label="Approved At"
+                value={new Date(bookingDetail.approval.approvedAt).toLocaleString()}
               />
             )}
           </View>
