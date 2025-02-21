@@ -4,6 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
+import { tokenCache } from "@/lib/auth";
+import { AUTH_TOKEN_KEY } from "@/lib/constants";
 
 interface IApprovalStatus {
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -32,8 +34,6 @@ const DetailBooking = () => {
   const [loading, setLoading] = useState(true);
   const [bookingDetail, setBookingDetail] = useState<IBooking | null>(null);
 
-  const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWwiOiJmaWtyYW4zQGdtYWlsLmNvbSIsImlhdCI6MTc0MDA0Njg2NCwiZXhwIjoxNzQwMDUwNDY0fQ.9dHtzEDAvk3JV48W9G0_kO4x8v_bmtGcoJbNq5RbJ2M';
-
   useEffect(() => {
     const fetchBookingDetail = async () => {
       if (!id) {
@@ -42,72 +42,75 @@ const DetailBooking = () => {
       }
 
       try {
-        const response = await axios.get(
-          `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings/${id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
-        const data = response.data;
-
-        if (data.error) {
-          Alert.alert('Error', data.error);
+        const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
+        
+        if (!authToken) {
+          Alert.alert('Error', 'Not authenticated');
+          router.push('/(auth)/sign-in');
           return;
         }
 
-        // Get room details
-        const roomResponse = await axios.get(
-          `https://j9d3hc82-3001.asse.devtunnels.ms/api/rooms/${data.room_id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              'Content-Type': 'application/json',
-            },
+        const axiosInstance = axios.create({
+          baseURL: 'https://j9d3hc82-3001.asse.devtunnels.ms/api',
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        // Handle axios errors globally
+        axiosInstance.interceptors.response.use(
+          response => response,
+          error => {
+            if (error.response?.status === 401) {
+              tokenCache.removeToken(AUTH_TOKEN_KEY);
+              router.push('/(auth)/sign-in');
+            }
+            return Promise.reject(error);
           }
         );
 
-        // Get approver details if approved_by exists
-        let approverName = undefined;
-        if (data.approved_by) {
-          const approverResponse = await axios.get(
-            `https://j9d3hc82-3001.asse.devtunnels.ms/api/users/${data.approved_by}`,
-            {
-              headers: {
-                Authorization: `Bearer ${authToken}`,
-                'Content-Type': 'application/json',
-              },
-            }
-          );
+        // Get booking details
+        const bookingResponse = await axiosInstance.get(`/room-bookings/${id}`);
+        const bookingData = bookingResponse.data;
+
+        // Get room details
+        const roomResponse = await axiosInstance.get(`/rooms/${bookingData.room_id}`);
+        const roomData = roomResponse.data;
+
+        // Get approver details if exists
+        let approverName;
+        if (bookingData.approved_by) {
+          const approverResponse = await axiosInstance.get(`/users/${bookingData.approved_by}`);
           approverName = `${approverResponse.data.first_name} ${approverResponse.data.last_name}`;
         }
 
         const mappedBooking: IBooking = {
-          id: data.booking_id.toString(),
+          id: bookingData.booking_id.toString(),
           type: 'ROOM',
-          pic: data.pic || "Not assigned",
-          section: data.section || "No section",
-          roomName: roomResponse.data.room_name || "Unknown Room",
-          date: data.booking_date,
-          startTime: data.start_time,
-          endTime: data.end_time,
-          description: data.description,
+          pic: bookingData.pic || "Not assigned",
+          section: bookingData.section || "No section",
+          roomName: roomData.room_name || "Unknown Room",
+          date: bookingData.booking_date,
+          startTime: bookingData.start_time,
+          endTime: bookingData.end_time,
+          description: bookingData.description,
           isOngoing: false,
           approval: {
-            status: data.status.toUpperCase() as 'PENDING' | 'APPROVED' | 'REJECTED',
+            status: bookingData.status.toUpperCase() as 'PENDING' | 'APPROVED' | 'REJECTED',
             approverName: approverName,
-            approvedAt: data.approved_at ? new Date(data.approved_at).toISOString() : undefined,
-            feedback: data.notes || undefined,
+            approvedAt: bookingData.approved_at ? new Date(bookingData.approved_at).toISOString() : undefined,
+            feedback: bookingData.notes || undefined,
           },
         };
 
         setBookingDetail(mappedBooking);
       } catch (error) {
         console.error("Error fetching booking details: ", error);
-        Alert.alert('Error', 'There was an error fetching the booking details.');
+        Alert.alert(
+          'Error',
+          'Failed to fetch booking details. Please try again later.'
+        );
       } finally {
         setLoading(false);
       }
@@ -135,33 +138,56 @@ const DetailBooking = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'APPROVED':
-        return 'bg-green-50 text-green-700';
+        return 'bg-green-400';
       case 'REJECTED':
-        return 'bg-red-600 text-white';
+        return 'bg-red-400';
       default:
-        return 'bg-yellow-50 text-yellow-700';
+        return 'bg-yellow-400';
     }
   };
 
   const handleReschedule = () => {
-    Alert.alert('Reschedule', 'Navigate to reschedule screen');
+    router.push(`/reschedule-booking?id=${id}`);
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     Alert.alert(
       'Cancel Booking',
       'Are you sure you want to cancel this booking?',
-      [ 
+      [
         {
           text: 'No',
           style: 'cancel',
         },
         {
-          text: 'Yes, Cancel', 
+          text: 'Yes, Cancel',
           style: 'destructive',
-          onPress: () => {
-            // Add cancel logic here
-            Alert.alert('Booking cancelled successfully');
+          onPress: async () => {
+            try {
+              const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
+              
+              if (!authToken) {
+                Alert.alert('Error', 'Not authenticated');
+                router.push('/(auth)/sign-in');
+                return;
+              }
+
+              await axios.delete(
+                `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings/${id}`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${authToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
+
+              Alert.alert('Success', 'Booking cancelled successfully');
+              router.back();
+            } catch (error) {
+              console.error('Error cancelling booking:', error);
+              Alert.alert('Error', 'Failed to cancel booking. Please try again.');
+            }
           },
         },
       ],
@@ -191,7 +217,7 @@ const DetailBooking = () => {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={22} color="black" />
         </TouchableOpacity> 
-        <Text className="text-lg font-bold text-gray-800">Add Bookings</Text>
+        <Text className="text-lg font-bold text-gray-800">Booking Details</Text>
         <View className="w-6" />
       </View>
 
@@ -207,7 +233,7 @@ const DetailBooking = () => {
                 <Text className="text-blue-700/70 mt-1">{bookingDetail.roomName}</Text>
               </View>
               <View className={`px-4 py-2 rounded-xl ${getStatusColor(bookingDetail.approval.status)}`}>
-                <Text className="font-bold">{bookingDetail.approval.status}</Text>
+                <Text className="font-bold text-neutral-100">{bookingDetail.approval.status}</Text>
               </View>
             </View>
           </View>

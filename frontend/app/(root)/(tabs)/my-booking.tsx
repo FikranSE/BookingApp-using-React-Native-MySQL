@@ -12,8 +12,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { icons } from "@/constants";
 import { router } from "expo-router";
+import { tokenCache } from "@/lib/auth";
+import { AUTH_TOKEN_KEY } from "@/lib/constants";
 
-// Types for API integration
+// Your existing interfaces remain the same
 interface IApprovalStatus {
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   feedback?: string;
@@ -38,37 +40,48 @@ const MyBooking = () => {
   const [selectedType, setSelectedType] = useState<"ALL" | "ROOM" | "TRANSPORT">("ALL");
   const [bookings, setBookings] = useState<IBooking[]>([]);
   const [loading, setLoading] = useState(true);
-  const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWwiOiJmaWtyYW4zQGdtYWlsLmNvbSIsImlhdCI6MTc0MDA1MzMxNywiZXhwIjoxNzQwMDU2OTE3fQ.J3q3O8akYzLo47d1y9fZ1aG-mHmKeV-aa17lN3-lZ1A';
 
   useEffect(() => {
     const fetchBookings = async () => {
       try {
+        const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
+        
+        if (!authToken) {
+          Alert.alert('Error', 'Not authenticated');
+          // Optionally redirect to login
+          router.push('/(auth)/sign-in');
+          return;
+        }
+
         const response = await fetch("https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings", {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${authToken}`, // Replace with actual token
+            'Authorization': `Bearer ${authToken}`,
             'Content-Type': 'application/json',
           },
         });
 
         const data = await response.json();
-        console.log('Fetched data:', data); // Log the API response to inspect the structure
-
-        if (data.error) {
-          Alert.alert('Error', data.error);
-          return;
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            // Token might be expired
+            await tokenCache.removeToken(AUTH_TOKEN_KEY);
+            router.push('/(auth)/sign-in');
+            return;
+          }
+          throw new Error(data.error || 'Failed to fetch bookings');
         }
- 
-        // Assuming the data is an array of bookings
+
         const mappedBookings = data.map((item: any) => ({
           id: item.booking_id.toString(),
-          type: 'ROOM', // Assuming it's a room booking for this example
+          type: 'ROOM',
           title: item.description || "No title",
           date: item.booking_date,
           startTime: item.start_time,
           endTime: item.end_time,
           location: item.section,
-          isOngoing: false, // Update this based on your logic for ongoing bookings
+          isOngoing: false,
           approval: {
             status: item.status.toUpperCase() as 'PENDING' | 'APPROVED' | 'REJECTED',
             approverName: item.pic,
@@ -80,7 +93,7 @@ const MyBooking = () => {
         setBookings(mappedBookings);
       } catch (error) {
         console.error("Error fetching bookings: ", error);
-        Alert.alert('Error', 'There was an error fetching the bookings.');
+        Alert.alert('Error', 'Failed to fetch bookings');
       } finally {
         setLoading(false);
       }
@@ -100,6 +113,8 @@ const MyBooking = () => {
 // Inside MyBooking component
 const BookingCard = ({ booking }: { booking: IBooking }) => {
   return (
+
+    
     <TouchableOpacity
       className="bg-white p-4 rounded-xl mb-3 shadow-sm"
       onPress={() => router.push(`/detail-booking?id=${booking.id}`)}  // Use query params here
@@ -145,7 +160,7 @@ const BookingCard = ({ booking }: { booking: IBooking }) => {
 
 
   return (
-    <SafeAreaView className="bg-slate-100 flex-1">
+    <SafeAreaView className="bg-slate-100 flex-1 pb-20">
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 bg-slate-100">
         <TouchableOpacity onPress={() => navigation.goBack()}>

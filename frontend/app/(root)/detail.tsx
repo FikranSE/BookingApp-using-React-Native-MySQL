@@ -5,6 +5,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { tokenCache } from "@/lib/auth";  // Import tokenCache from lib/auth
+import { AUTH_TOKEN_KEY } from "@/lib/constants";  // Import the constant key for the auth token
 
 interface IRoom {
   room_id: number;
@@ -29,10 +31,22 @@ const Detail = () => {
   const [data, setData] = useState<IRoom | ITransport | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWwiOiJmaWtyYW4zQGdtYWlsLmNvbSIsImlhdCI6MTc0MDA0Njg2NCwiZXhwIjoxNzQwMDUwNDY0fQ.9dHtzEDAvk3JV48W9G0_kO4x8v_bmtGcoJbNq5RbJ2M';
+  // Fetch authToken from tokenCache
+  const fetchAuthToken = async () => {
+    return await tokenCache.getToken(AUTH_TOKEN_KEY);
+  };
 
   const fetchDetail = async () => {
     try {
+      const authToken = await fetchAuthToken();
+
+      if (!authToken) {
+        Alert.alert('Error', 'Not authenticated');
+        // Redirect to login page if no token
+        router.push('/(auth)/sign-in');
+        return;
+      }
+
       const endpoint = type === 'room'
         ? `https://j9d3hc82-3001.asse.devtunnels.ms/api/rooms/${id}`
         : `https://j9d3hc82-3001.asse.devtunnels.ms/api/transports/${id}`;

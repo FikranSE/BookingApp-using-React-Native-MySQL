@@ -3,8 +3,9 @@ import { View, Text, TouchableOpacity, Image, ScrollView, Alert, ActivityIndicat
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import axios from 'axios';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { tokenCache } from "@/lib/auth";  // Import tokenCache from lib/auth
+import { AUTH_TOKEN_KEY } from "@/lib/constants";  // Import the constant key for the auth token
 
 interface IRoom {
   room_id: number;
@@ -30,18 +31,30 @@ const Explore = () => {
   const [transportations, setTransportations] = useState<ITransport[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWwiOiJmaWtyYW4zQGdtYWlsLmNvbSIsImlhdCI6MTc0MDA0Njg2NCwiZXhwIjoxNzQwMDUwNDY0fQ.9dHtzEDAvk3JV48W9G0_kO4x8v_bmtGcoJbNq5RbJ2M';
+  // Fetch authToken from tokenCache
+  const fetchAuthToken = async () => {
+    return await tokenCache.getToken(AUTH_TOKEN_KEY);
+  };
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      await Promise.all([fetchAllRooms(), fetchAllTransportations()]);
+      const authToken = await fetchAuthToken();
+
+      if (!authToken) {
+        Alert.alert('Error', 'Not authenticated');
+        // Redirect to login page if no token
+        router.push('/(auth)/sign-in');
+        return;
+      }
+
+      await Promise.all([fetchAllRooms(authToken), fetchAllTransportations(authToken)]);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchAllRooms = async () => {
+  const fetchAllRooms = async (authToken: string) => {
     try {
       const response = await axios.get('https://j9d3hc82-3001.asse.devtunnels.ms/api/rooms', {
         headers: { 'Authorization': `Bearer ${authToken}` }
@@ -53,7 +66,7 @@ const Explore = () => {
     }
   };
 
-  const fetchAllTransportations = async () => {
+  const fetchAllTransportations = async (authToken: string) => {
     try {
       const response = await axios.get('https://j9d3hc82-3001.asse.devtunnels.ms/api/transports', {
         headers: { 'Authorization': `Bearer ${authToken}` }
@@ -68,7 +81,7 @@ const Explore = () => {
   const handleError = (error: any) => {
     if (error.response?.status === 401) {
       Alert.alert('Session Expired', 'Please log in again to continue.', [
-        { text: 'OK', onPress: () => router.replace('/login') }
+        { text: 'OK', onPress: () => router.replace('/(auth)/sign-in') }
       ]);
     } else {
       Alert.alert('Error', 'Something went wrong. Please try again later.');
@@ -165,7 +178,7 @@ const Explore = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50 pb-24">
-      <View className="px-5 pt-4 pb-6">
+      <View className="px-5 pt-4 pb-3">
         
         <View className="flex-row justify-center items-center">
           <TabButton 
