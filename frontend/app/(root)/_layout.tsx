@@ -9,7 +9,10 @@ const Layout = () => {
       <Stack.Screen name="notifikasi" options={{headerShown: false}}/>
       <Stack.Screen name="change-password" options={{headerShown: false}}/>
       <Stack.Screen name="faq" options={{headerShown: false}}/>
-      <Stack.Screen name="detail-booking" options={{headerShown: false}}/>
+      <Stack.Screen name="booking-room" options={{headerShown: false}}/>
+      <Stack.Screen name="booking-transport" options={{headerShown: false}}/>
+      <Stack.Screen name="detail-bookingRoom" options={{headerShown: false}}/>
+      <Stack.Screen name="detail-bookingTransport" options={{headerShown: false}}/>
       <Stack.Screen name="detail" options={{headerShown: false}}/>
       <Stack.Screen name="edit-booking" options={{headerShown: false}}/>
     </Stack>

@@ -80,7 +80,7 @@ export default function Layout() {
         }}
       />
       <Tabs.Screen
-        name="addBooking"
+        name="opsi-booking"
         options={{
           title: "Add Booking",
           headerShown: false,

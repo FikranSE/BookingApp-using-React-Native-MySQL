@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
@@ -24,9 +24,13 @@ interface BookingForm {
 interface Room {
   room_id: number;
   room_name: string;
+  room_type: string;  // Added room_type
+  capacity: number;  // Added capacity
+  image: string;  // Added image
+  facilities: string;  // Facilities as string (comma-separated)
 }
 
-const AddBooking = () => {
+const BookingRoom = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<BookingForm>({
@@ -68,7 +72,13 @@ const AddBooking = () => {
         });
 
         if (response.data && Array.isArray(response.data)) {
-          setRooms(response.data);
+          // Ensure facilities is always a valid array
+          const roomsWithFacilities = response.data.map((room: Room) => ({
+            ...room,
+            // Ensure facilities is an array, even if it's stored as a string in the database
+            facilities: room.facilities ? room.facilities.split(',').map((item: string) => item.trim()) : [],
+          }));
+          setRooms(roomsWithFacilities);
         } else {
           showAlert('Error', 'Invalid rooms data received.', 'error');
         }
@@ -124,7 +134,7 @@ const AddBooking = () => {
       showAlert('Success', 'Booking submitted successfully', 'success');
       setTimeout(() => {
         router.replace('/(root)/(tabs)/my-booking');
-      },2000);
+      }, 2000);
     } catch (error) {
       console.error('Booking error:', error);
       if (error.response) {
@@ -171,24 +181,32 @@ const AddBooking = () => {
           <TouchableOpacity
             key={room.room_id}
             onPress={() => setForm(prev => ({ ...prev, room_id: room.room_id }))}
-            className={`flex-row items-center p-4 mb-2 rounded-xl border ${
+            className={`flex-row items-center p-4 mb-4 rounded-xl border ${
               room.room_id === form.room_id 
                 ? 'bg-blue-50 border-blue-500' 
                 : 'bg-white border-gray-200'
             }`}
           >
-            <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-3">
-              <Ionicons 
-                name="business" 
-                size={20} 
-                color={room.room_id === form.room_id ? '#1E40AF' : '#64748B'}
-              />
+            <View className="w-20 h-20 bg-blue-100 rounded-lg overflow-hidden mr-4">
+              <Image source={{ uri: room.image }} style={{ width: '100%', height: '100%' }} />
             </View>
-            <Text className={`flex-1 text-base ${
-              room.room_id === form.room_id ? 'text-blue-900 font-medium' : 'text-gray-700'
-            }`}>
-              {room.room_name}
-            </Text>
+            <View className="flex-1">
+              <Text className={`text-base ${
+                room.room_id === form.room_id ? 'text-blue-900 font-medium' : 'text-gray-700'
+              }`}>
+                {room.room_name}
+              </Text>
+              <Text className={`text-sm ${
+                room.room_id === form.room_id ? 'text-blue-700' : 'text-gray-500'
+              }`}>
+                Type: {room.room_type} | Capacity: {room.capacity}
+              </Text>
+              <Text className={`text-xs ${
+                room.room_id === form.room_id ? 'text-blue-700' : 'text-gray-500'
+              }`}>
+                Facilities: {room.facilities.length > 0 ? room.facilities.join(', ') : 'No facilities available'}
+              </Text>
+            </View>
             {room.room_id === form.room_id && (
               <Ionicons name="checkmark-circle" size={24} color="#1E40AF" />
             )}
@@ -207,7 +225,7 @@ const AddBooking = () => {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 pb-20">
+    <SafeAreaView className="flex-1 bg-gray-50 pb-10">
       {/* Enhanced Header */}
       <View className="shadow-sm">
         <View className="flex-row items-center justify-between px-4 py-4">
@@ -286,7 +304,7 @@ const AddBooking = () => {
           <InputField
             label="Description"
             value={form.description}
-            onChangeText={(text: string) =>setForm(prev => ({ ...prev, description: text }))}
+            onChangeText={(text: string) => setForm(prev => ({ ...prev, description: text }))}
             placeholder="Enter booking description"
             multiline
             numberOfLines={4}
@@ -371,4 +389,4 @@ const AddBooking = () => {
   );
 };
 
-export default AddBooking;
+export default BookingRoom;

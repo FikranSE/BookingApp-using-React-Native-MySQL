@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, ActivityIndicator, Alert, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, Alert, TouchableOpacity, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
+import {images} from "@/constants";
 import { tokenCache } from "@/lib/auth";
 import { AUTH_TOKEN_KEY } from "@/lib/constants";
 
@@ -19,7 +20,12 @@ interface IBooking {
   type: 'ROOM' | 'TRANSPORT';
   pic: string;
   section: string;
-  roomName: string;
+  roomName?: string;
+  vehicleName?: string;
+  driverName?: string;
+  capacity?: string;
+  image?: string;
+  destination?: string;
   date: string;
   startTime: string;
   endTime: string;
@@ -28,7 +34,7 @@ interface IBooking {
   approval: IApprovalStatus;
 }
 
-const DetailBooking = () => {
+const DetailBookingTransport = () => {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -70,13 +76,13 @@ const DetailBooking = () => {
           }
         );
 
-        // Get booking details
-        const bookingResponse = await axiosInstance.get(`/room-bookings/${id}`);
+        // Get transport booking details
+        const bookingResponse = await axiosInstance.get(`/transport-bookings/${id}`);
         const bookingData = bookingResponse.data;
 
-        // Get room details
-        const roomResponse = await axiosInstance.get(`/rooms/${bookingData.room_id}`);
-        const roomData = roomResponse.data;
+        // Get transport details
+        const transportResponse = await axiosInstance.get(`/transports/${bookingData.transport_id}`);
+        const transportData = transportResponse.data;
 
         // Get approver details if exists
         let approverName;
@@ -87,10 +93,14 @@ const DetailBooking = () => {
 
         const mappedBooking: IBooking = {
           id: bookingData.booking_id.toString(),
-          type: 'ROOM',
+          type: 'TRANSPORT',
           pic: bookingData.pic || "Not assigned",
           section: bookingData.section || "No section",
-          roomName: roomData.room_name || "Unknown Room",
+          vehicleName: transportData.vehicle_name || "Unknown Vehicle",
+          driverName: transportData.driver_name || "Unknown Driver",
+          capacity: transportData.capacity.toString() || "Unknown Capacity",
+          image: transportData.image || undefined,
+          destination: bookingData.destination || "No destination",
           date: bookingData.booking_date,
           startTime: bookingData.start_time,
           endTime: bookingData.end_time,
@@ -124,13 +134,15 @@ const DetailBooking = () => {
     label: string; 
     value: string;
   }) => (
-    <View className="flex-row items-center space-x-4 py-5 border-b border-gray-100">
-      <View className="w-12 h-12 bg-blue-50 rounded-xl items-center justify-center">
-        <Ionicons name={icon as any} size={24} color="#1E3A8A" />
-      </View>
-      <View className="flex-1">
-        <Text className="text-sm text-gray-500 font-medium">{label}</Text>
-        <Text className="text-base text-gray-900 font-semibold mt-1">{value}</Text>
+    <View className="mb-4">
+      <View className="flex-row items-center bg-blue-50 rounded-2xl p-4">
+        <View className="w-12 h-12 bg-blue-900 rounded-xl items-center justify-center mr-4">
+          <Ionicons name={icon as any} size={24} color="white" />
+        </View>
+        <View className="flex-1">
+          <Text className="text-blue-900 text-sm font-medium">{label}</Text>
+          <Text className="text-gray-800 font-semibold text-lg mt-1">{value}</Text>
+        </View>
       </View>
     </View>
   );
@@ -173,7 +185,7 @@ const DetailBooking = () => {
               }
 
               await axios.delete(
-                `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings/${id}`,
+                `https://j9d3hc82-3001.asse.devtunnels.ms/api/transport-bookings/${id}`,
                 {
                   headers: {
                     Authorization: `Bearer ${authToken}`,
@@ -212,76 +224,98 @@ const DetailBooking = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3">
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color="black" />
-        </TouchableOpacity> 
-        <Text className="text-lg font-bold text-gray-800">Booking Details</Text>
-        <View className="w-6" />
-      </View>
-
       <ScrollView className="flex-1">
-        {/* Content Container */}
-        <View className="px-6 pt-6">
-          {/* Title and Status Section */}
-          <View className="bg-blue-50 p-6 rounded-2xl mb-8">
-            <View className="flex-row justify-between items-start">
-              <View className="flex-1">
-                <Text className="text-2xl font-bold text-blue-900">{bookingDetail.section}</Text>
-                <Text className="text-blue-700/70 mt-1">Booking #{bookingDetail.id}</Text>
-                <Text className="text-blue-700/70 mt-1">{bookingDetail.roomName}</Text>
-              </View>
-              <View className={`px-4 py-2 rounded-xl ${getStatusColor(bookingDetail.approval.status)}`}>
-                <Text className="font-bold text-neutral-100">{bookingDetail.approval.status}</Text>
-              </View>
-            </View>
-          </View>
+        {/* Header Section */}
+        <View className="relative">
+          <Image
+            source={images.profile1}
+            className="w-full h-80"
+            resizeMode="cover"
+          />
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="absolute top-4 left-4 w-12 h-12 bg-blue-900 rounded-full items-center justify-center"
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.2,
+              shadowRadius: 8,
+              elevation: 5,
+            }}
+          >
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
 
-          {/* Details Section */}
-          <View className="bg-white rounded-2xl mb-6">
-            <Text className="text-lg font-bold text-blue-900 mb-4">Booking Information</Text>
-            
-            <InfoRow
-              icon="person"
-              label="Person in Charge"
-              value={bookingDetail.pic}
-            />
-            <InfoRow
-              icon="business"
-              label="Room"
-              value={bookingDetail.roomName}
-            />
-            <InfoRow
-              icon="newspaper"
-              label="Description"
-              value={bookingDetail.description}
-            />
-            <InfoRow
-              icon="calendar"
-              label="Date"
-              value={bookingDetail.date}
-            />
-            <InfoRow
-              icon="time"
-              label="Time"
-              value={`${bookingDetail.startTime} - ${bookingDetail.endTime}`}
-            />
-            {bookingDetail.approval.approverName && (
+        {/* Content Section */}
+        <View className="p-6 -mt-10 bg-white rounded-t-3xl">
+          <Text className="text-3xl font-bold text-gray-800 mb-2">
+            {bookingDetail.section} - Booking #{bookingDetail.id}
+          </Text>
+           {/* Status Section */}
+            <View className={`w-1/3 px-4 py-2 rounded-xl mb-6 ${getStatusColor(bookingDetail.approval.status)}`}>
+                <Text className="font-bold text-neutral-100 text-center">{bookingDetail.approval.status}</Text>
+            </View>
+
+          {/* Info Rows */}
+          <InfoRow
+            icon="person"
+            label="Person in Charge"
+            value={bookingDetail.pic}
+          />
+          {bookingDetail.type === 'TRANSPORT' && (
+            <>
+              <InfoRow
+                icon="car"
+                label="Vehicle Name"
+                value={bookingDetail.vehicleName}
+              />
               <InfoRow
                 icon="person"
-                label="Approved By"
-                value={bookingDetail.approval.approverName}
+                label="Driver Name"
+                value={bookingDetail.driverName}
               />
-            )}
-            {bookingDetail.approval.approvedAt && (
               <InfoRow
-                icon="time"
-                label="Approved At"
-                value={new Date(bookingDetail.approval.approvedAt).toLocaleString()}
+                icon="layers"
+                label="Capacity"
+                value={bookingDetail.capacity}
               />
-            )}
-          </View>
+              <InfoRow
+                icon="location"
+                label="Destination"
+                value={bookingDetail.destination}
+              />
+            </>
+          )}
+          <InfoRow
+            icon="newspaper"
+            label="Description"
+            value={bookingDetail.description}
+          />
+          <InfoRow
+            icon="calendar"
+            label="Date"
+            value={bookingDetail.date}
+          />
+          <InfoRow
+            icon="time"
+            label="Time"
+            value={`${bookingDetail.startTime} - ${bookingDetail.endTime}`}
+          />
+          {bookingDetail.approval.approverName && (
+            <InfoRow
+              icon="person"
+              label="Approved By"
+              value={bookingDetail.approval.approverName}
+            />
+          )}
+          {bookingDetail.approval.approvedAt && (
+            <InfoRow
+              icon="time"
+              label="Approved At"
+              value={new Date(bookingDetail.approval.approvedAt).toLocaleString()}
+            />
+          )}
 
           {/* Feedback Section */}
           {bookingDetail.approval.feedback && (
@@ -317,4 +351,4 @@ const DetailBooking = () => {
   );
 };
 
-export default DetailBooking;
+export default DetailBookingTransport;

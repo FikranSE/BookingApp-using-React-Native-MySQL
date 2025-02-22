@@ -24,6 +24,7 @@ module.exports = (sequelize, DataTypes) => {
     section: DataTypes.STRING,
     status: DataTypes.STRING,
     notes: DataTypes.TEXT,
+    destination: DataTypes.STRING,
     approver_id: DataTypes.INTEGER,
     approved_at: DataTypes.DATE
   }, {

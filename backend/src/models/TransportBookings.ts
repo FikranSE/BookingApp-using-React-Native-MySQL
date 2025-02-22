@@ -1,4 +1,3 @@
-// src/models/TransportBooking.ts
 import { Model, DataTypes, Optional } from 'sequelize';
 import sequelize from '../config/db';
 
@@ -16,6 +15,7 @@ interface TransportBookingAttributes {
   notes?: string;
   approver_id?: number;
   approved_at?: Date;
+  destination: string;  // New attribute
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -36,6 +36,7 @@ class TransportBooking extends Model<TransportBookingAttributes, TransportBookin
   public notes?: string;
   public approver_id?: number;
   public approved_at!: Date;
+  public destination!: string;  // New attribute
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -97,13 +98,17 @@ TransportBooking.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    destination: {  
+      type: DataTypes.STRING, 
+      allowNull: false,  
+    },
   },
   {
     sequelize,
     modelName: 'TransportBooking',
     tableName: 'TransportBookings',
     timestamps: true,
-    engine: 'InnoDB', // Pastikan menggunakan InnoDB
+    engine: 'InnoDB',
   }
 );
 
