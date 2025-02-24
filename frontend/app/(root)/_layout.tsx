@@ -14,7 +14,7 @@ const Layout = () => {
       <Stack.Screen name="detail-bookingRoom" options={{headerShown: false}}/>
       <Stack.Screen name="detail-bookingTransport" options={{headerShown: false}}/>
       <Stack.Screen name="detail" options={{headerShown: false}}/>
-      <Stack.Screen name="edit-booking" options={{headerShown: false}}/>
+      <Stack.Screen name="reschedule-booking" options={{headerShown: false}}/>
     </Stack>
   );
 };

@@ -68,6 +68,8 @@ import profile1 from "@/assets/images/profile1.jpg";
 import bca from "@/assets/images/bca.png";
 import close2 from "@/assets/images/close2.png";
 import splash from "@/assets/images/splashScreen.png";
+import smroom from "@/assets/images/small-room.jpg";
+import car1 from "@/assets/images/car1.jpg";
 
 export const images = {
   onboarding1,
@@ -81,7 +83,9 @@ export const images = {
   profile1,
   bca,
   close2,
-  splash
+  splash,
+  smroom,
+  car1
 };
 
 export const icons = {

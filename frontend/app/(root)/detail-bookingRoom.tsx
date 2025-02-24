@@ -152,7 +152,7 @@ const DetailBookingRoom = () => {
   const handleReschedule = () => {
     router.push(`/reschedule-booking?id=${id}`);
   };
-
+  
   const handleCancel = async () => {
     Alert.alert(
       'Cancel Booking',
@@ -287,8 +287,6 @@ const DetailBookingRoom = () => {
               />
             )}
           </View>
-
-        
 
           {/* Action Buttons */}
           <View className="flex-row space-x-4 mb-6">
