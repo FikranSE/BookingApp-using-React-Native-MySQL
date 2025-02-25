@@ -258,7 +258,7 @@ const RescheduleBooking = () => {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 pb-10">
+    <SafeAreaView className="flex-1 bg-gray-100 pb-10">
       <ScrollView className="flex-1 p-4">
         <View className="bg-white rounded-2xl p-6 shadow-sm mb-6">
           <SectionHeader title="BOOKING DETAILS" />

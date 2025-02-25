@@ -225,7 +225,7 @@ const BookingRoom = () => {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 pb-10">
+    <SafeAreaView className="flex-1 bg-gray-100 pb-10">
       {/* Enhanced Header */}
       <View className="shadow-sm">
         <View className="flex-row items-center justify-between px-4 py-4">
@@ -235,7 +235,7 @@ const BookingRoom = () => {
           >
             <Ionicons name="arrow-back" size={20} color="#48494EFF" />
           </TouchableOpacity>
-          <Text className="text-lg font-bold text-gray-700">New Booking</Text>
+          <Text className="text-lg font-bold text-gray-700">New Room Booking</Text>
           <View className="w-10" />
         </View>
       </View>

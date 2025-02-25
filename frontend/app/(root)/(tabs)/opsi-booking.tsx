@@ -16,7 +16,7 @@ const OpsiBooking = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-gray-100">
       {/* Enhanced Header */}
       <View className="bg-white shadow-sm">
         <View className="px-4 pt-8 pb-6">

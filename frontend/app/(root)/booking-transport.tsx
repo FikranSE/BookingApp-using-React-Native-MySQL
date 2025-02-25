@@ -219,7 +219,7 @@ const TransportBooking = () => {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 pb-20">
+    <SafeAreaView className="flex-1 bg-gray-100 pb-10">
       <View className="shadow-sm">
         <View className="flex-row items-center justify-between px-4 py-4">
           <TouchableOpacity 

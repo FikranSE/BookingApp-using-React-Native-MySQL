@@ -14,24 +14,21 @@ const TabIcon = ({
 }) => (
   <View className="flex items-center">
     <View
-      className={`rounded-full w-12 h-12 items-center justify-start ${
-        focused ? "bg-white" : ""
-      }`}
+      className={`rounded-full w-12 h-12 items-center justify-start`}
     >
       <Image
         source={source}
-        tintColor={focused ? "#003580" : "#9ca3af"} // Ubah warna saat fokus
+        tintColor={focused ? "#1D4ED8" : "#9ca3af"} // Changed focus color to dark blue
         resizeMode="contain"
         style={{
-          width: 20, // Ukuran lebar ikon
-          height: 20, // Ukuran tinggi ikon
-          
+          width: 20, // Icon width
+          height: 20, // Icon height
         }}
       />
     </View>
     <Text
       className={`text-xs mt-[-25px] ${
-        focused ? "text-[#003580]" : "text-[#9ca3af]"
+        focused ? "text-[#1D4ED8]" : "text-[#9ca3af]"
       }`}
     >
       {label}
@@ -44,13 +41,13 @@ export default function Layout() {
     <Tabs
       initialRouteName="home"
       screenOptions={{
-        tabBarActiveTintColor: "#003580",
+        tabBarActiveTintColor: "#1D4ED8", // Updated to dark blue
         tabBarInactiveTintColor: "#9ca3af",
         tabBarShowLabel: false,
         tabBarStyle: {
           backgroundColor: "#ffffff",
           position: "absolute",
-          height: 70, // Tambahkan tinggi untuk nama menu
+          height: 70, // Added height for menu name
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 5 },
           shadowOpacity: 0.1,
@@ -90,12 +87,18 @@ export default function Layout() {
                 width: 60,
                 height: 60,
                 borderRadius: 35,
-                backgroundColor: "#003580",
+                backgroundColor: "#1D4ED8", // Changed to dark blue
                 justifyContent: "center",
                 alignItems: "center",
                 marginBottom: 40, 
                 borderWidth: 8, 
                 borderColor: "white", 
+                // Add shadow for more depth
+                shadowColor: "#1D4ED8",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 6,
+                elevation: 8,
               }}
             >
               <Image

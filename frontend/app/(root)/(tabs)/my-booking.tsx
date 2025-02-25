@@ -18,22 +18,61 @@ interface IBooking {
   type: "ROOM" | "TRANSPORT";
   title: string;
   date: string;
-  startTime: string;
-  endTime: string;
-  location: string;
+  start_time: string;
+  end_time: string;
+  section: string;
   isOngoing: boolean;
   approval: IApprovalStatus;
-  vehicleName?: string;  // Added for transport bookings
-  driverName?: string;   // Added for transport bookings
-  capacity?: string;     // Added for transport bookings
+  vehicleName?: string;
+  driverName?: string;
+  capacity?: string;
+  imageUrl?: string;
 }
 
 const MyBooking = () => {
   const navigation = useNavigation();
-  const [selectedType, setSelectedType] = useState<"ALL" | "ROOM" | "TRANSPORT">("ALL");
+  const [activeTab, setActiveTab] = useState<"BOOKED" | "HISTORY">("BOOKED");
   const [bookings, setBookings] = useState<IBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Default image URLs in case API doesn't provide them
+  const defaultRoomImageUrl = "https://images.unsplash.com/photo-1606744824163-985d376605aa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80";
+  const defaultTransportImageUrl = "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80";
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
+
+        if (!authToken) {
+          Alert.alert("Error", "Not authenticated");
+          router.push("/(auth)/sign-in");
+          return;
+        }
+
+        const response = await fetch(
+          "https://j9d3hc82-3001.asse.devtunnels.ms/api/auth/profile",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        const profileData = await response.json();
+        setUserId(profileData.user.id); // Set the user ID
+      } catch (error) {
+        console.error("Error fetching user profile: ", error);
+        Alert.alert("Error", "Failed to fetch user profile");
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -80,44 +119,124 @@ const MyBooking = () => {
           throw new Error("Failed to fetch bookings");
         }
 
-        const mappedRoomBookings = roomData.map((item: any) => ({
-          id: item.booking_id.toString(),
-          type: "ROOM",
-          title: item.description || "No title",
-          date: item.booking_date,
-          startTime: item.start_time,
-          endTime: item.end_time,
-          location: item.section,
-          isOngoing: false,
-          approval: {
-            status: item.status.toUpperCase() as "PENDING" | "APPROVED" | "REJECTED",
-            approverName: item.pic,
-            approvedAt: item.approved_at ? new Date(item.approved_at).toISOString() : undefined,
-            feedback: item.notes || undefined,
-          },
-        }));
+        // Fetch images for rooms
+        const roomImagesResponse = await fetch(
+          "https://j9d3hc82-3001.asse.devtunnels.ms/api/room-images",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
-        const mappedTransportBookings = transportData.map((item: any) => ({
-          id: item.booking_id.toString(),
-          type: "TRANSPORT",
-          title: item.description || "No title",
-          date: item.booking_date,
-          startTime: item.start_time,
-          endTime: item.end_time,
-          location: item.section,
-          isOngoing: false,
-          approval: {
-            status: item.status.toUpperCase() as "PENDING" | "APPROVED" | "REJECTED",
-            approverName: item.pic,
-            approvedAt: item.approved_at ? new Date(item.approved_at).toISOString() : undefined,
-            feedback: item.notes || undefined,
-          },
-          vehicleName: item.vehicle_name,
-          driverName: item.driver_name,
-          capacity: item.capacity,
-        }));
+        // Fetch images for vehicles
+        const vehicleImagesResponse = await fetch(
+          "https://j9d3hc82-3001.asse.devtunnels.ms/api/vehicle-images",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
-        setBookings([...mappedRoomBookings, ...mappedTransportBookings]);
+        let roomImages = {};
+        let vehicleImages = {};
+
+        if (roomImagesResponse.ok) {
+          const roomImagesData = await roomImagesResponse.json();
+          // Create a map of room id to image URL
+          roomImagesData.forEach((item: any) => {
+            roomImages[item.room_id] = item.image_url;
+          });
+        }
+
+        if (vehicleImagesResponse.ok) {
+          const vehicleImagesData = await vehicleImagesResponse.json();
+          // Create a map of vehicle id to image URL
+          vehicleImagesData.forEach((item: any) => {
+            vehicleImages[item.vehicle_id] = item.image_url;
+          });
+        }
+
+        const mappedRoomBookings = roomData
+          .filter((item: any) => item.user_id === userId) // Filter bookings by user_id
+          .map((item: any) => {
+            // Format the booking date (booking_date)
+            const bookingDate = new Date(item.booking_date);
+            const formattedBookingDate = `${bookingDate.getDate()} ${bookingDate.toLocaleString('default', { month: 'short' })} ${bookingDate.getFullYear()}`;
+
+            // Ensure start_time and end_time are valid (if any)
+            const start_time = item.start_time ? new Date(`1970-01-01T${item.start_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
+            const end_time = item.end_time ? new Date(`1970-01-01T${item.end_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
+
+            const imageUrl = roomImages[item.room_id] || defaultRoomImageUrl;
+
+            return {
+              id: item.booking_id.toString(),
+              type: "ROOM",
+              title: item.description || "Meeting Room", // Default to "Meeting Room" if description is missing
+              date: formattedBookingDate, // Use formatted date directly here
+              start_time: start_time,
+              end_time: end_time,
+              section: item.section || "Office section", // Default to "Office section" if section is missing
+              isOngoing: false,
+              approval: {
+                status: item.status.toUpperCase() as "PENDING" | "APPROVED" | "REJECTED",
+                approverName: item.pic,
+                approvedAt: item.approved_at ? new Date(item.approved_at).toISOString() : undefined,
+                feedback: item.notes || undefined,  // Use notes if available, else undefined
+              },
+              imageUrl: imageUrl,
+            };
+          });
+
+        const mappedTransportBookings = transportData
+          .filter((item: any) => item.user_id === userId) // Filter bookings by user_id
+          .map((item: any) => {
+            // Format the booking date (booking_date)
+            const bookingDate = new Date(item.booking_date);
+            const formattedBookingDate = `${bookingDate.getDate()} ${bookingDate.toLocaleString('default', { month: 'short' })} ${bookingDate.getFullYear()}`;
+
+            // Ensure start_time and end_time are valid (if any)
+            const start_time = item.start_time ? new Date(`1970-01-01T${item.start_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
+            const end_time = item.end_time ? new Date(`1970-01-01T${item.end_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
+
+            const imageUrl = vehicleImages[item.vehicle_id] || defaultTransportImageUrl;
+
+            return {
+              id: item.booking_id.toString(),
+              type: "TRANSPORT",
+              title: item.description || "Transport Service", // Default to "Transport Service" if description is missing
+              date: formattedBookingDate, // Use formatted date directly here
+              start_time: start_time,
+              end_time: end_time,
+              section: item.section || "Transport section", // Default to "Transport section" if section is missing
+              isOngoing: false,
+              approval: {
+                status: item.status.toUpperCase() as "PENDING" | "APPROVED" | "REJECTED",
+                approverName: item.pic,
+                approvedAt: item.approved_at ? new Date(item.approved_at).toISOString() : undefined,
+                feedback: item.notes || undefined,  // Use notes if available, else undefined
+              },
+              vehicleName: item.vehicle_name || "No vehicle name", // Default if vehicle name is missing
+              driverName: item.driver_name || "No driver name", // Default if driver name is missing
+              capacity: item.capacity || "Not specified", // Default if capacity is missing
+              imageUrl: imageUrl,
+            };
+          });
+
+        const allBookings = [...mappedRoomBookings, ...mappedTransportBookings];
+
+        // Sort by date (most recent first)
+        allBookings.sort((a, b) => {
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        });
+
+        setBookings(allBookings);
       } catch (error) {
         console.error("Error fetching bookings: ", error);
         Alert.alert("Error", "Failed to fetch bookings");
@@ -127,28 +246,31 @@ const MyBooking = () => {
     };
 
     fetchBookings();
-  }, []);
+  }, [userId]);
 
-  // Filter bookings based on selectedType and searchQuery
+  // Filter bookings based on searchQuery and activeTab
   const filteredBookings = bookings.filter((booking) => {
     const matchesSearch =
       booking.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.location.toLowerCase().includes(searchQuery.toLowerCase());
+      booking.section.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesType =
-      selectedType === "ALL" || booking.type === selectedType;
+    // For demo purposes:
+    // - BOOKED tab shows APPROVED and PENDING bookings
+    // - HISTORY tab shows REJECTED bookings
+    const matchesTab =
+      activeTab === "BOOKED"
+        ? (booking.approval.status === "APPROVED" || booking.approval.status === "PENDING")
+        : booking.approval.status === "REJECTED";
 
-    return matchesSearch && matchesType;
+    return matchesSearch && matchesTab;
   });
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "APPROVED":
-        return "bg-green-100 text-green-700";
-      case "REJECTED":
-        return "bg-red-100 text-red-700";
-      default:
-        return "bg-yellow-100 text-yellow-700";
+      case "APPROVED": return "#10B981"; // Green
+      case "PENDING": return "#F59E0B";  // Yellow
+      case "REJECTED": return "#EF4444"; // Red
+      default: return "#9CA3AF";         // Gray
     }
   };
 
@@ -161,162 +283,179 @@ const MyBooking = () => {
       }
     };
 
+    const statusColor = getStatusColor(booking.approval.status);
+
     return (
       <TouchableOpacity
-        className="bg-white p-4 rounded-xl mb-3 shadow-sm"
+        className="bg-white rounded-xl mb-4 shadow overflow-hidden"
         onPress={handlePress}
       >
-        <View className="flex-row items-center justify-between mb-2">
-          <View className="flex-1">
-            <Text className="text-sm font-bold text-gray-800" numberOfLines={1}>
-              {booking.title}
-            </Text>
-            <Text className="text-xs text-gray-500 mt-1">{booking.location}</Text>
-          </View>
-          <View className="bg-blue-100 px-3 py-1 rounded-full">
-            <Text className="text-xs font-medium text-blue-700">
-              {booking.startTime} - {booking.endTime}
-            </Text>
+        <View className="flex-row p-2">
+          <Image
+            source={{ uri: booking.imageUrl }}
+            className="w-24 h-full rounded-lg"
+            resizeMode="cover"
+          />
+          <View className="flex-1 pl-3">
+            <View className="flex-row justify-between items-start">
+              <View className="flex-1 mr-2">
+                <Text className="text-lg font-bold text-gray-800" numberOfLines={1}>
+                  {booking.title}
+                </Text>
+                <View className="flex-row items-center mt-1">
+                  <Image
+                    source={icons.tag}
+                    className="w-3 h-3 mr-1"
+                    tintColor="#9CA3AF"
+                  />
+                  <Text className="text-xs text-gray-500" numberOfLines={1}>
+                    {booking.section}
+                  </Text>
+                </View>
+              </View>
+              <View className="flex-row items-center bg-gray-50 px-2 py-1 rounded">
+                <Image
+                  source={icons.star}
+                  className="w-3 h-3 mr-1"
+                  tintColor="#FFD700"
+                />
+                <Text className="text-xs font-medium">N/A</Text>
+              </View>
+            </View>
+            <View className="mt-1 flex-row items-center">
+              <View
+                style={{ backgroundColor: statusColor }}
+                className="w-2 h-2 rounded-full mr-1"
+              />
+              <Text className="text-xs font-medium" style={{ color: statusColor }}>
+                {booking.approval.status}
+              </Text>
+            </View>
+            <View className="mt-2 space-y-1">
+              <View className="flex-row items-center">
+                <Image
+                  source={icons.calendar}
+                  className="w-3 h-3 mr-1"
+                  tintColor="#6B7280"
+                />
+                <Text className="text-xs text-gray-700">{booking.date}</Text>
+              </View>
+              <View className="flex-row items-center">
+                <Image
+                  source={icons.user}
+                  className="w-3 h-3 mr-1"
+                  tintColor="#6B7280"
+                />
+                <Text className="text-xs text-gray-700">{booking.start_time} - {booking.end_time}</Text>
+              </View>
+            </View>
           </View>
         </View>
-        <View className="flex-row items-center flex-wrap">
-          <View className="bg-gray-100 px-2 py-1 rounded-lg mr-2 mb-2">
-            <Text className="text-xs text-gray-600">{booking.date}</Text>
-          </View>
-          <View
-            className={`px-2 py-1 rounded-lg mr-2 mb-2 ${
-              booking.type === "ROOM" ? "bg-purple-100" : "bg-green-100"
-            }`}
-          >
-            <Text
-              className={`text-xs ${
-                booking.type === "ROOM" ? "text-purple-700" : "text-green-700"
-              }`}
-            >
-              {booking.type === "ROOM" ? "Room" : "Transport"}
-            </Text>
-          </View>
-          <View
-            className={`px-2 py-1 rounded-lg mb-2 ${getStatusColor(booking.approval.status)}`}
-          >
-            <Text className={`text-xs ${getStatusColor(booking.approval.status)}`}>
-              {booking.approval.status}
-            </Text>
-          </View>
-        </View>
-        {booking.type === "TRANSPORT" && booking.vehicleName && (
-          <View className="mt-2">
-            <Text className="text-xs text-gray-600">Vehicle: {booking.vehicleName}</Text>
-            <Text className="text-xs text-gray-600">Driver: {booking.driverName}</Text>
-            <Text className="text-xs text-gray-600">Capacity: {booking.capacity}</Text>
-          </View>
-        )}
       </TouchableOpacity>
     );
   };
 
-  return (
-    <SafeAreaView className="bg-slate-100 flex-1 pb-20">
-      <View className="flex-row items-center justify-between px-4 py-3 bg-slate-100 mt-5">
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Image source={icons.backArrow} className="w-6 h-6" />
-        </TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-800">My Bookings</Text>
-        <View className="w-6" />
-      </View>
+  const EmptyState = () => (
+    <View className="flex-1 items-center justify-center py-12">
+      <Image
+        source={icons.calendar}
+        className="w-16 h-16 mb-4"
+        tintColor="#D1D5DB"
+      />
+      <Text className="text-gray-400 text-base font-medium text-center">No bookings found</Text>
+      <Text className="text-gray-400 text-sm text-center mt-1">
+        Try changing your search or filters
+      </Text>
+    </View>
+  );
 
-      {/* Search Bar */}
-      <View className="mt-4 flex-row items-center space-x-2 mx-4">
-        <View className="flex-1 bg-white border border-blue-200 rounded-xl flex-row items-center px-3 py-2">
-          <Image
-            source={icons.search}
-            className="w-5 h-5 mr-2"
-            tintColor="#64748b"
-          />
-          <TextInput
-            placeholder="Search bookings..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            className="flex-1 text-sm"
-          />
+  return (
+    <SafeAreaView className="bg-gray-100 flex-1 py-6 pb-20">
+      <View className="bg-white">
+        <View className="flex-row items-center justify-between px-4 py-4">
+          <Text className="text-2xl font-bold text-gray-800">My Booking</Text>
+          <TouchableOpacity className="p-2">
+            <Image source={icons.list} className="w-6 h-6" tintColor="#4B5563" />
+          </TouchableOpacity>
+        </View>
+
+        <View className="flex-row items-center space-x-2 mx-4 mb-4">
+          <View className="flex-1 bg-white border border-blue-100 shadow-sm flex-row items-center px-3 py-1.5 rounded-xl">
+            <Image
+              source={icons.search}
+              className="w-5 h-5 mr-2"
+              tintColor="#9CA3AF"
+            />
+            <TextInput
+              placeholder="Search bookings..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              className="flex-1 text-base"
+              placeholderTextColor="#9CA3AF"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery("")}>
+                <Image
+                  source={icons.close}
+                  className="w-5 h-5"
+                  tintColor="#9CA3AF"
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+          <TouchableOpacity className="bg-blue-700 p-2.5 rounded-lg">
+            <Image source={icons.filter} className="w-5 h-5" tintColor="#FFFFFFFF" />
+          </TouchableOpacity>
+        </View>
+
+        <View className="flex-row mx-4 mb-4 p-1 bg-white rounded-full border border-blue-100 shadow-sm">
+          <TouchableOpacity
+            onPress={() => setActiveTab("BOOKED")}
+            className={`flex-1 py-2.5 px-5 rounded-full ${
+              activeTab === "BOOKED" ? "bg-blue-700 shadow" : "bg-transparent"
+            }`}
+          >
+            <Text
+              className={`text-sm text-center font-medium ${
+                activeTab === "BOOKED" ? "text-white" : "text-gray-400"
+              }`}
+            >
+              Active Bookings
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setActiveTab("HISTORY")}
+            className={`flex-1 py-2.5 px-5 rounded-full ${
+              activeTab === "HISTORY" ? "bg-blue-700 shadow" : "bg-transparent"
+            }`}
+          >
+            <Text
+              className={`text-sm text-center font-medium ${
+                activeTab === "HISTORY" ? "text-white" : "text-gray-400"
+              }`}
+            >
+              History
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Filter Buttons */}
-      <View className="flex-row mt-3 space-x-2 z-10 pb-4 mx-4">
-        <TouchableOpacity
-          onPress={() => setSelectedType("ALL")}
-          className={`rounded-full px-4 py-2 ${
-            selectedType === "ALL" ? "bg-blue-900" : "bg-white border border-blue-900"
-          }`}
-        >
-          <Text
-            className={`text-xs font-semibold ${
-              selectedType === "ALL" ? "text-white" : "text-blue-900"
-            }`}
-          >
-            All
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setSelectedType("ROOM")}
-          className={`rounded-full px-4 py-2 flex-row items-center ${
-            selectedType === "ROOM" ? "bg-blue-900" : "bg-white border border-blue-900"
-          }`}
-        >
-          <Image
-            source={icons.door}
-            className="w-4 h-4 mr-1"
-            style={{
-              tintColor: selectedType === "ROOM" ? "#fff" : "#1e3a8a",
-            }}
-          />
-          <Text
-            className={`text-xs font-semibold ${
-              selectedType === "ROOM" ? "text-white" : "text-blue-900"
-            }`}
-          >
-            Rooms
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setSelectedType("TRANSPORT")}
-          className={`rounded-full px-4 py-2 flex-row items-center ${
-            selectedType === "TRANSPORT" ? "bg-blue-900" : "bg-white border border-blue-900"
-          }`}
-        >
-          <Image
-            source={icons.car}
-            className="w-4 h-4 mr-1"
-            style={{
-              tintColor: selectedType === "TRANSPORT" ? "#fff" : "#1e3a8a",
-            }}
-          />
-          <Text
-            className={`text-xs font-semibold ${
-              selectedType === "TRANSPORT" ? "text-white" : "text-blue-900"
-            }`}
-          >
-            Transport
-          </Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Bookings List */}
-      <ScrollView className="px-4 pt-3">
+      <ScrollView className="px-4 pt-4">
         {loading ? (
           <View className="flex-1 items-center justify-center py-12">
             <ActivityIndicator size="large" color="#0000ff" />
+            <Text className="text-gray-500 mt-4">Loading your bookings...</Text>
           </View>
         ) : filteredBookings.length > 0 ? (
           filteredBookings.map((booking) => <BookingCard key={booking.id} booking={booking} />)
         ) : (
-          <View className="flex-1 items-center justify-center py-12">
-            <Text className="text-gray-500 text-center">No bookings found</Text>
-          </View>
+          <EmptyState />
         )}
+        
+        {/* Add some space at the bottom */}
+        <View className="h-8" />
       </ScrollView>
     </SafeAreaView>
   );
