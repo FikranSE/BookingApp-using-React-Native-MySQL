@@ -315,7 +315,7 @@ const BookingRoom = () => {
         <TouchableOpacity
           onPress={handleSubmit}
           disabled={loading}
-          className={`bg-blue-900 py-3 rounded-xl mb-6 ${loading ? 'opacity-70' : ''}`}
+          className={`bg-blue-700 py-3 rounded-xl mb-6 ${loading ? 'opacity-70' : ''}`}
         >
           {loading ? ( 
             <ActivityIndicator color="white" />

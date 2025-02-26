@@ -7,6 +7,7 @@ import { images, icons } from "@/constants";
 import { Ionicons } from '@expo/vector-icons';
 import { tokenCache } from "@/lib/auth";
 import { AUTH_TOKEN_KEY } from "@/lib/constants";
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface IRoom {
   room_id: number;
@@ -91,50 +92,36 @@ const Explore = () => {
     fetchData();
   }, []);
 
-  // Tab Button Component with softer styling
+  // Tab Button Component with new color scheme
   const TabButton = ({ title, isActive, onPress }: { title: string; isActive: boolean; onPress: () => void }) => (
     <TouchableOpacity
       onPress={onPress}
-      className={`flex-1 justify-center items-center py-2.5 rounded-full ${isActive ? 'bg-blue-600' : 'bg-white'}`}
-      style={{
-        shadowColor: isActive ? 'transparent' : '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: isActive ? 0 : 1,
-      }}
+      className={`flex-1 justify-center items-center py-1.5 rounded-full ${isActive ? 'bg-sky-500' : 'bg-white'}`}
     >
-      <Text className={`${isActive ? 'text-white' : 'text-blue-600'} font-medium text-base`}>
+      <Text className={`${isActive ? 'text-white font-bold' : 'text-gray-400'} text-[14px]`}>
         {title}
       </Text>
     </TouchableOpacity>
   );
 
-  // Enhanced Room Card Component with softer colors
+  // Room Card Component with new color scheme
   const RoomCard = ({ room }: { room: IRoom }) => {
     const facilitiesList = room.facilities.split(',').map(item => item.trim());
     
-    // Softer color map for facility tags
+    // Updated color map for facility tags
     const colorMap = {
-      0: { bg: 'bg-blue-50', text: 'text-blue-600' },
-      1: { bg: 'bg-cyan-50', text: 'text-cyan-600' },
-      2: { bg: 'bg-amber-50', text: 'text-amber-600' },
-      3: { bg: 'bg-sky-50', text: 'text-sky-600' },
+      0: { bg: 'bg-sky-50', text: 'text-sky-600' },
+      1: { bg: 'bg-sky-100', text: 'text-sky-700' },
+      2: { bg: 'bg-orange-50', text: 'text-orange-600' },
+      3: { bg: 'bg-orange-100', text: 'text-orange-700' },
     };
   
     return (
       <TouchableOpacity
-        className="bg-white rounded-2xl mb-4 overflow-hidden"
-        style={{
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 6,
-          elevation: 2,
-        }}
+        className="bg-white rounded-2xl mb-4 overflow-hidden shadow-sm border border-sky-50"
         onPress={() => router.push(`/detail?id=${room.room_id}&type=room`)}
       >
-        <View className="flex-row p-4">
+        <View className="flex-row p-2">
           <Image
             source={room.image ? { uri: room.image } : images.smroom}
             className="w-24 h-24 rounded-lg"
@@ -146,23 +133,23 @@ const Explore = () => {
                 {room.room_name}
               </Text>
               
-              <View className="flex-row items-center mt-1.5">
-                <Ionicons name="pricetag-outline" size={13} color="#4285F4" />
-                <Text className="text-xs text-blue-500 font-medium ml-1.5">
+              <View className="flex-row items-center mt-1">
+                <Ionicons name="pricetag-outline" size={13} color="#0EA5E9" />
+                <Text className="text-xs text-sky-500 font-medium ml-1.5">
                   {room.room_type}
                 </Text>
               </View>
               
-              <View className="flex-row items-center mt-1.5">
-                <Ionicons name="people-outline" size={13} color="#FBBC05" />
-                <Text className="text-xs text-amber-500 font-medium ml-1.5">
+              <View className="flex-row items-center">
+                <Ionicons name="people-outline" size={13} color="#F97316" />
+                <Text className="text-xs text-orange-500 font-medium ml-1.5">
                   {room.capacity} persons
                 </Text>
               </View>
             </View>
             
             {/* Facilities */}
-            <View className="flex-row flex-wrap gap-1.5 mt-3">
+            <View className="flex-row flex-wrap gap-1.5 mt-1">
               {facilitiesList.slice(0, 3).map((facility, index) => (
                 <View 
                   key={index} 
@@ -185,20 +172,13 @@ const Explore = () => {
     );
   };
   
-  // Enhanced Transport Card Component to match Room style
+  // Transport Card Component with new color scheme
   const TransportCard = ({ transport }: { transport: ITransport }) => (
     <TouchableOpacity
-      className="bg-white rounded-2xl mb-4 overflow-hidden"
-      style={{
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 6,
-        elevation: 2,
-      }}
+      className="bg-white rounded-2xl mb-4 overflow-hidden shadow-sm border border-sky-50"
       onPress={() => router.push(`/detail?id=${transport.transport_id}&type=transport`)}
     >
-      <View className="flex-row p-4">
+      <View className="flex-row p-2">
         <Image
           source={transport.image ? { uri: transport.image } : images.smroom}
           className="w-24 h-24 rounded-lg"
@@ -210,32 +190,37 @@ const Explore = () => {
               {transport.vehicle_name}
             </Text>
             
-            <View className="flex-row items-center mt-1.5">
-              <Ionicons name="person-outline" size={13} color="#4285F4" />
-              <Text className="text-xs text-blue-500 font-medium ml-1.5">
+            <View className="flex-row items-center mt-1">
+              <Ionicons name="person" size={13} color="#0EA5E9" />
+              <Text className="text-xs text-sky-500 font-medium ml-1.5">
+                Driver:
+              </Text>
+              <Text className="text-xs text-sky-500 font-medium ml-1.5">
                 {transport.driver_name}
               </Text>
             </View>
             
-            <View className="flex-row items-center mt-1.5">
-              <Ionicons name="car-outline" size={13} color="#FBBC05" />
-              <Text className="text-xs text-amber-500 font-medium ml-1.5">
+            <View className="flex-row items-center">
+             <Image
+               source={icons.seat}
+               style={{ width: 13, height: 13, tintColor: "#F97316" }}
+             />
+              <Text className="text-xs text-orange-500 font-medium ml-1.5">
                 {transport.capacity} seats
               </Text>
             </View>
           </View>
-          
         </View>
       </View>
     </TouchableOpacity>
   );
 
-  // Empty state components with softer colors
+  // Empty state components with new color scheme
   const EmptyState = ({ type }: { type: "Rooms" | "Transportation" }) => (
     <View className="flex-1 justify-center items-center py-12">
-      <Ionicons name={type === "Rooms" ? "bed-outline" : "car-outline"} size={60} color="#BFE0FF" />
-      <Text className="text-lg font-medium text-blue-500 mt-4">No {type} Available</Text>
-      <Text className="text-blue-400 text-center mt-2 px-10 text-sm">
+      <Ionicons name={type === "Rooms" ? "bed-outline" : "car-outline"} size={60} color="#BAE6FD" />
+      <Text className="text-lg font-medium text-sky-500 mt-4">No {type} Available</Text>
+      <Text className="text-sky-400 text-center mt-2 px-10 text-sm">
         {type === "Rooms" 
           ? "There are no rooms available at the moment. Please check again later." 
           : "There are no vehicles available at the moment. Please check again later."}
@@ -244,19 +229,27 @@ const Explore = () => {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-white">
+      {/* Gradient Header */}
+      <LinearGradient
+        colors={['#0EA5E9', '#E0F2FE']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        className="absolute top-0 left-0 right-0 h-40"
+      />
+      
       {/* Scrollable container for entire screen */}
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
       
         {/* Header with greeting */}
         <View className="px-6 pt-3 pb-5">
-          <Text className="text-2xl font-semibold text-gray-800 mb-1">Explore</Text>
-          <Text className="text-blue-500 font-normal">Find rooms and transportation for your needs</Text>
+          <Text className="text-2xl font-semibold text-white mb-1">Explore</Text>
+          <Text className="text-white font-normal">Find rooms and transportation for your needs</Text>
         </View>
         
         {/* Tab Buttons */}
-        <View className="px-5 pb-5">
-          <View className="flex-row bg-white p-1.5 rounded-full border border-gray-100 shadow-sm">
+        <View className="px-20 pb-5">
+          <View className="flex-row bg-white border border-sky-100 rounded-full shadow-sm">
             <TabButton 
               title="Rooms" 
               isActive={activeTab === "Rooms"}
@@ -272,11 +265,11 @@ const Explore = () => {
 
         {loading ? (
           <View className="flex-1 justify-center items-center py-32">
-            <ActivityIndicator size="large" color="#4285F4" />
-            <Text className="text-blue-500 mt-4 font-normal text-sm">Loading content...</Text>
+            <ActivityIndicator size="large" color="#0EA5E9" />
+            <Text className="text-sky-500 mt-4 font-normal text-sm">Loading content...</Text>
           </View>
         ) : (
-          <View className="flex-1 px-5 pt-1 pb-24">
+          <View className="flex-1 px-5 pt-1 pb-24 mt-4">
             {activeTab === "Rooms" ? (
               rooms.length > 0 ? 
               rooms.map((room) => <RoomCard key={room.room_id} room={room} />) : 
@@ -292,6 +285,20 @@ const Explore = () => {
         {/* Extra padding at bottom for better scrolling experience */}
         <View className="h-16" />
       </ScrollView>
+      
+      {/* Floating Action Button */}
+      <TouchableOpacity 
+        className="absolute bottom-8 right-6 w-14 h-14 bg-orange-500 rounded-full items-center justify-center shadow-lg"
+        style={{
+          shadowColor: '#F97316',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: 5,
+        }}
+      >
+        <Ionicons name="add" size={28} color="white" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };

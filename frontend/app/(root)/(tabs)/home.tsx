@@ -197,20 +197,20 @@ const Home = () => {
     fetchData();
   }, [user]);
 
-  // Booking Card with Dark Blue Theme
+  // Booking Card with Light Blue and Orange Theme
   const BookingCard = ({ booking }:{ booking: IBooking }) => {
     const getTypeStyles = (type) => {
       if (type === 'ROOM') {
         return {
           iconName: 'business',
-          iconColor: '#4F8EF7', // Bright blue
-          bgColor: 'bg-blue-100'
+          iconColor: '#60A5FA', // Light blue
+          bgColor: 'bg-blue-50'
         };
       }
       return {
         iconName: 'car',
-        iconColor: '#4F8EF7', // Bright blue
-        bgColor: 'bg-blue-100'
+        iconColor: '#60A5FA', // Light blue
+        bgColor: 'bg-blue-50'
       };
     };
 
@@ -225,13 +225,13 @@ const Home = () => {
     const getStatusStyle = (status) => {
       switch (status.toLowerCase()) {
         case 'approved':
-          return 'bg-green-100 text-green-800';
+          return 'bg-green-50 text-green-600';
         case 'pending':
-          return 'bg-orange-100 text-blue-800';
+          return 'bg-orange-50 text-orange-600';
         case 'rejected':
-          return 'bg-red-100 text-red-800';
+          return 'bg-red-50 text-red-600';
         default:
-          return 'bg-gray-100 text-gray-800';
+          return 'bg-gray-50 text-gray-600';
       }
     };
   
@@ -240,7 +240,7 @@ const Home = () => {
     return (
       <TouchableOpacity 
         onPress={handlePress} 
-        className="bg-white flex-row items-center py-3 px-4 mx-4 mb-3 rounded-xl border border-blue-100 shadow-sm"
+        className="bg-white flex-row items-center py-3 px-4 mx-4 mb-3 rounded-xl border border-blue-50 shadow-sm"
       >
         {/* Icon and Name */}
         <View className={`${typeStyle.bgColor} w-10 h-10 rounded-full items-center justify-center mr-3`}>
@@ -251,7 +251,7 @@ const Home = () => {
         <View className="flex-1">
           <Text className="text-base font-medium text-gray-800">{booking.pic}</Text>
           <View className="flex-row items-center mt-1">
-            <Ionicons name="calendar-outline" size={14} color="#4F8EF7" />
+            <Ionicons name="calendar-outline" size={14} color="#60A5FA" />
             <Text className="text-sm text-gray-600 ml-1">
               {new Date(booking.booking_date).toLocaleDateString('en-US', {
                 month: 'short',
@@ -259,7 +259,7 @@ const Home = () => {
               })}
             </Text>
             <Text className="text-sm text-gray-600 mx-1">•</Text>
-            <Ionicons name="time-outline" size={14} color="#4F8EF7" />
+            <Ionicons name="time-outline" size={14} color="#60A5FA" />
             <Text className="text-sm text-gray-600 ml-1">
               {booking.start_time}
             </Text>
@@ -276,7 +276,7 @@ const Home = () => {
     );
   };
 
-  // Room Card with Dark Blue Theme
+  // Room Card with Light Blue and Orange Theme
   const RoomCard = ({ room }: { room: IRoom }) => {
     // Split facilities string into array
     const facilitiesList = room.facilities.split(',').map(item => item.trim());
@@ -284,7 +284,7 @@ const Home = () => {
     return (
       <TouchableOpacity 
         onPress={() => router.push(`/detail?id=${room.room_id}&type=room`)}
-        className="bg-white rounded-xl mb-4 mx-2 overflow-hidden border border-blue-100 shadow-md"
+        className="bg-white rounded-xl mb-4 mx-2 overflow-hidden border border-blue-50 shadow-md"
         style={{ width: width * 0.75 }}
       >
         <Image 
@@ -292,12 +292,12 @@ const Home = () => {
           className="w-full h-36"
           resizeMode="cover"
         />
-        {/* Blue overlay filter */}
-        <View className="absolute top-0 left-0 right-0 h-36 bg-blue-900/10" />
+        {/* Light blue overlay filter */}
+        <View className="absolute top-0 left-0 right-0 h-36 bg-blue-100/20" />
         
         <View className="absolute top-2 right-2">
           <View className="bg-white self-start px-3 py-1 rounded-full shadow-sm">
-            <Text className="text-blue-800 font-medium text-xs">
+            <Text className="text-blue-400 font-medium text-xs">
               {room.capacity} people
             </Text>
           </View>
@@ -309,7 +309,7 @@ const Home = () => {
               <Text className="text-lg text-gray-800 font-medium">{room.room_name}</Text>
             </View>
             <TouchableOpacity 
-              className="bg-blue-700 px-3 py-1.5 rounded-md"
+              className="bg-orange-500 px-3 py-1.5 rounded-md"
               onPress={() => router.push(`/detail?id=${room.room_id}&type=room`)}
             >
               <Text className="text-white font-medium text-xs">Book Now</Text>
@@ -325,14 +325,14 @@ const Home = () => {
                 key={index} 
                 className="bg-blue-50 px-2 py-0.5 rounded-md"
               >
-                <Text className="text-blue-700 text-xs">
+                <Text className="text-blue-400 text-xs">
                   {facility}
                 </Text>
               </View>
             ))}
             {facilitiesList.length > 3 && (
               <View className="bg-blue-50 px-2 py-0.5 rounded-md">
-                <Text className="text-blue-700 text-xs">+{facilitiesList.length - 3} more</Text>
+                <Text className="text-blue-400 text-xs">+{facilitiesList.length - 3} more</Text>
               </View>
             )}
           </View>
@@ -341,11 +341,11 @@ const Home = () => {
     );
   };
 
-  // Transport Card with Dark Blue Theme
+  // Transport Card with Light Blue and Orange Theme
   const TransportCard = ({ transport }: { transport: ITransport }) => (
     <TouchableOpacity 
       onPress={() => router.push(`/detail?id=${transport.transport_id}&type=transport`)}
-      className="bg-white rounded-xl mb-4 mx-2 overflow-hidden border border-blue-100 shadow-md"
+      className="bg-white rounded-xl mb-4 mx-2 overflow-hidden border border-blue-50 shadow-md"
       style={{ width: width * 0.75 }}
     >
       <Image 
@@ -353,12 +353,12 @@ const Home = () => {
         className="w-full h-36"
         resizeMode="cover"
       />
-      {/* Blue overlay filter */}
-      <View className="absolute top-0 left-0 right-0 h-36 bg-blue-900/10" />
+      {/* Light blue overlay filter */}
+      <View className="absolute top-0 left-0 right-0 h-36 bg-blue-100/20" />
       
       <View className="absolute top-2 right-2">
         <View className="bg-white self-start px-3 py-1 rounded-full shadow-sm">
-          <Text className="text-blue-800 font-medium text-xs">
+          <Text className="text-blue-400 font-medium text-xs">
             {transport.capacity} seats
           </Text>
         </View>
@@ -371,7 +371,7 @@ const Home = () => {
             <Text className="text-gray-600 text-sm">Driver: {transport.driver_name}</Text>
           </View>
           <TouchableOpacity 
-            className="bg-blue-700 px-3 py-1.5 rounded-md"
+            className="bg-orange-500 px-3 py-1.5 rounded-md"
             onPress={() => router.push(`/detail?id=${transport.transport_id}&type=transport`)}
           >
             <Text className="text-white font-medium text-xs">Book Now</Text>
@@ -384,23 +384,23 @@ const Home = () => {
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50">
-        <ActivityIndicator size="large" color="#1E40AF" />
+        <ActivityIndicator size="large" color="#60A5FA" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100">
+    <SafeAreaView className="flex-1 bg-blue-50/30 pb-10">
       {/* Simplified Header */}
       <View className="px-4 pt-2 pb-2">
         <View className="flex-row justify-between items-center mb-4">
         <View className="flex-row items-center">
-            <View className="w-8 h-8 rounded-full bg-blue-600 justify-center items-center mr-2 border border-blue-200">
+            <View className="w-8 h-8 rounded-full bg-blue-400 justify-center items-center mr-2 border border-blue-100">
               <Text className="text-white font-medium">{user?.email ? getInitials(user.email) : 'U'}</Text>
             </View>
             <View className="">
             <Text className="text-gray-800 text-xs">{getGreeting()}..</Text>
-            <Text className="text-blue-600 text-sm font-medium">{user?.name || 'User'}</Text>
+            <Text className="text-blue-500 text-sm font-medium">{user?.name || 'User'}</Text>
             </View>
           </View>
           <TouchableOpacity 
@@ -408,19 +408,19 @@ const Home = () => {
             className="relative"
           >
             <View className="p-2">
-              <Ionicons name="notifications-outline" size={22} color="#1E40AF" />
+              <Ionicons name="notifications-outline" size={22} color="#60A5FA" />
             </View>
             {notifications > 0 && (
-              <View className="absolute -top-1 -right-1 bg-blue-600 w-5 h-5 rounded-full items-center justify-center border border-white">
+              <View className="absolute -top-1 -right-1 bg-orange-500 w-5 h-5 rounded-full items-center justify-center border border-white">
                 <Text className="text-white text-xs font-bold">{notifications}</Text>
               </View>
             )}
           </TouchableOpacity>
         </View>
 
-        {/* Search with dark blue style */}
+        {/* Search with light blue style */}
         <View className="flex-row bg-white border border-blue-100 rounded-xl mb-4 px-2 py-1.5 items-center shadow-sm">
-          <Ionicons name="search-outline" size={18} color="#4F8EF7" />
+          <Ionicons name="search-outline" size={18} color="#60A5FA" />
           <TextInput
             placeholder="Search rooms or vehicles..."
             className="flex-1 pl-2"
@@ -430,14 +430,14 @@ const Home = () => {
       </View>
 
       <ScrollView className="flex-1">
-        {/* Tabs with dark blue design */}
-        <View className="px-4 mb-4">
-          <View className="flex-row bg-white p-1 rounded-full border border-blue-100 shadow-sm">
+        {/* Tabs with light blue and orange design */}
+        <View className="px-6 mb-4">
+          <View className="flex-row bg-white rounded-full border border-blue-50 shadow-sm">
             {['Rooms', 'Transport'].map((tab) => (
               <TouchableOpacity
                 key={tab}
                 onPress={() => setActiveTab(tab as "Rooms" | "Transport")}
-                className={`flex-1 py-2 rounded-full ${activeTab === tab ? 'bg-blue-700' : 'bg-transparent'}`}
+                className={`flex-1 py-2 rounded-full ${activeTab === tab ? 'bg-orange-500' : 'bg-transparent'}`}
               >
                 <Text
                   className={`text-center font-medium ${activeTab === tab ? 'text-white' : 'text-gray-700'}`}
@@ -464,9 +464,9 @@ const Home = () => {
 
         {/* Recent Bookings Title */}
         <View className="px-4 flex-row justify-between items-center mb-2">
-          <Text className="text-lg font-medium text-gray-800">Recent Bookings</Text>
+          <Text className="text-md font-medium text-gray-800">Recent Bookings</Text>
           <TouchableOpacity onPress={() => router.push('/(root)/(tabs)/my-booking')}>
-            <Text className="text-blue-700 font-medium">See All</Text>
+            <Text className="text-blue-500 font-medium">See All</Text>
           </TouchableOpacity>
         </View>
 
@@ -478,8 +478,8 @@ const Home = () => {
             ))}
           </View>
         ) : (
-          <View className="mx-4 mb-8 bg-white p-4 rounded-lg border border-blue-100 items-center shadow-sm">
-            <Ionicons name="book-outline" size={32} color="#4F8EF7" />
+          <View className="mx-4 mb-8 bg-white p-4 rounded-lg border border-blue-50 items-center shadow-sm">
+            <Ionicons name="book-outline" size={32} color="#60A5FA" />
             <Text className="text-gray-800 font-medium mt-2">No recent bookings</Text>
             <Text className="text-gray-600 text-center mt-1">You haven't made any bookings yet</Text>
           </View>

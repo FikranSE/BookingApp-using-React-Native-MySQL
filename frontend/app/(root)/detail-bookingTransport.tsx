@@ -4,9 +4,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
-import {images} from "@/constants";
+import { images } from "@/constants";
 import { tokenCache } from "@/lib/auth";
 import { AUTH_TOKEN_KEY } from "@/lib/constants";
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface IApprovalStatus {
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -129,37 +130,80 @@ const DetailBookingTransport = () => {
     fetchBookingDetail();
   }, [id]);
 
-  const InfoRow = ({ icon, label, value }: { 
-    icon: string; 
-    label: string; 
-    value: string;
-  }) => (
-    <View className="mb-4">
-      <View className="flex-row items-center bg-blue-50 rounded-2xl p-4">
-        <View className="w-12 h-12 bg-blue-900 rounded-xl items-center justify-center mr-4">
-          <Ionicons name={icon as any} size={24} color="white" />
-        </View>
-        <View className="flex-1">
-          <Text className="text-blue-900 text-sm font-medium">{label}</Text>
-          <Text className="text-gray-800 font-semibold text-lg mt-1">{value}</Text>
-        </View>
+  const DetailRow = ({ label, value }: { label: string; value: string }) => (
+    <View className="flex-row py-3 border-b border-gray-100">
+      <View className="w-1/3">
+        <Text className="text-gray-500 text-base">{label}</Text>
+      </View>
+      <View className="w-2/3">
+        <Text className="text-gray-800 text-base font-medium">{value}</Text>
       </View>
     </View>
   );
 
-  const getStatusColor = (status: string) => {
+  const getStatusTheme = (status: string) => {
     switch (status) {
       case 'APPROVED':
-        return 'bg-green-400';
+        return {
+          gradientColors: ['#FFFFFFFF', '#FFFFFFFF'],
+          headerGradient: ['#10B981', '#059669'],
+          iconBg: 'bg-green-50',
+          iconColor: '#10B981',
+          textColor: 'text-green-800',
+          cardBg: 'bg-green-50',
+          buttonBg: 'bg-emerald-600',
+          secondaryButtonBg: 'bg-emerald-50',
+          secondaryButtonText: 'text-emerald-700',
+          icon: 'checkmark-circle',
+          illustration: images.success || images.profile1,
+          message: "Your transport is confirmed and ready to go!",
+          statusText: "Confirmed",
+          statusBadgeBg: 'bg-green-100',
+          iconSize: 24
+        };
       case 'REJECTED':
-        return 'bg-red-400';
+        return {
+          gradientColors: ['#FFFFFFFF', '#FFFFFFFF'],
+          headerGradient: ['#EF4444', '#DC2626'],
+          iconBg: 'bg-red-50',
+          iconColor: '#EF4444',
+          textColor: 'text-red-800',
+          cardBg: 'bg-red-50',
+          buttonBg: 'bg-red-600',
+          secondaryButtonBg: 'bg-red-50',
+          secondaryButtonText: 'text-red-700',
+          icon: 'close-circle',
+          illustration: images.rejected || images.profile1,
+          message: "Unfortunately, your booking couldn't be processed.",
+          statusText: "Rejected",
+          statusBadgeBg: 'bg-red-100',
+          iconSize: 24
+        };
       default:
-        return 'bg-yellow-400';
+        return {
+          gradientColors: ['#FFFFFFFF', '#FFFFFFFF'],
+          headerGradient: ['#F59E0B', '#D97706'],
+          iconBg: 'bg-yellow-50',
+          iconColor: '#F59E0B',
+          textColor: 'text-yellow-800',
+          cardBg: 'bg-yellow-50',
+          buttonBg: 'bg-amber-500',
+          secondaryButtonBg: 'bg-amber-50',
+          secondaryButtonText: 'text-amber-700',
+          icon: 'time',
+          illustration: images.pending || images.profile1,
+          message: "Your booking is being reviewed. We'll update you soon.",
+          statusText: "Pending",
+          statusBadgeBg: 'bg-yellow-100',
+          iconSize: 24
+        };
     }
   };
 
   const handleReschedule = () => {
-    router.push(`/reschedule-booking?id=${id}`);
+    if (bookingDetail) {
+      router.push(`/reschedule-booking?id=${bookingDetail.id}`);
+    }
   };
 
   const handleCancel = async () => {
@@ -176,6 +220,8 @@ const DetailBookingTransport = () => {
           style: 'destructive',
           onPress: async () => {
             try {
+              if (!id) return;
+              
               const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
               
               if (!authToken) {
@@ -208,143 +254,275 @@ const DetailBookingTransport = () => {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white justify-center items-center">
-        <ActivityIndicator size="large" color="#1E3A8A" />
+      <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
+        <ActivityIndicator size="large" color="#6366F1" />
       </SafeAreaView>
     );
   }
 
   if (!bookingDetail) {
     return (
-      <SafeAreaView className="flex-1 bg-white justify-center items-center">
+      <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
         <Text className="text-gray-500 text-lg">Booking not found</Text>
       </SafeAreaView>
     );
   }
 
+  const theme = getStatusTheme(bookingDetail.approval.status);
+
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <ScrollView className="flex-1">
-        {/* Header Section */}
-        <View className="relative">
-          <Image
-            source={images.profile1}
-            className="w-full h-80"
-            resizeMode="cover"
-          />
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="absolute top-4 left-4 w-12 h-12 bg-blue-900 rounded-full items-center justify-center"
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.2,
-              shadowRadius: 8,
-              elevation: 5,
-            }}
-          >
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
+    <SafeAreaView className="flex-1" style={{ backgroundColor: theme.gradientColors[1] }}>
+      {/* Themed Header */}
+      <LinearGradient
+        colors={theme.headerGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        className="shadow-lg rounded-b-3xl"
+      >
+        <View className="px-4 pt-4 pb-8">
+          {/* Back button & status text */}
+          <View className="flex-row items-center justify-between">
+            <TouchableOpacity 
+              onPress={() => router.back()}
+              className="w-10 h-10 items-center justify-center bg-white/20 rounded-full"
+            >
+              <Ionicons name="arrow-back" size={22} color="white" />
+            </TouchableOpacity>
+            <Text className="text-white text-lg font-semibold">
+              Transport Booking
+            </Text>
+            <View style={{ width: 40 }} />
+          </View>
+          
+          {/* Status banner */}
+          <View className="mt-6 items-center">
+            <View className={`${theme.iconBg} p-4 rounded-full mb-3`}>
+              <Ionicons name={theme.icon} size={36} color={theme.iconColor} />
+            </View>
+            <Text className="text-white text-xl font-bold mb-1">
+              {bookingDetail.approval.status === 'APPROVED' ? 'Booking Confirmed!' : 
+               bookingDetail.approval.status === 'REJECTED' ? 'Booking Rejected' : 'Booking Pending'}
+            </Text>
+            <Text className="text-white/90 text-center max-w-xs">
+              {theme.message}
+            </Text>
+          </View>
+        </View>
+      </LinearGradient>
+
+      <ScrollView 
+        className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: 20 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Booking ID Card */}
+        <View className={`${theme.cardBg} rounded-xl p-4 shadow-sm mb-4`}>
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className={`${theme.textColor} font-semibold`}>Booking Status</Text>
+            <View className={`px-3 py-1 rounded-full ${theme.statusBadgeBg} flex-row items-center`}>
+              <Ionicons name={theme.icon} size={14} color={theme.iconColor} />
+              <Text className={`${theme.textColor} ml-1 font-medium text-sm`}>
+                {theme.statusText}
+              </Text>
+            </View>
+          </View>
+          <View className="flex-row justify-between border-t border-gray-200/50 pt-2 mt-1">
+            <Text className="text-gray-500">Booking ID</Text>
+            <Text className="font-medium">#{bookingDetail.id}</Text>
+          </View>
+          <View className="flex-row justify-between pt-2">
+            <Text className="text-gray-500">Booked On</Text>
+            <Text className="font-medium">{bookingDetail.date}</Text>
+          </View>
         </View>
 
-        {/* Content Section */}
-        <View className="p-6 -mt-10 bg-white rounded-t-3xl">
-          <Text className="text-3xl font-bold text-gray-800 mb-2">
-            {bookingDetail.section} - Booking #{bookingDetail.id}
-          </Text>
-           {/* Status Section */}
-            <View className={`w-1/3 px-4 py-2 rounded-xl mb-6 ${getStatusColor(bookingDetail.approval.status)}`}>
-                <Text className="font-bold text-neutral-100 text-center">{bookingDetail.approval.status}</Text>
-            </View>
-
-          {/* Info Rows */}
-          <InfoRow
-            icon="person"
-            label="Person in Charge"
-            value={bookingDetail.pic}
-          />
-          {bookingDetail.type === 'TRANSPORT' && (
-            <>
-              <InfoRow
-                icon="car"
-                label="Vehicle Name"
-                value={bookingDetail.vehicleName}
-              />
-              <InfoRow
-                icon="person"
-                label="Driver Name"
-                value={bookingDetail.driverName}
-              />
-              <InfoRow
-                icon="layers"
-                label="Capacity"
-                value={bookingDetail.capacity}
-              />
-              <InfoRow
-                icon="location"
-                label="Destination"
-                value={bookingDetail.destination}
-              />
-            </>
-          )}
-          <InfoRow
-            icon="newspaper"
-            label="Description"
-            value={bookingDetail.description}
-          />
-          <InfoRow
-            icon="calendar"
-            label="Date"
-            value={bookingDetail.date}
-          />
-          <InfoRow
-            icon="time"
-            label="Time"
-            value={`${bookingDetail.startTime} - ${bookingDetail.endTime}`}
-          />
-          {bookingDetail.approval.approverName && (
-            <InfoRow
-              icon="person"
-              label="Approved By"
-              value={bookingDetail.approval.approverName}
+        {/* Vehicle details card */}
+        <View className="bg-white rounded-xl shadow-sm mb-4 overflow-hidden">
+          <View className="border-b border-gray-100 p-4">
+            <Text className="text-gray-800 font-semibold text-lg">Vehicle Details</Text>
+          </View>
+          
+          {/* Vehicle image */}
+          <View className="w-full h-48 bg-gray-100">
+            <Image
+              source={bookingDetail.image ? { uri: bookingDetail.image } : images.profile1}
+              className="w-full h-full"
+              resizeMode="cover"
             />
-          )}
-          {bookingDetail.approval.approvedAt && (
-            <InfoRow
-              icon="time"
-              label="Approved At"
-              value={new Date(bookingDetail.approval.approvedAt).toLocaleString()}
-            />
-          )}
-
-          {/* Feedback Section */}
-          {bookingDetail.approval.feedback && (
-            <View className="mb-6">
-              <Text className="text-lg font-bold text-blue-900 mb-4">Feedback</Text>
-              <View className="bg-blue-50 p-6 rounded-2xl">
-                <Text className="text-blue-900 leading-relaxed">{bookingDetail.approval.feedback}</Text>
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.7)']}
+              className="absolute bottom-0 left-0 right-0 p-4"
+            >
+              <Text className="text-white font-bold text-lg">{bookingDetail.vehicleName}</Text>
+              <View className="flex-row items-center mt-1">
+                <Ionicons name="star" size={14} color="#F59E0B" />
+                <Text className="text-white text-xs ml-1">Premium Transport</Text>
+              </View>
+            </LinearGradient>
+          </View>
+          
+          {/* Info rows with icons */}
+          <View className="p-4">
+            <View className="flex-row items-center py-3 border-b border-gray-100">
+              <View className={`w-10 h-10 ${theme.iconBg} rounded-full items-center justify-center`}>
+                <Ionicons name="person-outline" size={20} color={theme.iconColor} />
+              </View>
+              <View className="ml-3">
+                <Text className="text-gray-500 text-sm">Driver</Text>
+                <Text className="text-gray-800 font-medium">{bookingDetail.driverName}</Text>
               </View>
             </View>
-          )}
-
-          {/* Action Buttons */}
-          <View className="flex-row space-x-4 mb-6">
+            
+            <View className="flex-row items-center py-3 border-b border-gray-100">
+              <View className={`w-10 h-10 ${theme.iconBg} rounded-full items-center justify-center`}>
+                <Ionicons name="people-outline" size={20} color={theme.iconColor} />
+              </View>
+              <View className="ml-3">
+                <Text className="text-gray-500 text-sm">Capacity</Text>
+                <Text className="text-gray-800 font-medium">{bookingDetail.capacity} passengers</Text>
+              </View>
+            </View>
+            
+            <View className="flex-row items-center py-3">
+              <View className={`w-10 h-10 ${theme.iconBg} rounded-full items-center justify-center`}>
+                <Ionicons name="location-outline" size={20} color={theme.iconColor} />
+              </View>
+              <View className="ml-3">
+                <Text className="text-gray-500 text-sm">Destination</Text>
+                <Text className="text-gray-800 font-medium">{bookingDetail.destination}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+        
+        {/* Trip information with timeline */}
+        <View className="bg-white rounded-xl shadow-sm mb-4 overflow-hidden">
+          <View className="border-b border-gray-100 p-4 flex-row justify-between items-center">
+            <Text className="text-gray-800 font-semibold text-lg">Trip Schedule</Text>
             <TouchableOpacity 
               onPress={handleReschedule}
-              className="flex-1 bg-blue-900 py-4 rounded-xl flex-row items-center justify-center space-x-2"
+              className={`py-1 px-3 rounded-full ${theme.secondaryButtonBg}`}
             >
-              <Ionicons name="calendar" size={20} color="white" />
-              <Text className="text-white font-bold text-base">Reschedule</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              onPress={handleCancel}
-              className="flex-1 bg-red-600 py-4 rounded-xl flex-row items-center justify-center space-x-2"
-            >
-              <Ionicons name="close-circle" size={20} color="white" />
-              <Text className="text-white font-bold text-base">Cancel</Text>
+              <Text className={theme.secondaryButtonText}>Change</Text>
             </TouchableOpacity>
           </View>
+          
+          <View className="p-4">
+            <View className="flex-row items-center mb-4">
+              <View className={`w-10 h-10 ${theme.iconBg} rounded-full items-center justify-center`}>
+                <Ionicons name="calendar-outline" size={20} color={theme.iconColor} />
+              </View>
+              <View className="ml-3">
+                <Text className="text-gray-500 text-sm">Date</Text>
+                <Text className="text-gray-800 font-medium">{bookingDetail.date}</Text>
+              </View>
+            </View>
+            
+            {/* Timeline visualization */}
+            <View className="flex-row justify-between px-4 py-6">
+              <View className="items-center">
+                <Text className="text-gray-500 text-xs mb-1">Departure</Text>
+                <Text className="text-gray-800 font-bold text-lg">{bookingDetail.startTime}</Text>
+              </View>
+              
+              <View className="flex-row items-center px-4 flex-1 mx-2">
+                <View className={`h-3 w-3 rounded-full ${theme.iconColor}`}></View>
+                <View className={`h-0.5 flex-1 ${theme.cardBg}`}></View>
+                <View className={`h-3 w-3 rounded-full ${theme.iconColor}`}></View>
+              </View>
+              
+              <View className="items-center">
+                <Text className="text-gray-500 text-xs mb-1">Arrival</Text>
+                <Text className="text-gray-800 font-bold text-lg">{bookingDetail.endTime}</Text>
+              </View>
+            </View>
+
+            {/* Trip status */}
+            <View className={`${theme.cardBg} rounded-lg p-3 my-2 flex-row items-center`}>
+              <Ionicons name="information-circle-outline" size={18} color={theme.iconColor} />
+              <Text className={`${theme.textColor} ml-2 text-sm`}>
+                {bookingDetail.isOngoing ? 'This trip is currently ongoing' : 'This trip is scheduled'}
+              </Text>
+            </View>
+          </View>
+        </View>
+        
+        {/* Booking details */}
+        <View className="bg-white rounded-xl shadow-sm mb-4 overflow-hidden">
+          <View className="border-b border-gray-100 p-4">
+            <Text className="text-gray-800 font-semibold text-lg">Booking Information</Text>
+          </View>
+          
+          <View className="p-4">
+            <DetailRow label="Section" value={bookingDetail.section} />
+            <DetailRow label="PIC" value={bookingDetail.pic} />
+            <View className="py-3 border-b border-gray-100">
+              <Text className="text-gray-500 mb-1">Description</Text>
+              <Text className="text-gray-800">{bookingDetail.description}</Text>
+            </View>
+            <View className="py-3">
+              <Text className="text-gray-500 mb-1">Transport Type</Text>
+              <Text className="text-gray-800">{bookingDetail.type}</Text>
+            </View>
+          </View>
+        </View>
+        
+        {/* Approval Information */}
+        {bookingDetail.approval.approverName && (
+          <View className="bg-white rounded-xl shadow-sm mb-4 overflow-hidden">
+            <View className="border-b border-gray-100 p-4">
+              <Text className="text-gray-800 font-semibold text-lg">Approval Information</Text>
+            </View>
+            
+            <View className="p-4">
+              <DetailRow label="Approved By" value={bookingDetail.approval.approverName} />
+              {bookingDetail.approval.approvedAt && (
+                <DetailRow 
+                  label="Approved At" 
+                  value={new Date(bookingDetail.approval.approvedAt).toLocaleString()} 
+                />
+              )}
+              {/* Status badge */}
+              <View className="flex-row justify-end mt-2">
+                <View className={`px-3 py-1 rounded-full ${theme.statusBadgeBg} flex-row items-center`}>
+                  <Ionicons name={theme.icon} size={14} color={theme.iconColor} />
+                  <Text className={`${theme.textColor} ml-1 font-medium text-sm`}>
+                    {bookingDetail.approval.status}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+        
+        {/* Feedback with styled card */}
+        {bookingDetail.approval.feedback && (
+          <View className={`${theme.cardBg} rounded-xl shadow-sm mb-4 p-4`}>
+            <View className="flex-row items-center mb-3">
+              <Ionicons name="chatbubble-ellipses-outline" size={20} color={theme.iconColor} />
+              <Text className={`${theme.textColor} font-semibold ml-2`}>Feedback</Text>
+            </View>
+            <View className="bg-white p-3 rounded-lg">
+              <Text className="text-gray-700 italic">"{bookingDetail.approval.feedback}"</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Action Buttons */}
+        <View className="flex-row mb-4">
+          <TouchableOpacity 
+            onPress={handleReschedule}
+            className={`flex-1 py-4 rounded-xl mr-2 items-center shadow-sm ${theme.buttonBg}`}
+          >
+            <Text className="text-white font-semibold">Reschedule</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            onPress={handleCancel}
+            className="flex-1 bg-white py-4 rounded-xl ml-2 items-center shadow-sm border border-gray-200"
+          >
+            <Text className="text-red-500 font-semibold">Cancel</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>

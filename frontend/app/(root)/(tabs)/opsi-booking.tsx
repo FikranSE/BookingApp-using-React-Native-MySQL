@@ -16,16 +16,16 @@ const OpsiBooking = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100">
+    <SafeAreaView className="flex-1 bg-sky-50">
       {/* Enhanced Header */}
       <View className="bg-white shadow-sm">
         <View className="px-4 pt-8 pb-6">
           <View className="flex-row items-center justify-center mb-2">
-            <View className="w-12 h-12 bg-blue-100 rounded-full items-center justify-center">
-              <Ionicons name="calendar" size={24} color="#1E3A8A" />
+            <View className="w-12 h-12 bg-orange-200 rounded-full items-center justify-center">
+              <Ionicons name="calendar" size={24} color="#FF8C00" />
             </View>
           </View>
-          <Text className="text-2xl font-bold text-blue-900 text-center">
+          <Text className="text-2xl font-bold text-sky-500 text-center">
             Choose Service
           </Text>
           <Text className="text-gray-500 text-center mt-1">
@@ -40,7 +40,7 @@ const OpsiBooking = () => {
           {/* Enhanced Room Card */}
           <TouchableOpacity
             onPress={() => handleBooking("Room")}
-            className="bg-white flex-1 rounded-3xl shadow-lg overflow-hidden border border-gray-100"
+            className="bg-white flex-1 rounded-3xl shadow-lg overflow-hidden border border-gray-200"
             style={{
               elevation: 3
             }}
@@ -61,7 +61,7 @@ const OpsiBooking = () => {
             
             <View className="p-4">
               <View className="mb-2">
-                <Text className="text-xl font-bold text-blue-900 mb-1">
+                <Text className="text-xl font-bold text-sky-500 mb-1">
                   Room
                 </Text>
                 <Text className="text-sm text-gray-500 leading-tight">
@@ -69,9 +69,9 @@ const OpsiBooking = () => {
                 </Text>
               </View>
               <View className="flex-row items-center mt-3">
-                <View className="flex-row items-center bg-blue-50 px-3 py-1 rounded-full">
-                  <Ionicons name="people" size={14} color="#1E3A8A" />
-                  <Text className="text-blue-900 text-xs ml-1 font-medium">
+                <View className="flex-row items-center bg-sky-50 px-3 py-1 rounded-full">
+                  <Ionicons name="people" size={14} color="#0EA5E9" />
+                  <Text className="text-sky-500 text-xs ml-1 font-medium">
                     For teams
                   </Text>
                 </View>
@@ -82,7 +82,7 @@ const OpsiBooking = () => {
           {/* Enhanced Transport Card */}
           <TouchableOpacity
             onPress={() => handleBooking("Transportation")}
-            className="bg-white flex-1 rounded-3xl shadow-lg overflow-hidden border border-gray-100"
+            className="bg-white flex-1 rounded-3xl shadow-lg overflow-hidden border border-gray-200"
             style={{
               elevation: 3
             }}
@@ -103,7 +103,7 @@ const OpsiBooking = () => {
             
             <View className="p-4">
               <View className="mb-2">
-                <Text className="text-xl font-bold text-blue-900 mb-1">
+                <Text className="text-xl font-bold text-sky-500 mb-1">
                   Transport
                 </Text>
                 <Text className="text-sm text-gray-500 leading-tight">
@@ -111,9 +111,9 @@ const OpsiBooking = () => {
                 </Text>
               </View>
               <View className="flex-row items-center mt-3">
-                <View className="flex-row items-center bg-blue-50 px-3 py-1 rounded-full">
-                  <Ionicons name="time" size={14} color="#1E3A8A" />
-                  <Text className="text-blue-900 text-xs ml-1 font-medium">
+                <View className="flex-row items-center bg-sky-50 px-3 py-1 rounded-full">
+                  <Ionicons name="time" size={14} color="#0EA5E9" />
+                  <Text className="text-sky-500 text-xs ml-1 font-medium">
                     24/7 Available
                   </Text>
                 </View>
