@@ -237,12 +237,8 @@ const Explore = () => {
         end={{ x: 1, y: 1 }}
         className="absolute top-0 left-0 right-0 h-40"
       />
-      
-      {/* Scrollable container for entire screen */}
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-      
-        {/* Header with greeting */}
-        <View className="px-6 pt-3 pb-5">
+       {/* Header with greeting */}
+       <View className="px-6 pt-3 pb-5">
           <Text className="text-2xl font-semibold text-white mb-1">Explore</Text>
           <Text className="text-white font-normal">Find rooms and transportation for your needs</Text>
         </View>
@@ -262,6 +258,11 @@ const Explore = () => {
             />
           </View>
         </View>
+      
+      {/* Scrollable container for entire screen */}
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      
+       
 
         {loading ? (
           <View className="flex-1 justify-center items-center py-32">
@@ -285,20 +286,6 @@ const Explore = () => {
         {/* Extra padding at bottom for better scrolling experience */}
         <View className="h-16" />
       </ScrollView>
-      
-      {/* Floating Action Button */}
-      <TouchableOpacity 
-        className="absolute bottom-8 right-6 w-14 h-14 bg-orange-500 rounded-full items-center justify-center shadow-lg"
-        style={{
-          shadowColor: '#F97316',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 5,
-        }}
-      >
-        <Ionicons name="add" size={28} color="white" />
-      </TouchableOpacity>
     </SafeAreaView>
   );
 };

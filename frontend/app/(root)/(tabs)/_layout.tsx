@@ -18,7 +18,7 @@ const TabIcon = ({
     >
       <Image
         source={source}
-        tintColor={focused ? "#1D4ED8" : "#9ca3af"} // Changed focus color to dark blue
+        tintColor={focused ? "#0EA5E9" : "#9ca3af"} // Changed focus color to dark blue
         resizeMode="contain"
         style={{
           width: 20, // Icon width
@@ -28,7 +28,7 @@ const TabIcon = ({
     </View>
     <Text
       className={`text-xs mt-[-25px] ${
-        focused ? "text-[#1D4ED8]" : "text-[#9ca3af]"
+        focused ? "text-[#0EA5E9]" : "text-[#9ca3af]"
       }`}
     >
       {label}
@@ -41,7 +41,7 @@ export default function Layout() {
     <Tabs
       initialRouteName="home"
       screenOptions={{
-        tabBarActiveTintColor: "#1D4ED8", // Updated to dark blue
+        tabBarActiveTintColor: "#0EA5E9", // Updated to dark blue
         tabBarInactiveTintColor: "#9ca3af",
         tabBarShowLabel: false,
         tabBarStyle: {
@@ -87,14 +87,14 @@ export default function Layout() {
                 width: 60,
                 height: 60,
                 borderRadius: 35,
-                backgroundColor: "#1D4ED8", // Changed to dark blue
+                backgroundColor: "#0EA5E9", // Changed to dark blue
                 justifyContent: "center",
                 alignItems: "center",
                 marginBottom: 40, 
                 borderWidth: 8, 
                 borderColor: "white", 
                 // Add shadow for more depth
-                shadowColor: "#1D4ED8",
+                shadowColor: "#0EA5E9",
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.3,
                 shadowRadius: 6,
