@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { icons } from "@/constants";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
 const FAQ = () => {
@@ -37,21 +38,30 @@ const FAQ = () => {
   const FAQItem = ({ question, answer, index, isExpanded, onPress }) => (
     <TouchableOpacity 
       onPress={onPress}
-      className="bg-white rounded-xl shadow-sm mb-3 overflow-hidden"
+      className={`mb-4 overflow-hidden rounded-xl border-l-4 ${isExpanded ? 'border-orange-400 bg-white' : 'border-sky-300 bg-white'}`}
+      style={{ 
+        shadowColor: "#cbd5e1",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 5,
+        elevation: 2
+      }}
     >
       <View className="p-4">
         <View className="flex-row justify-between items-center">
-          <Text className="text-base font-medium text-gray-800 flex-1 mr-2">
+          <Text className={`text-base font-medium flex-1 mr-2 ${isExpanded ? 'text-orange-500' : 'text-sky-600'}`}>
             {question}
           </Text>
-          <Image 
-            source={icons.chevron}
-            className={`w-3 h-3 transform ${isExpanded ? 'rotate-180' : 'rotate-0'}`}
-            style={{ tintColor: '#1e3a8a' }}
-          />
+          <View className={`w-6 h-6 rounded-full items-center justify-center ${isExpanded ? 'bg-orange-100' : 'bg-sky-100'}`}>
+            <Ionicons 
+              name={isExpanded ? "remove" : "add"} 
+              size={16} 
+              color={isExpanded ? "#f97316" : "#0ea5e9"} 
+            />
+          </View>
         </View>
         {isExpanded && (
-          <Text className="text-gray-600 mt-3 leading-6">
+          <Text className="text-gray-600 mt-3 leading-6 pl-1">
             {answer}
           </Text>
         )}
@@ -60,29 +70,35 @@ const FAQ = () => {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-100">
+    <SafeAreaView className="flex-1 bg-sky-50">
       {/* Header */}
-      <View className="bg-blue-900 px-4 pt-4 pb-4 rounded-b-[30px] mb-5">
-        <View className="flex-row items-center mb-2">
+      <View className="px-6 pt-6 pb-6 mb-4">
+        <View className="flex-row items-center">
           <TouchableOpacity 
             onPress={() => router.back()}
-            className="mr-1 p-2 -ml-2"
+            className="mr-3 p-2 -ml-2"
           >
-            <Image 
-              source={icons.backArrow} 
-              className="w-6 h-6"
-              style={{ tintColor: '#FFFFFF' }}
-            />
+            <View className="w-8 h-8 bg-white rounded-full items-center justify-center shadow-sm">
+              <Ionicons name="chevron-back" size={16} color="#0ea5e9" />
+            </View>
           </TouchableOpacity>
-          <View>
-            <Text className="text-xl font-bold text-white">FAQ About SISI Booking System</Text>
-          </View>
+          <Text className="text-xl font-semibold text-sky-700">FAQ</Text>
+          <View className="flex-1" />
+          <View className="w-2 h-2 rounded-full bg-orange-400 mx-0.5" />
+          <View className="w-2 h-2 rounded-full bg-sky-400 mx-0.5" />
+          <View className="w-2 h-2 rounded-full bg-orange-400 mx-0.5" />
         </View>
       </View>
 
+      {/* Title */}
+      <View className="px-6 mb-6">
+        <Text className="text-2xl font-bold text-sky-800">Frequently Asked Questions</Text>
+        <Text className="text-sky-500 mt-1">Find answers about SISI Booking System</Text>
+      </View>
+
       {/* Main Content */}
-      <ScrollView className="flex-1 px-4 -mt-4">
-        <View className="py-4">
+      <ScrollView className="flex-1 px-6 pt-2">
+        <View className="pb-6">
           {faqs.map((faq, index) => (
             <FAQItem
               key={index}

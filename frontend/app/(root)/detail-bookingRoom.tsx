@@ -203,9 +203,9 @@ const DetailBookingRoom = () => {
       'Are you sure you want to cancel this booking?',
       [
         {
-          text: 'No',
+          text: 'No',  
           style: 'cancel',
-        },
+        }, 
         {
           text: 'Yes, Cancel',
           style: 'destructive',
@@ -451,11 +451,7 @@ const DetailBookingRoom = () => {
               <Text className="text-gray-500 mb-1">Description</Text>
               <Text className="text-gray-800">{bookingDetail.description}</Text>
             </View>
-            <View className="py-3">
-              <Text className="text-gray-500 mb-1">Booking Type</Text>
-              <Text className="text-gray-800">{bookingDetail.type}</Text>
-            </View>
-          </View>
+          </View> 
         </View>
         
         {/* Approval Information */}

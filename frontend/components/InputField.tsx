@@ -61,7 +61,7 @@ const InputField = ({
   // Gaya label mengambang
   const labelStyle = {
     position: 'absolute',
-    left: 45,
+    left: icon ? 45 : 16,  // Adjusted to align properly with or without icon
     top: animatedValue.interpolate({
       inputRange: [0, 1],
       outputRange: [16, -10],
@@ -72,13 +72,14 @@ const InputField = ({
     }),
     color: animatedValue.interpolate({
       inputRange: [0, 1],
-      outputRange: ['#A1A3A6FF', '#003580'],
+      outputRange: ['#94a3b8', '#f97316'],
     }),
-    backgroundColor: 'white',
+    backgroundColor: '#f0f9ff', // sky-50 background for floating label
     paddingHorizontal: animatedValue.interpolate({
       inputRange: [0, 1],
-      outputRange: [0, 4],
+      outputRange: [0, 6],
     }),
+    fontWeight: '500',
     zIndex: 1,
   };
 
@@ -90,7 +91,7 @@ const InputField = ({
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View className="my-2 w-full">
+        <View className="my-3 w-full">
           <View className={`relative ${containerStyle || ""}`}>
             {/* Label mengambang */}
             <Animated.Text style={labelStyle}>
@@ -100,29 +101,35 @@ const InputField = ({
             <View className="relative">
               <View
                 className={`
-                  border rounded-full overflow-hidden
-                  ${(isFocused || hasValue) ? 'border-[1.5px] border-[#003580]' : 'border-[1px] border-gray-300'}
+                  border rounded-xl overflow-hidden shadow-sm
+                  ${(isFocused || hasValue) ? 'border-[1.5px] border-orange-400' : 'border-[1px] border-sky-100'}
                 `}
               >
                 {/* Garis gradient ketika fokus */}
                 {isFocused && (
                   <LinearGradient
-                    colors={['#003580', '#E48900FF']}
+                    colors={['#f97316', '#0ea5e9']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    className="absolute inset-0"
+                    className="absolute inset-0 opacity-10"
                   />
                 )}
 
                 {/* Bagian dalam input */}
-                <View className="bg-white m-[1px] rounded-full flex-row items-center">
+                <View className="bg-sky-50 m-[0.5px] rounded-xl flex-row items-center">
                   {icon && (
-                    <Image source={icon} tintColor="#A7A7A7FF" className={`w-4 h-4 ml-4 ${iconStyle || ''}`} />
+                    <View className="ml-4 flex items-center justify-center">
+                      <Image 
+                        source={icon} 
+                        tintColor={isFocused ? "#f97316" : "#94a3b8"} 
+                        className={`w-5 h-5 ${iconStyle || ''}`} 
+                      />
+                    </View>
                   )}
                   <TextInput
                     className={`
-                      px-4 py-3 font-JakartaSemiBold text-[15px] flex-1
-                      text-left text-blue-900
+                      px-4 py-4 font-medium text-[16px] flex-1
+                      text-left text-gray-700
                       ${inputStyle || ''}
                     `}
                     secureTextEntry={secureTextEntry}
@@ -132,11 +139,19 @@ const InputField = ({
                     onChangeText={onChangeText}
                     editable={editable}
                     onPress={onPress}
+                    placeholderTextColor="#94a3b8"
                     {...props}
                   />
                   {rightIcon && onRightIconPress && (
-                    <TouchableOpacity onPress={onRightIconPress} className="mr-4">
-                      <Image source={rightIcon} tintColor="#1F1FAAFF" className={`w-4 h-4 ${iconStyle || ''}`} />
+                    <TouchableOpacity 
+                      onPress={onRightIconPress} 
+                      className="mr-4 bg-white p-2 rounded-full"
+                    >
+                      <Image 
+                        source={rightIcon} 
+                        tintColor="#f97316" 
+                        className={`w-5 h-5 ${iconStyle || ''}`} 
+                      />
                     </TouchableOpacity>
                   )}
                 </View>

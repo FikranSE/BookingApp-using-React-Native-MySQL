@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
-import { tokenCache } from "@/lib/auth";  
-import { AUTH_TOKEN_KEY } from "@/lib/constants";  
-import Modal from 'react-native-modal';  
-import { Button } from 'react-native-paper';  
+import InputField from '@/components/Inputfield_form';
+import { tokenCache } from "@/lib/auth";  // Import tokenCache from lib/auth
+import { AUTH_TOKEN_KEY } from "@/lib/constants";  // Import the constant key for the auth token
+import Modal from 'react-native-modal';  // Import react-native-modal for custom alerts
+import { Button } from 'react-native-paper';  // Import Button from react-native-paper for better button styling
+import { Picker } from '@react-native-picker/picker';
 
 interface BookingForm {
-  booking_id: number;
   room_id: number | null;
   booking_date: Date;
   start_time: string;
@@ -30,14 +30,10 @@ interface Room {
   facilities: string;
 }
 
-const RescheduleBooking = () => {
+const BookingRoom = () => {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const bookingId = params?.id; 
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
   const [form, setForm] = useState<BookingForm>({
-    booking_id: 0,
     room_id: null,
     booking_date: new Date(),
     start_time: '',
@@ -47,29 +43,19 @@ const RescheduleBooking = () => {
     description: '',
   });
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
-  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  
   const [modalVisible, setModalVisible] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [alertType, setAlertType] = useState<'success' | 'error'>('success');
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
 
-  // Fetch authToken from tokenCache
   const fetchAuthToken = async () => {
     return await tokenCache.getToken(AUTH_TOKEN_KEY);
   };
 
   useEffect(() => {
-    const fetchBookingData = async () => {
+    const fetchRooms = async () => {
       try {
-        if (!bookingId) {
-          console.error('No booking ID in params:', params);
-          showAlert('Error', 'No booking ID provided. Please try again.', 'error');
-          router.back();
-          return;
-        }
-
         const authToken = await fetchAuthToken();
         if (!authToken) {
           Alert.alert('Error', 'Not authenticated');
@@ -77,83 +63,56 @@ const RescheduleBooking = () => {
           return;
         }
 
-        const bookingResponse = await axios.get(
-          `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings/${bookingId}`,
-          {
-            headers: { 
-              'Authorization': `Bearer ${authToken}`,
-              'Accept': 'application/json'
-            },
-          }
-        );
+        const response = await axios.get('https://j9d3hc82-3001.asse.devtunnels.ms/api/rooms', {
+          headers: { 'Authorization': `Bearer ${authToken}` },
+        });
 
-        if (bookingResponse.data) {
-          const bookingData = bookingResponse.data;
-          const bookingDate = new Date(bookingData.booking_date);
-          setForm({
-            booking_id: bookingData.booking_id,
-            room_id: bookingData.room_id,
-            booking_date: bookingDate,
-            start_time: bookingData.start_time,
-            end_time: bookingData.end_time,
-            pic: bookingData.pic || '',
-            section: bookingData.section || '',
-            description: bookingData.description || '',
-          });
+        if (response.data && Array.isArray(response.data)) {
+          setRooms(response.data);
+        } else {
+          showAlert('Error', 'Invalid room data received.', 'error');
         }
-
-        // Fetch rooms
-        const roomsResponse = await axios.get(
-          'https://j9d3hc82-3001.asse.devtunnels.ms/api/rooms',
-          {
-            headers: { 
-              'Authorization': `Bearer ${authToken}`,
-              'Accept': 'application/json'
-            },
-          }
-        );
-
-        if (roomsResponse.data && Array.isArray(roomsResponse.data)) {
-          const roomsWithFacilities = roomsResponse.data.map((room: Room) => ({
-            ...room,
-            facilities: room.facilities ? room.facilities.split(',').map((item: string) => item.trim()) : [],
-          }));
-          setRooms(roomsWithFacilities);
-          
-          // Set selected room based on form.room_id
-          const currentRoom = roomsWithFacilities.find(room => room.room_id === form.room_id);
-          if (currentRoom) {
-            setSelectedRoom(currentRoom);
-          }
-        }
-
       } catch (error) {
-        console.error('Error in fetchBookingData:', error.response?.data || error);
-        const errorMessage = error.response?.data?.message || 'Failed to load booking data';
-        showAlert('Error', errorMessage, 'error');
-        router.back();
-      } finally {
-        setInitialLoading(false);
+        console.error('Error fetching rooms:', error);
+        showAlert('Error', 'Failed to load rooms. Please try again.', 'error');
       }
     };
+    fetchRooms();
+  }, []);
 
-    fetchBookingData();
-  }, [bookingId, params]);
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!form.pic.trim()) {
+      newErrors.pic = 'PIC name is required';
+    }
+    
+    if (!form.section.trim()) {
+      newErrors.section = 'Section is required';
+    }
 
-  const showAlert = (message: string, details: string, type: 'success' | 'error') => {
-    setAlertMessage(`${message}: ${details}`);
-    setAlertType(type);
-    setModalVisible(true);
+    if (!form.start_time) {
+      newErrors.start_time = 'Start time is required';
+    }
+    
+    if (!form.end_time) {
+      newErrors.end_time = 'End time is required';
+    } else if (form.start_time && !isValidTimeRange(form.start_time, form.end_time)) {
+      newErrors.end_time = 'End time must be after start time';
+    }
+
+    if (form.room_id === null) {
+      newErrors.room_id = 'Please select a valid room';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async () => {
-    if (!form.start_time || !form.end_time) {
-      showAlert('Error', 'Please select both start and end times', 'error');
-      return;
-    }
-
-    if (!isValidTimeRange(form.start_time, form.end_time)) {
-      showAlert('Error', 'End time must be after start time', 'error');
+    if (!validateForm()) {
+      const firstError = Object.values(errors)[0];
+      showAlert('Validation Error', firstError, 'error');
       return;
     }
 
@@ -166,36 +125,36 @@ const RescheduleBooking = () => {
         return;
       }
 
-      const updateData = {
-        ...form,
-        booking_date: form.booking_date.toISOString().split('T')[0],
-      };
+      const response = await axios.post('https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings', form, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
 
-      await axios.put(
-        `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings/${bookingId}`,
-        updateData,
-        {
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      showAlert('Success', 'Booking rescheduled successfully', 'success');
-      setTimeout(() => {
-        router.replace('/(root)/(tabs)/my-booking');
-      }, 2000);
+      if (response.status === 201) {
+        showAlert('Success', 'Booking submitted successfully', 'success');
+        setTimeout(() => {
+          router.replace('/(root)/(tabs)/my-booking');
+        }, 2000);
+      } else {
+        showAlert('Error', 'Unexpected response from server', 'error');
+      }
     } catch (error) {
       console.error('Booking error:', error);
       if (error.response) {
-        showAlert('Error', error.response.data.message || 'Failed to reschedule booking. Please try again.', 'error');
+        showAlert('Error', error.response.data.message || 'Failed to submit booking. Please try again.', 'error');
       } else {
-        showAlert('Error', 'Failed to reschedule booking. Please try again.', 'error');
+        showAlert('Error', 'Failed to submit booking. Please try again.', 'error');
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const showAlert = (message: string, details: string, type: 'success' | 'error') => {
+    setAlertMessage(`${message}: ${details}`);
+    setAlertType(type);
+    setModalVisible(true);
   };
 
   const isValidTimeRange = (start: string, end: string) => {
@@ -207,38 +166,54 @@ const RescheduleBooking = () => {
     return true;
   };
 
-  const DetailField = ({ label, value }: { label: string; value: string }) => (
+  const renderRooms = () => (
     <View className="mb-6">
-      <Text className="text-gray-700 font-medium mb-2">{label}</Text>
-      <View className="bg-gray-50 p-4 rounded-xl">
-        <Text className="text-gray-800">{value}</Text>
-      </View>
+      <Text className="text-gray-700 font-medium mb-3">Select Room *</Text>
+      {errors.room_id && <Text className="text-orange-500 mb-2 text-xs">{errors.room_id}</Text>}
+      <ScrollView className="max-h-full">
+        {rooms.map((room) => (
+          <TouchableOpacity
+            key={room.room_id}
+            onPress={() => {
+              setForm(prev => ({ ...prev, room_id: room.room_id }));
+              if (errors.room_id) {
+                setErrors(prev => ({ ...prev, room_id: undefined }));
+              }
+            }}
+            className={`flex-row items-center p-4 mb-4 rounded-xl border ${
+              room.room_id === form.room_id 
+                ? 'bg-sky-50 border-sky-500' 
+                : 'bg-white border-gray-200'
+            }`}
+          >
+            <View className="w-20 h-20 bg-sky-100 rounded-lg overflow-hidden mr-4">
+              <Image source={{ uri: room.image }} style={{ width: '100%', height: '100%' }} />
+            </View>
+            <View className="flex-1">
+              <Text className={`text-base ${
+                room.room_id === form.room_id ? 'text-sky-900 font-medium' : 'text-gray-700'
+              }`}>
+                {room.room_name}
+              </Text>
+              <Text className={`text-sm ${
+                room.room_id === form.room_id ? 'text-sky-700' : 'text-gray-500'
+              }`}>
+                Type: {room.room_type} | Capacity: {room.capacity}
+              </Text>
+              <Text className={`text-xs ${
+                room.room_id === form.room_id ? 'text-sky-700' : 'text-gray-500'
+              }`}>
+                Facilities: {room.facilities ? room.facilities.join(', ') : 'No facilities available'}
+              </Text>
+            </View>
+            {room.room_id === form.room_id && (
+              <Ionicons name="checkmark-circle" size={24} color="#0EA5E9" />
+            )}
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
     </View>
   );
-
-  const renderRoomDetail = () => {
-    if (!selectedRoom) return null;
-    
-    return (
-      <View className="mb-6">
-        <Text className="text-gray-700 font-medium mb-3">Room Details</Text>
-        <View className="bg-gray-50 p-4 rounded-xl">
-          <View className="flex-row mb-4">
-            <Image 
-              source={{ uri: selectedRoom.image }} 
-              className="w-24 h-24 rounded-lg mr-4"
-            />
-            <View className="flex-1">
-              <Text className="text-lg font-medium text-gray-900">{selectedRoom.room_name}</Text>
-              <Text className="text-gray-600">Type: {selectedRoom.room_type}</Text>
-              <Text className="text-gray-600">Capacity: {selectedRoom.capacity}</Text>
-            </View>
-          </View>
-          <Text className="text-gray-600">Facilities: {selectedRoom.facilities}</Text>
-        </View>
-      </View>
-    );
-  };
 
   const SectionHeader = ({ title }: { title: string }) => (
     <View className="flex-row items-center mb-4 mt-2">
@@ -248,149 +223,128 @@ const RescheduleBooking = () => {
     </View>
   );
 
-  if (initialLoading) {
-    return (
-      <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
-        <ActivityIndicator size="large" color="#1E40AF" />
-        <Text className="mt-4 text-gray-600">Loading booking details...</Text>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView className="flex-1 bg-gray-100 pb-10">
-      <ScrollView className="flex-1 p-4">
-        <View className="bg-white rounded-2xl p-6 shadow-sm mb-6">
-          <SectionHeader title="BOOKING DETAILS" />
-          
-          <DetailField label="PIC Name" value={form.pic} />
-          <DetailField label="Section" value={form.section} />
-          {renderRoomDetail()}
-          <DetailField label="Description" value={form.description || 'No description provided'} />
+    <SafeAreaView className="flex-1 bg-white pb-10">
+      <View className="shadow-sm bg-sky-500">
+        <View className="flex-row items-center justify-between px-4 py-4">
+          <TouchableOpacity 
+            onPress={() => router.back()}
+            className="w-10 h-10 rounded-full items-center justify-center bg-white"
+          >
+            <Ionicons name="arrow-back" size={20} color="#0EA5E9" />
+          </TouchableOpacity>
+          <Text className="text-lg font-bold text-white">New Room Booking</Text>
+          <View className="w-10" />
+        </View>
+      </View>
 
-          <SectionHeader title="RESCHEDULE DATE & TIME" />
+      <ScrollView className="flex-1 p-4">
+        <View className="bg-white rounded-2xl p-6 shadow-sm mb-6 border border-sky-100">
+          <SectionHeader title="BASIC INFORMATION" />
+          
+          <InputField
+            label="PIC Name *"
+            value={form.pic}
+            onChangeText={(text: string) => setForm(prev => ({ ...prev, pic: text }))}
+            placeholder="Enter person in charge"
+            errorMessage={errors.pic}
+          />
+
+          <InputField
+            label="Section *"
+            value={form.section}
+            onChangeText={(text: string) => setForm(prev => ({ ...prev, section: text }))}
+            placeholder="Enter section name"
+            errorMessage={errors.section}
+          />
+
+          {renderRooms()}
+
+          <SectionHeader title="DATE & TIME" />
 
           <View className="mb-6">
-            <Text className="text-gray-700 font-medium mb-3">Booking Date *</Text>
+            <Text className="text-sky-700 font-medium mb-3">Booking Date *</Text>
             <TouchableOpacity 
               onPress={() => setShowDatePicker(true)}
-              className="flex-row items-center space-x-2 bg-white border border-gray-200 rounded-xl p-4"
+              className="flex-row items-center space-x-2 bg-sky-50 border border-gray-200 rounded-xl p-4"
             >
-              <Ionicons name="calendar" size={20} color="#64748B" className="mr-3" />
-              <Text className="text-gray-900">
-                {form.booking_date.toLocaleDateString()}
-              </Text>
+              <Ionicons name="calendar" size={20} color="#0EA5E9" className="mr-3" />
+              <Text className="text-gray-900">{form.booking_date.toLocaleDateString()}</Text>
             </TouchableOpacity>
           </View>
 
           <View className="flex-row mb-6 space-x-4">
             <View className="flex-1">
-              <Text className="text-gray-700 font-medium mb-3">Start Time *</Text>
+              <Text className="text-sky-700 font-medium mb-3">Start Time *</Text>
               <TouchableOpacity 
                 onPress={() => setShowStartTimePicker(true)}
-                className="flex-row items-center space-x-2 bg-white border border-gray-200 rounded-xl p-4"
+                className="flex-row items-center space-x-2 bg-sky-50 border ${errors.start_time ? 'border-orange-500' : 'border-gray-200'} rounded-xl p-4"
               >
-                <Ionicons name="time" size={20} color="#64748B" className="mr-3" />
+                <Ionicons name="time" size={20} color="#0EA5E9" className="mr-3" />
                 <Text className="text-gray-900">{form.start_time || 'Select time'}</Text>
               </TouchableOpacity>
             </View>
 
             <View className="flex-1">
-              <Text className="text-gray-700 font-medium mb-3">End Time *</Text>
+              <Text className="text-sky-700 font-medium mb-3">End Time *</Text>
               <TouchableOpacity 
                 onPress={() => setShowEndTimePicker(true)}
-                className="flex-row items-center space-x-2 bg-white border border-gray-200 rounded-xl p-4"
+                className="flex-row items-center space-x-2 bg-sky-50 border ${errors.end_time ? 'border-orange-500' : 'border-gray-200'} rounded-xl p-4"
               >
-                <Ionicons name="time" size={20} color="#64748B" className="mr-3" />
+                <Ionicons name="time" size={20} color="#0EA5E9" className="mr-3" />
                 <Text className="text-gray-900">{form.end_time || 'Select time'}</Text>
               </TouchableOpacity>
             </View>
           </View>
+
+          <SectionHeader title="ADDITIONAL DETAILS" />
+
+          <InputField
+            label="Description"
+            value={form.description}
+            onChangeText={(text: string) => setForm(prev => ({ ...prev, description: text }))}
+            placeholder="Enter booking description"
+            multiline
+            numberOfLines={4}
+            errorMessage={errors.description}
+          />
         </View>
 
         <TouchableOpacity
           onPress={handleSubmit}
           disabled={loading}
-          className={`bg-blue-900 py-3 rounded-xl mb-6 ${loading ? 'opacity-70' : ''}`}
+          className={`bg-orange-500 py-4 rounded-xl mb-6 ${loading ? 'opacity-70' : ''}`}
         >
           {loading ? ( 
             <ActivityIndicator color="white" />
           ) : (
-            <Text className="text-white text-center font-bold text-md">Update Booking</Text>
+            <Text className="text-white text-center font-bold text-base">Submit Booking</Text>
           )}
         </TouchableOpacity>
       </ScrollView>
 
+      {/* Modal for Success/Error Alerts */}
       <Modal isVisible={modalVisible} onBackdropPress={() => setModalVisible(false)} animationIn="fadeIn" animationOut="fadeOut">
-        <View className={`flex-col items-center justify-center bg-white rounded-xl p-6 shadow-lg ${alertType === 'error' ? 'border-red-500' : 'border-blue-500'}`}>
+        <View className={`flex-col items-center justify-center bg-white rounded-xl p-6 shadow-lg ${alertType === 'error' ? 'border-orange-500' : 'border-sky-500'}`}>
           <Ionicons 
             name={alertType === 'error' ? 'close-circle' : 'checkmark-circle'} 
             size={75} 
-            color={alertType === 'error' ? 'red' : '#31C48D'} 
+            color={alertType === 'error' ? '#F97316' : '#0EA5E9'} 
           />
-          <Text 
-            className={`text-xl font-bold mt-1 ${alertType === 'error' ? 'text-red-500' : 'text-green-500'}`}
-          >
+          <Text className={`text-xl font-bold mt-1 ${alertType === 'error' ? 'text-orange-500' : 'text-sky-500'}`}>
             {alertType === 'error' ? 'Error' : 'Success'}
           </Text>
-          <Text className="text-center text-gray-700 mt-2">{alertMessage}</Text>
-          <Button 
-            mode="contained" 
-            onPress={() => setModalVisible(false)} 
-            className="mt-4"
+          <Text className="text-gray-600 text-center mt-2">{alertMessage}</Text>
+          <TouchableOpacity 
+            onPress={() => setModalVisible(false)}
+            className={`mt-4 py-2 px-6 rounded-full ${alertType === 'error' ? 'bg-orange-500' : 'bg-sky-500'}`}
           >
-            Close
-          </Button>
+            <Text className="text-white font-bold">OK</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
-
-      {showDatePicker && (
-        <DateTimePicker
-          value={form.booking_date}
-          mode="date"
-          onChange={(event, selectedDate) => {
-            setShowDatePicker(false);
-            if (selectedDate && event.type === 'set') {
-              setForm(prev => ({ ...prev, booking_date: selectedDate }));
-            }
-          }}
-        />
-      )}
-
-{showStartTimePicker && (
-  <DateTimePicker
-    value={form.start_time ? new Date(`2000-01-01T${form.start_time}`) : new Date()}
-    mode="time"
-    onChange={(event, selectedDate) => {
-      setShowStartTimePicker(false);
-      if (selectedDate && event.type === 'set') {
-        const hours = selectedDate.getHours().toString().padStart(2, '0');
-        const minutes = selectedDate.getMinutes().toString().padStart(2, '0'); // Fixed: remove duplicated line
-        const formattedTime = `${hours}:${minutes}`;
-        setForm(prev => ({ ...prev, start_time: formattedTime }));
-      }
-    }}
-  />
-)}
-
-{showEndTimePicker && (
-  <DateTimePicker
-    value={form.end_time ? new Date(`2000-01-01T${form.end_time}`) : new Date()}
-    mode="time"
-    onChange={(event, selectedDate) => {
-      setShowEndTimePicker(false);
-      if (selectedDate && event.type === 'set') {
-        const hours = selectedDate.getHours().toString().padStart(2, '0');
-        const minutes = selectedDate.getMinutes().toString().padStart(2, '0');
-        const formattedTime = `${hours}:${minutes}`;
-        setForm(prev => ({ ...prev, end_time: formattedTime }));
-      }
-    }}
-  />
-)}
-
     </SafeAreaView>
   );
 };
 
-export default RescheduleBooking;
+export default BookingRoom;

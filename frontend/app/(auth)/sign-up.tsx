@@ -1,6 +1,6 @@
 // app/(auth)/sign-up.tsx
 
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import { useState, useContext } from "react";
 import {
   ScrollView,
@@ -14,6 +14,7 @@ import ReactNativeModal from "react-native-modal";
 import { icons } from "@/constants";
 import InputField from "@/components/InputField";
 import { AuthContext } from "../context/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
 
 const SignUp = () => {
   const { register } = useContext(AuthContext);
@@ -43,26 +44,33 @@ const SignUp = () => {
   };
 
   return (
-    <ScrollView className="flex-1 bg-white">
-      {/* Dekorasi lingkaran di bagian atas */}
+    <ScrollView className="flex-1 bg-sky-50">
+      {/* Decorative elements at the top */}
       <View className="relative h-40 w-full mb-8">
         <View
-          className="absolute bg-blue-900 w-[180px] h-[180px] rounded-full left-[-60px] top-[-60px]"
+          className="absolute bg-sky-500 w-[180px] h-[180px] rounded-full left-[-60px] top-[-60px]"
           style={{ opacity: 0.9 }}
         />
         <View
-          className="absolute bg-blue-900 w-[60px] h-[60px] rounded-full left-24 top-[-20px]"
+          className="absolute bg-orange-400 w-[60px] h-[60px] rounded-full left-24 top-[-20px]"
           style={{ opacity: 0.9 }}
         />
         <View
-          className="absolute bg-blue-900 w-[40px] h-[40px] rounded-full right-8 top-10"
+          className="absolute bg-sky-500 w-[40px] h-[40px] rounded-full right-8 top-10"
           style={{ opacity: 0.9 }}
         />
       </View>
 
       <View className="px-6">
-        {/* Judul */}
-        <Text className="text-blue-900 text-3xl font-bold mb-8">Sign up</Text>
+        {/* Title */}
+        <View className="flex-row items-center mb-2">
+          <View className="w-2 h-2 rounded-full bg-orange-400 mr-1" />
+          <View className="w-2 h-2 rounded-full bg-sky-400 mr-1" />
+          <View className="w-2 h-2 rounded-full bg-orange-400 mr-1" />
+        </View>
+        <Text className="text-sky-800 text-3xl font-bold mb-1">Hello!</Text>
+        <Text className="text-sky-700 text-3xl font-bold mb-2">Create Account</Text>
+        <Text className="text-sky-500 text-sm mb-8">Fill in your details to get started</Text>
 
         {/* Full Name */}
         <InputField
@@ -70,13 +78,12 @@ const SignUp = () => {
           icon={icons.user} 
           value={form.name}
           onChangeText={(value) => setForm({ ...form, name: value })}
-         
         />
 
         {/* Phone Number */}
         <InputField
           label="Phone Number"
-          icon={icons.telephone} // Pastikan Anda memiliki ikon phone
+          icon={icons.telephone}
           value={form.phone}
           onChangeText={(value) => setForm({ ...form, phone: value })}
           keyboardType="phone-pad"
@@ -85,44 +92,55 @@ const SignUp = () => {
         {/* Email */}
         <InputField
           label="Email"
-          icon={icons.email} // Pastikan Anda memiliki ikon email
+          icon={icons.email}
           value={form.email}
           onChangeText={(value) => setForm({ ...form, email: value })}
           keyboardType="email-address"
         />
 
         {/* Password */}
-        <View className="mb-6">
-          <InputField
-            label="Password"
-            icon={icons.lock} // Pastikan Anda memiliki ikon lock
-            secureTextEntry={!showPassword}
-            value={form.password}
-            onChangeText={(value) => setForm({ ...form, password: value })}
-            rightIcon={showPassword ? icons.eye : icons.eyecross} // Pastikan Anda memiliki ikon eye dan eyecross
-            onRightIconPress={() => setShowPassword(!showPassword)}
-      
-          />
+        <InputField
+          label="Password"
+          icon={icons.lock}
+          secureTextEntry={!showPassword}
+          value={form.password}
+          onChangeText={(value) => setForm({ ...form, password: value })}
+          rightIcon={showPassword ? icons.eye : icons.eyecross}
+          onRightIconPress={() => setShowPassword(!showPassword)}
+        />
+
+        {/* Sign Up & Log In Buttons */}
+        <View className="flex-row mt-6">
+          <TouchableOpacity
+            onPress={() => router.push("/(auth)/sign-in")}
+            className="flex-1 bg-white border border-sky-200 py-3.5 rounded-full mr-2 flex-row justify-center items-center"
+          >
+            <Ionicons name="log-in-outline" size={18} color="#0ea5e9" style={{ marginRight: 8 }} />
+            <Text className="text-center text-sky-600 font-medium">
+              Log In
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={onSignUpPress}
+            className="flex-1 bg-orange-400 py-3.5 rounded-full ml-2 flex-row justify-center items-center"
+          >
+            <Ionicons name="person-add-outline" size={18} color="white" style={{ marginRight: 8 }} />
+            <Text className="text-center text-white font-medium">
+              Sign Up
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Tombol Sign Up */}
-        <TouchableOpacity
-          onPress={onSignUpPress}
-          className="bg-blue-900 rounded-full py-3"
-        >
-          <Text className="text-white text-center text-lg font-semibold">
-            Sign up
+        {/* Optional link if you already have an account */}
+        <View className="mt-8 mb-12 items-center">
+          <Text className="text-center text-sky-700">
+            Already have an account?{" "}
           </Text>
-        </TouchableOpacity>
-
-        {/* Link jika sudah punya akun */}
-        <View className="mt-6 mb-10">
-          <Text className="text-center text-blue-900">
-            I am already a member?{" "}
-            <Link href="/(auth)/sign-in" className="font-semibold">
-              Sign in
-            </Link>
-          </Text>
+          <Link href="/(auth)/sign-in" asChild>
+            <TouchableOpacity className="mt-2 py-2 px-6 bg-sky-100 rounded-full">
+              <Text className="font-medium text-sky-700">Log in here</Text>
+            </TouchableOpacity>
+          </Link>
         </View>
       </View>
 
@@ -139,7 +157,7 @@ const SignUp = () => {
               keyboardType="numeric"
               value={verification.code}
               onChangeText={(code) => setVerification({ ...verification, code })}
-              className="text-base text-blue-900"
+              className="text-base text-sky-700"
             />
           </View>
           {verification.error && (
@@ -154,7 +172,7 @@ const SignUp = () => {
                 "Fungsi verifikasi belum diimplementasikan."
               );
             }}
-            className="bg-blue-900 rounded-full py-3 mt-2"
+            className="bg-orange-400 rounded-full py-3 mt-2"
           >
             <Text className="text-white text-center text-lg font-semibold">
               Verify Email

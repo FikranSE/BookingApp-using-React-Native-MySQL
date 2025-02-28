@@ -167,7 +167,7 @@ const Home = () => {
         
         const allBookings = [
           ...filteredRoomBookings.map((booking: any) => ({
-            ...booking,
+            ...booking, 
             type: 'ROOM' as const,
             itemName: rooms.find((room) => room.room_id === booking.room_id)?.room_name
           })),

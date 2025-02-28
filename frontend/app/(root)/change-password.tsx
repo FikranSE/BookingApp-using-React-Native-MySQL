@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { icons } from "@/constants";
-import {router} from "expo-router";
-import  BookInput  from "@/components/BookInput";
+import { router } from "expo-router";
+import BookInput from "@/components/BookInput";
+import { Ionicons } from "@expo/vector-icons";
 
 const ChangePassword = () => {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -90,7 +91,7 @@ const ChangePassword = () => {
 
   // Password requirement item component
   const PasswordRequirement = ({ met, text }: { met: boolean; text: string }) => (
-    <View className="flex-row items-center space-x-2 mb-1">
+    <View className="flex-row items-center space-x-2 mb-2">
       <View 
         className={`w-2 h-2 rounded-full ${
           met ? "bg-green-500" : "bg-gray-300"
@@ -112,93 +113,130 @@ const ChangePassword = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-100">
+    <SafeAreaView className="flex-1 bg-sky-50">
       {/* Header */}
-      <View className="bg-blue-900 px-4 pt-4 pb-8 rounded-b-[30px]">
-        <View className="flex-row items-center mb-2">
+      <View className="px-6 pt-6 pb-6 mb-2">
+        <View className="flex-row items-center">
           <TouchableOpacity 
             onPress={() => router.back()}
-            className="mr-1 p-2 -ml-2"
+            className="mr-3 p-2 -ml-2"
           >
-            <Image 
-              source={icons.backArrow} 
-              className="w-6 h-6"
-              style={{ tintColor: '#FFFFFF' }}
-            />
+            <View className="w-8 h-8 bg-white rounded-full items-center justify-center shadow-sm">
+              <Ionicons name="chevron-back" size={16} color="#0ea5e9" />
+            </View>
           </TouchableOpacity>
-          <View>
-            <Text className="text-xl font-bold text-white">Change Password</Text>
-            <Text className="text-blue-200 text-sm">
-              Update your password to keep your account secure
-            </Text>
-          </View>
+          <Text className="text-xl font-semibold text-sky-700">Security</Text>
+          <View className="flex-1" />
+          <View className="w-2 h-2 rounded-full bg-orange-400 mx-0.5" />
+          <View className="w-2 h-2 rounded-full bg-sky-400 mx-0.5" />
+          <View className="w-2 h-2 rounded-full bg-orange-400 mx-0.5" />
         </View>
       </View>
 
+      {/* Title */}
+      <View className="px-6 mb-4">
+        <Text className="text-2xl font-bold text-sky-800">Change Password</Text>
+        <Text className="text-sky-500 mt-1">Update your password to keep your account secure</Text>
+      </View>
+
       {/* Main Content */}
-      <ScrollView className="flex-1 px-4 -mt-4">
-        <View className="bg-white rounded-xl shadow-sm mb-4 p-4">
+      <ScrollView className="flex-1 px-6">
+        <View className="mb-6">
           {/* Current Password */}
-          <BookInput
-            label="Current Password"
-            value={currentPassword}
-            onChangeText={setCurrentPassword}
-            placeholder="Enter current password"
-            secureTextEntry={!showCurrentPassword}
-            rightIcon={showCurrentPassword ? icons.eyecross : icons.eye}
-            onRightIconPress={() => setShowCurrentPassword(!showCurrentPassword)}
-            error={errors.currentPassword}
-            required
-          />
+          <View className="mb-5">
+            <BookInput
+              label="Current Password"
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              placeholder="Enter current password"
+              secureTextEntry={!showCurrentPassword}
+              rightIcon={showCurrentPassword ? icons.eyecross : icons.eye}
+              onRightIconPress={() => setShowCurrentPassword(!showCurrentPassword)}
+              error={errors.currentPassword}
+              required
+              containerClassName="bg-white rounded-xl shadow-sm border-l-4 border-sky-300"
+              labelClassName="text-sky-600 font-medium"
+            />
+            {errors.currentPassword ? (
+              <Text className="text-red-500 text-xs mt-1 ml-1">{errors.currentPassword}</Text>
+            ) : null}
+          </View>
 
           {/* New Password */}
-          <BookInput
-            label="New Password"
-            value={newPassword}
-            onChangeText={setNewPassword}
-            placeholder="Enter new password"
-            secureTextEntry={!showNewPassword}
-            rightIcon={showNewPassword ? icons.eyecross : icons.eye}
-            onRightIconPress={() => setShowNewPassword(!showNewPassword)}
-            error={errors.newPassword}
-            required
-          />
+          <View className="mb-1">
+            <BookInput
+              label="New Password"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              placeholder="Enter new password"
+              secureTextEntry={!showNewPassword}
+              rightIcon={showNewPassword ? icons.eyecross : icons.eye}
+              onRightIconPress={() => setShowNewPassword(!showNewPassword)}
+              error={errors.newPassword}
+              required
+              containerClassName="bg-white rounded-xl shadow-sm border-l-4 border-sky-300"
+              labelClassName="text-sky-600 font-medium"
+            />
+            {errors.newPassword ? (
+              <Text className="text-red-500 text-xs mt-1 ml-1">{errors.newPassword}</Text>
+            ) : null}
+          </View>
 
           {/* Password Requirements */}
-          <View className="bg-gray-50 p-3 rounded-lg mb-4">
-            <Text className="text-sm font-medium text-gray-600 mb-2">
-              Password Requirements:
-            </Text>
-            <PasswordRequirement met={passwordChecks.length} text="At least 8 characters" />
-            <PasswordRequirement met={passwordChecks.uppercase} text="One uppercase letter" />
-            <PasswordRequirement met={passwordChecks.lowercase} text="One lowercase letter" />
-            <PasswordRequirement met={passwordChecks.number} text="One number" />
-            <PasswordRequirement met={passwordChecks.special} text="One special character (!@#$%^&*)" />
+          <View className="bg-white border border-sky-100 p-4 rounded-xl mb-5 shadow-sm">
+            <View className="flex-row items-center mb-2">
+              <Ionicons name="shield-checkmark-outline" size={16} color="#0ea5e9" />
+              <Text className="text-sm font-medium text-sky-700 ml-2">
+                Password Requirements
+              </Text>
+            </View>
+            <View className="pl-1">
+              <PasswordRequirement met={passwordChecks.length} text="At least 8 characters" />
+              <PasswordRequirement met={passwordChecks.uppercase} text="One uppercase letter" />
+              <PasswordRequirement met={passwordChecks.lowercase} text="One lowercase letter" />
+              <PasswordRequirement met={passwordChecks.number} text="One number" />
+              <PasswordRequirement met={passwordChecks.special} text="One special character (!@#$%^&*)" />
+            </View>
           </View>
 
           {/* Confirm Password */}
-          <BookInput
-            label="Confirm New Password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            placeholder="Confirm new password"
-            secureTextEntry={!showConfirmPassword}
-            rightIcon={showConfirmPassword ? icons.eyecross : icons.eye}
-            onRightIconPress={() => setShowConfirmPassword(!showConfirmPassword)}
-            error={errors.confirmPassword}
-            required
-          />
+          <View className="mb-6">
+            <BookInput
+              label="Confirm New Password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholder="Confirm new password"
+              secureTextEntry={!showConfirmPassword}
+              rightIcon={showConfirmPassword ? icons.eyecross : icons.eye}
+              onRightIconPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              error={errors.confirmPassword}
+              required
+              containerClassName="bg-white rounded-xl shadow-sm border-l-4 border-sky-300"
+              labelClassName="text-sky-600 font-medium"
+            />
+            {errors.confirmPassword ? (
+              <Text className="text-red-500 text-xs mt-1 ml-1">{errors.confirmPassword}</Text>
+            ) : null}
+          </View>
 
           {/* Submit Button */}
           <TouchableOpacity
-            className={`bg-blue-900 py-4 rounded-xl mt-6 ${
-              !currentPassword || !newPassword || !confirmPassword ? "opacity-50" : ""
+            className={`py-4 rounded-xl mt-2 mb-8 flex-row justify-center items-center ${
+              !currentPassword || !newPassword || !confirmPassword 
+                ? "bg-gray-300" 
+                : "bg-orange-400"
             }`}
             onPress={handleSubmit}
             disabled={!currentPassword || !newPassword || !confirmPassword}
           >
-            <Text className="text-white text-center font-bold">
-              Change Password
+            <Ionicons 
+              name="lock-closed-outline" 
+              size={18} 
+              color="white" 
+              style={{ marginRight: 8 }} 
+            />
+            <Text className="text-white text-center font-medium">
+              Update Password
             </Text>
           </TouchableOpacity>
         </View>

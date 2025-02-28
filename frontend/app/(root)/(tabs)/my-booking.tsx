@@ -249,12 +249,28 @@ const MyBooking = () => {
     return matchesSearch && matchesTab;
   });
 
-  const getStatusColor = (status: string) => {
+  const getStatusColorAndBackground = (status: string) => {
     switch (status) {
-      case "APPROVED": return "#10B981"; // Green
-      case "PENDING": return "#F59E0B";  // Yellow
-      case "REJECTED": return "#EF4444"; // Red
-      default: return "#9CA3AF";         // Gray
+      case "APPROVED": 
+        return { 
+          color: "#10B981", // Green text
+          background: "rgba(16, 185, 129, 0.1)" // Light green background
+        };
+      case "PENDING": 
+        return { 
+          color: "#F59E0B", // Amber text
+          background: "rgba(245, 158, 11, 0.1)" // Light amber background
+        };
+      case "REJECTED": 
+        return { 
+          color: "#EF4444", // Red text
+          background: "rgba(239, 68, 68, 0.1)" // Light red background
+        };
+      default: 
+        return { 
+          color: "#9CA3AF", // Gray text
+          background: "#F3F4F6" // Light gray background
+        };
     }
   };
 
@@ -267,54 +283,56 @@ const MyBooking = () => {
       }
     };
 
-    const statusColor = getStatusColor(booking.approval.status);
+    const { color, background } = getStatusColorAndBackground(booking.approval.status);
 
     return (
       <TouchableOpacity
-        className="bg-white rounded-xl mb-4 mx-4 overflow-hidden"
-        onPress={handlePress}
-      >
-        <View className="flex-row p-2">
-          <Image
-            source={{ uri: booking.imageUrl }}
-            className="w-24 h-full rounded-lg"
-            resizeMode="cover"
-          />
-          <View className="flex-1 pl-3">
-            <View className="flex-row justify-between items-start">
-              <View className="flex-1 mr-2">
-                <Text className="text-[15px] font-bold text-gray-800" numberOfLines={1}>
-                  {booking.title}
-                </Text>
-                <View className="flex-row items-center mb-2">
-                  <Text className="text-[13px] text-gray-500" numberOfLines={1}>
-                    {booking.section}
-                  </Text>
-                </View>
-              </View>
-              <View className="flex-row items-center px-2 py-1 rounded">
-                <Text className="text-xs font-medium" style={{ color: statusColor }}>
-                  {booking.approval.status}
-                </Text>
-              </View>   
-            </View> 
-            <View className="mt-2 space-y-1"> 
-              <View className="flex-row items-center">
-                <Ionicons name="calendar" size={13} color="#0EA5E9" />
-                <Text className="text-[10px] text-sky-500 font-medium ml-1.5">
-                  {booking.date}
-                </Text>
-              </View>
-              <View className="flex-row items-center">
-                <Ionicons name="time" size={13} color="#F97316" />
-                <Text className="text-[10px] text-orange-500 font-medium ml-1.5">
-                  {booking.start_time} - {booking.end_time}
+      className="bg-white rounded-xl mt-4 mx-4 overflow-hidden shadow-sm"
+      onPress={handlePress}
+    >
+      <View className="flex-row p-2">
+        <Image
+          source={{ uri: booking.imageUrl }}
+          className="w-24 h-full rounded-lg"
+          resizeMode="cover"
+        />
+        <View className="flex-1 pl-3">
+          <View className="flex-row justify-between items-start">
+            <View className="flex-1 mr-2">
+              <Text className="text-[15px] font-bold text-gray-800" numberOfLines={1}>
+                {booking.title}
+              </Text>
+              <View className="flex-row items-center mb-2">
+                <Text className="text-[13px] text-gray-500" numberOfLines={1}>
+                  {booking.section}
                 </Text>
               </View>
             </View>
+            <View 
+              style={{ backgroundColor: background, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 }}
+            >
+              <Text style={{ color, fontSize: 12, fontWeight: '500' }}>
+                {booking.approval.status}
+              </Text>
+            </View>
+          </View>
+          <View className="mt-2 space-y-1">
+            <View className="flex-row items-center">
+              <Ionicons name="calendar" size={13} color="#0EA5E9" />
+              <Text className="text-[10px] text-sky-500 font-medium ml-1.5">
+                {booking.date}
+              </Text>
+            </View>
+            <View className="flex-row items-center">
+              <Ionicons name="time" size={13} color="#F97316" />
+              <Text className="text-[10px] text-orange-500 font-medium ml-1.5">
+                {booking.start_time} - {booking.end_time}
+              </Text>
+            </View>
           </View>
         </View>
-      </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
     );
   };
 
@@ -333,7 +351,7 @@ const MyBooking = () => {
   );
 
   return (
-    <SafeAreaView className="flex-1 pb-20 bg-white">
+    <SafeAreaView className="flex-1 pb-20 bg-sky-50">
       {/* Header with LinearGradient */}
       <LinearGradient
         colors={['#0EA5E9', '#E0F2FE']}
@@ -372,7 +390,7 @@ const MyBooking = () => {
             )}
           </View>
           <TouchableOpacity className="bg-white p-1.5 rounded-lg">
-            <Image source={icons.filter} className="w-5 h-5" tintColor="#0346FFFF" />
+            <Image source={icons.filter} className="w-5 h-5" tintColor="#0EA5E9" />
           </TouchableOpacity>
         </View>
 
