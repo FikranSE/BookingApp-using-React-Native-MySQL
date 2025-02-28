@@ -1,12 +1,15 @@
-import React from 'react';
-import { View, Text, TextInput, TextInputProps, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, TextInputProps, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { TouchableOpacity } from 'react-native';
 
 interface InputFieldProps extends TextInputProps {
   label?: string;
   error?: string;
   leftIcon?: React.ReactNode;
   required?: boolean;
+  containerStyle?: any;
+  style?: any;
 }
 
 const InputField: React.FC<InputFieldProps> = ({
@@ -19,32 +22,32 @@ const InputField: React.FC<InputFieldProps> = ({
   placeholder,
   multiline = false,
   numberOfLines = 1,
-  secureTextEntry = false,
+  secureTextEntry: initialSecureTextEntry = false,
+  containerStyle,
+  style,
   ...props
 }) => {
+  const [secureTextEntry, setSecureTextEntry] = useState(initialSecureTextEntry);
+
   return (
-    <View className="mb-4">
+    <View style={[styles.container, containerStyle]}>
       {label && (
-        <View className="flex-row items-center mb-2">
-          <Text className="text-gray-700 font-medium">
+        <View style={styles.labelContainer}>
+          <Text style={styles.labelText}>
             {label}
-            {required && <Text className="text-red-500"> *</Text>}
+            {required && <Text style={styles.requiredAsterisk}> *</Text>}
           </Text>
         </View>
       )}
       
-      <View className={`
-        flex-row 
-        items-center 
-        bg-white 
-        border 
-        rounded-xl
-        overflow-hidden
-        ${error ? 'border-red-500' : 'border-gray-200'}
-        ${multiline ? 'min-h-[100px] items-start' : 'h-12'}
-      `}>
+      <View style={[
+        styles.inputContainer,
+        error ? styles.inputError : null,
+        multiline ? styles.multilineInput : null,
+        style
+      ]}>
         {leftIcon && (
-          <View className="pl-4 pr-2">
+          <View style={styles.iconContainer}>
             {leftIcon}
           </View>
         )}
@@ -56,20 +59,18 @@ const InputField: React.FC<InputFieldProps> = ({
           multiline={multiline}
           numberOfLines={numberOfLines}
           secureTextEntry={secureTextEntry}
-          className={`
-            flex-1 
-            px-4 
-            text-gray-900
-            ${multiline ? 'py-3 text-base' : 'h-full text-base'}
-          `}
+          style={[
+            styles.input,
+            multiline ? styles.multilineInputText : null
+          ]}
           placeholderTextColor="#94A3B8"
           autoCapitalize="none"
           {...props}
         />
 
-        {secureTextEntry && (
+        {initialSecureTextEntry && (
           <TouchableOpacity 
-            className="px-4"
+            style={styles.eyeIconContainer}
             onPress={() => setSecureTextEntry(!secureTextEntry)}
           >
             <Ionicons 
@@ -82,13 +83,77 @@ const InputField: React.FC<InputFieldProps> = ({
       </View>
 
       {error && (
-        <View className="flex-row items-center mt-1">
+        <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={16} color="#EF4444" />
-          <Text className="text-red-500 text-sm ml-1">{error}</Text>
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    marginBottom: 16,
+  },
+  labelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  labelText: {
+    color: '#334155',
+    fontWeight: '500',
+  },
+  requiredAsterisk: {
+    color: '#EF4444',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    overflow: 'hidden',
+    height: 48,
+  },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  multilineInput: {
+    minHeight: 100,
+    alignItems: 'flex-start',
+    paddingTop: 12,
+    paddingBottom: 12,
+  },
+  iconContainer: {
+    paddingLeft: 16,
+    paddingRight: 8,
+  },
+  input: {
+    flex: 1,
+    paddingHorizontal: 16,
+    color: '#1F2937',
+    fontSize: 16,
+  },
+  multilineInputText: {
+    paddingTop: 0,
+    textAlignVertical: 'top',
+  },
+  eyeIconContainer: {
+    paddingHorizontal: 16,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 14,
+    marginLeft: 4,
+  }
+});
 
 export default InputField;
