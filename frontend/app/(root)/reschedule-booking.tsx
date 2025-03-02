@@ -11,7 +11,7 @@ import Modal from 'react-native-modal';  // Import react-native-modal for custom
 import { Button } from 'react-native-paper';  // Import Button from react-native-paper for better button styling
 import { Picker } from '@react-native-picker/picker';
 
-interface BookingForm {
+interface RescheduleForm {
   room_id: number | null;
   booking_date: Date;
   start_time: string;
@@ -30,10 +30,10 @@ interface Room {
   facilities: string;
 }
 
-const BookingRoom = () => {
+const RescheduleBooking = ({ bookingId }: { bookingId: string }) => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState<BookingForm>({
+  const [form, setForm] = useState<RescheduleForm>({
     room_id: null,
     booking_date: new Date(),
     start_time: '',
@@ -80,6 +80,44 @@ const BookingRoom = () => {
     fetchRooms();
   }, []);
 
+  useEffect(() => {
+    const fetchBookingDetails = async () => {
+      try {
+        const authToken = await fetchAuthToken();
+        if (!authToken) {
+          Alert.alert('Error', 'Not authenticated');
+          router.push('/(auth)/sign-in');
+          return;
+        }
+
+        const response = await axios.get(`https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings/${bookingId}`, {
+          headers: { 'Authorization': `Bearer ${authToken}` },
+        });
+
+        if (response.data) {
+          setForm({
+            room_id: response.data.room_id,
+            booking_date: new Date(response.data.booking_date),
+            start_time: response.data.start_time,
+            end_time: response.data.end_time,
+            pic: response.data.pic,
+            section: response.data.section,
+            description: response.data.description,
+          });
+        } else {
+          showAlert('Error', 'Booking data not found.', 'error');
+        }
+      } catch (error) {
+        console.error('Error fetching booking details:', error);
+        showAlert('Error', 'Failed to load booking details. Please try again.', 'error');
+      }
+    };
+
+    if (bookingId) {
+      fetchBookingDetails();
+    }
+  }, [bookingId]);
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
@@ -125,14 +163,14 @@ const BookingRoom = () => {
         return;
       }
 
-      const response = await axios.post('https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings', form, {
+      const response = await axios.put(`https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings/${bookingId}`, form, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
       });
 
-      if (response.status === 201) {
-        showAlert('Success', 'Booking submitted successfully', 'success');
+      if (response.status === 200) {
+        showAlert('Success', 'Booking rescheduled successfully', 'success');
         setTimeout(() => {
           router.replace('/(root)/(tabs)/my-booking');
         }, 2000);
@@ -140,11 +178,11 @@ const BookingRoom = () => {
         showAlert('Error', 'Unexpected response from server', 'error');
       }
     } catch (error) {
-      console.error('Booking error:', error);
+      console.error('Rescheduling error:', error);
       if (error.response) {
-        showAlert('Error', error.response.data.message || 'Failed to submit booking. Please try again.', 'error');
+        showAlert('Error', error.response.data.message || 'Failed to reschedule booking. Please try again.', 'error');
       } else {
-        showAlert('Error', 'Failed to submit booking. Please try again.', 'error');
+        showAlert('Error', 'Failed to reschedule booking. Please try again.', 'error');
       }
     } finally {
       setLoading(false);
@@ -212,7 +250,7 @@ const BookingRoom = () => {
           </TouchableOpacity>
         ))}
       </ScrollView>
-    </View>
+    </View> 
   );
 
   const SectionHeader = ({ title }: { title: string }) => (
@@ -233,7 +271,7 @@ const BookingRoom = () => {
           >
             <Ionicons name="arrow-back" size={20} color="#0EA5E9" />
           </TouchableOpacity>
-          <Text className="text-lg font-bold text-white">New Room Booking</Text>
+          <Text className="text-lg font-bold text-white">Reschedule Room Booking</Text>
           <View className="w-10" />
         </View>
       </View>
@@ -318,7 +356,7 @@ const BookingRoom = () => {
           {loading ? ( 
             <ActivityIndicator color="white" />
           ) : (
-            <Text className="text-white text-center font-bold text-base">Submit Booking</Text>
+            <Text className="text-white text-center font-bold text-base">Reschedule Booking</Text>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -347,4 +385,4 @@ const BookingRoom = () => {
   );
 };
 
-export default BookingRoom;
+export default RescheduleBooking;

@@ -12,7 +12,7 @@ const startServer = async () => {
     console.log('Koneksi ke database berhasil');
 
     // Sinkronisasi model (hanya untuk pengembangan; gunakan migrasi untuk produksi)
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({ alter: false });
     console.log('Model disinkronkan');
 
     // Jalankan server

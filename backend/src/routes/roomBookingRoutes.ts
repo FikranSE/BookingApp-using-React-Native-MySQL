@@ -1,15 +1,20 @@
 // src/routes/roomBookingRoutes.ts
 import { Router } from 'express';
-import authMiddleware from '../middlewares/authMiddleware';
+import combinedAuthMiddleware from '../middlewares/combinedAuthMiddleware';
 import adminMiddleware from '../middlewares/adminMiddleware';
 import RoomBookingController from '../controllers/roomBookingController';
 
 const router = Router();
 
-router.post('/', authMiddleware, RoomBookingController.createBooking);
-router.get('/', authMiddleware, RoomBookingController.getAllBookings);
-router.get('/:id', authMiddleware, RoomBookingController.getBookingById);
-router.put('/:id', authMiddleware, RoomBookingController.updateBooking);
-router.delete('/:id', authMiddleware, adminMiddleware, RoomBookingController.deleteBooking);
+router.post('/', combinedAuthMiddleware, RoomBookingController.createBooking);
+
+router.get('/', combinedAuthMiddleware, RoomBookingController.getAllBookings);
+
+router.get('/:id', combinedAuthMiddleware, RoomBookingController.getBookingById);
+
+router.put('/:id', combinedAuthMiddleware, RoomBookingController.updateBooking);
+
+router.delete('/:id', adminMiddleware, RoomBookingController.deleteBooking);
 
 export default router;
+ 
