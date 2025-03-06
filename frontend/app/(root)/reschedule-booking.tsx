@@ -3,7 +3,6 @@ import {
   View, 
   Text, 
   TouchableOpacity, 
-  Alert, 
   ActivityIndicator, 
   ScrollView,
   Modal,
@@ -16,6 +15,119 @@ import axios from "axios";
 import { tokenCache } from "@/lib/auth";
 import { AUTH_TOKEN_KEY } from "@/lib/constants";
 import { images } from "@/constants";
+
+// Custom Alert Component
+const CustomAlert = ({ 
+  visible, 
+  type = 'success', // 'success', 'error', 'info'
+  title = '', 
+  message = '', 
+  onClose = () => {},
+  autoClose = true,
+  duration = 3000, // Auto close duration in ms
+  bookingType = 'ROOM' // 'ROOM' or 'TRANSPORT'
+}) => {
+  const [isVisible, setIsVisible] = useState(visible);
+
+  // Default colors
+  const SUCCESS_COLORS = {
+    bg: 'bg-green-500',
+    bgLight: 'bg-green-50',
+    text: 'text-green-800',
+    border: 'border-green-200',
+    icon: 'checkmark-circle'
+  };
+  
+  const ERROR_COLORS = {
+    bg: 'bg-red-500',
+    bgLight: 'bg-red-50',
+    text: 'text-red-800',
+    border: 'border-red-200',
+    icon: 'close-circle'
+  };
+  
+  // Theme-based info colors
+  const INFO_COLORS = bookingType === 'TRANSPORT' 
+    ? {
+        bg: 'bg-sky-500',
+        bgLight: 'bg-sky-50',
+        text: 'text-sky-800',
+        border: 'border-sky-200',
+        icon: 'information-circle'
+      }
+    : {
+        bg: 'bg-sky-500',
+        bgLight: 'bg-sky-50',
+        text: 'text-sky-800',
+        border: 'border-sky-200',
+        icon: 'information-circle'
+      };
+  
+  // Select the color scheme based on alert type
+  const colors = type === 'success' 
+    ? SUCCESS_COLORS 
+    : type === 'error' 
+      ? ERROR_COLORS 
+      : INFO_COLORS;
+
+  // Effect to handle auto-close
+  useEffect(() => {
+    setIsVisible(visible);
+    
+    // Auto close timer
+    if (visible && autoClose) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, duration);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [visible]);
+
+  // Don't render anything if not visible
+  if (!isVisible) return null;
+
+  return (
+    <Modal
+      transparent={true}
+      visible={isVisible}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 justify-center items-center bg-black bg-opacity-20">
+        <View className={`w-11/12 rounded-xl p-5 ${colors.bgLight} ${colors.border} border shadow-lg`}>
+          {/* Header */}
+          <View className="flex-row justify-between items-center mb-3">
+            <View className="flex-row items-center">
+              <View className={`w-8 h-8 ${colors.bg} rounded-full items-center justify-center mr-3`}>
+                <Ionicons name={colors.icon} size={18} color="white" />
+              </View>
+              <Text className={`${colors.text} font-bold text-lg`}>
+                {title || (type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Information')}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Message */}
+          <Text className="text-gray-700 mb-4 pl-11">{message}</Text>
+          
+          {/* Action Button */}
+          <TouchableOpacity
+            onPress={onClose}
+            className={`py-3 ${colors.bg} rounded-lg items-center mt-2`}
+          >
+            <Text className="text-white font-medium">
+              {type === 'error' ? 'Try Again' : 'Got It'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
 // Helper function to check if a date is in the past
 const isDateInPast = (dateString) => {
@@ -89,7 +201,7 @@ const DatePickerModal = ({ visible, onClose, date, onDateChange }) => {
     today.setHours(0, 0, 0, 0);
     
     if (selectedDate < today) {
-      Alert.alert('Invalid Date', 'Please select a date that is not in the past');
+      showAlert('error', 'Please select a date that is not in the past');
       return;
     }
     
@@ -139,7 +251,7 @@ const DatePickerModal = ({ visible, onClose, date, onDateChange }) => {
               setSelectedDay(i);
             } else {
               // Optional: provide feedback that past dates can't be selected
-              Alert.alert('Invalid Selection', 'Cannot select a date in the past');
+              showAlert('error', 'Cannot select a date in the past');
             }
           }}
           disabled={isPastDay}
@@ -325,7 +437,7 @@ const TimePickerModal = ({ visible, onClose, time, onTimeChange, title, dateStri
         selectedDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
         
         if (selectedDateTime < now) {
-          Alert.alert('Invalid Time', 'Please select a time that is not in the past');
+          showAlert('error', 'Please select a time that is not in the past');
           return;
         }
       }
@@ -395,7 +507,7 @@ const TimePickerModal = ({ visible, onClose, time, onTimeChange, title, dateStri
                   }
                 } else {
                   // Optional: provide feedback that past times can't be selected
-                  Alert.alert('Invalid Selection', 'Cannot select a time in the past');
+                  showAlert('error', 'Cannot select a time in the past');
                 }
               }}
               disabled={isPastTime}
@@ -497,6 +609,18 @@ const RescheduleBooking = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  
+  // Alert states
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertType, setAlertType] = useState('success');
+  const [alertMessage, setAlertMessage] = useState('');
+
+  // Function to show custom alert
+  const showAlert = (type, message) => {
+    setAlertType(type);
+    setAlertMessage(message);
+    setAlertVisible(true);
+  };
 
   useEffect(() => {
     const fetchBookingDetails = async () => {
@@ -509,7 +633,7 @@ const RescheduleBooking = () => {
         const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
         
         if (!authToken) {
-          Alert.alert('Error', 'Not authenticated');
+          showAlert('error', 'Not authenticated');
           router.push('/(auth)/sign-in');
           return;
         }
@@ -547,12 +671,12 @@ const RescheduleBooking = () => {
           } catch (transportError) {
             // If both fail, show an error
             console.error('Error fetching booking details:', transportError);
-            Alert.alert('Error', 'Failed to fetch booking details. Please try again later.');
+            showAlert('error', 'Failed to fetch booking details. Please try again later.');
           }
         }
       } catch (error) {
         console.error('Error fetching booking details:', error);
-        Alert.alert('Error', 'Failed to fetch booking details. Please try again later.');
+        showAlert('error', 'Failed to fetch booking details. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -568,13 +692,13 @@ const RescheduleBooking = () => {
 
     // Validate inputs
     if (!newDate || !newStartTime || !newEndTime) {
-      Alert.alert('Error', 'Please select date and time for your booking');
+      showAlert('error', 'Please select date and time for your booking');
       return;
     }
     
     // Validate date is not in the past
     if (isDateInPast(newDate)) {
-      Alert.alert('Invalid Date', 'Please select a date that is not in the past');
+      showAlert('error', 'Please select a date that is not in the past');
       return;
     }
     
@@ -588,7 +712,7 @@ const RescheduleBooking = () => {
     const isSameDay = selectedDate.getTime() === today.getTime();
     
     if (isSameDay && isTimeInPast(newDate, newStartTime)) {
-      Alert.alert('Invalid Time', 'Please select a start time that is not in the past');
+      showAlert('error', 'Please select a start time that is not in the past');
       return;
     }
     
@@ -597,14 +721,14 @@ const RescheduleBooking = () => {
     const [endHours, endMinutes] = newEndTime.split(':').map(Number);
     
     if (startHours > endHours || (startHours === endHours && startMinutes >= endMinutes)) {
-      Alert.alert('Invalid Time Range', 'End time must be after start time');
+      showAlert('error', 'End time must be after start time');
       return;
     }
 
     const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
     
     if (!authToken) {
-      Alert.alert('Error', 'Not authenticated');
+      showAlert('error', 'Not authenticated');
       router.push('/(auth)/sign-in');
       return;
     }
@@ -636,23 +760,25 @@ const RescheduleBooking = () => {
       const endpoint = bookingType === "ROOM" ? `/room-bookings/${id}` : `/transport-bookings/${id}`;
       await axiosInstance.put(endpoint, updatedBooking);
 
-      Alert.alert('Success', 'Booking rescheduled successfully');
+      showAlert('success', 'Booking rescheduled successfully');
       
-      // Navigate to the appropriate page based on booking type
-      const redirectPage = bookingType === "ROOM" ? '/(root)/(tabs)/my-booking' : '/(root)/(tabs)/my-booking';
-      router.replace(redirectPage);
+      // Navigate after a brief delay to allow the user to see the success message
+      setTimeout(() => {
+        const redirectPage = bookingType === "ROOM" ? '/(root)/(tabs)/my-booking' : '/(root)/(tabs)/my-booking';
+        router.replace(redirectPage);
+      }, 1500);
     } catch (error) {
       console.error('Error rescheduling booking:', error);
-      Alert.alert('Error', 'Failed to reschedule booking. Please try again later.');
+      showAlert('error', 'Failed to reschedule booking. Please try again later.');
     } finally {
       setLoading(false);
     }
   }; 
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
     
-    const [year, month, day] = dateStr.split('-');
+    const [year, month, day] = dateString.split('-');
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return `${day} ${months[parseInt(month) - 1]} ${year}`;
   };
@@ -741,13 +867,13 @@ const RescheduleBooking = () => {
                   <Text className="text-gray-500 text-xs">Destination</Text>
                   <Text className="text-gray-800 font-medium text-base">{bookingDetails.destination || "N/A"}</Text>
                 </View>
-                </View>
+              </View>
             </View>
           )}
           
           <View className="flex-row items-center mb-4">
             <View className={`w-12 h-12 ${theme.secondary} rounded-full items-center justify-center mr-4`}>
-              <Ionicons name="calendar-outline" size={22} color={bookingType === "TRANSPORT" ? "#0EA5E9" : "#0EA5E9"} />
+              <Ionicons name="calendar-outline" size={22} color="#0EA5E9" />
             </View>
             <View>
               <Text className="text-gray-500 text-xs">Date</Text>
@@ -757,7 +883,7 @@ const RescheduleBooking = () => {
           
           <View className="flex-row items-center mb-4">
             <View className={`w-12 h-12 ${theme.secondary} rounded-full items-center justify-center mr-4`}>
-              <Ionicons name="time-outline" size={22} color={bookingType === "TRANSPORT" ? "#0EA5E9" : "#0EA5E9"} />
+              <Ionicons name="time-outline" size={22} color="#0EA5E9" />
             </View>
             <View>
               <Text className="text-gray-500 text-xs">Start Time</Text>
@@ -767,7 +893,7 @@ const RescheduleBooking = () => {
           
           <View className="flex-row items-center">
             <View className={`w-12 h-12 ${theme.secondary} rounded-full items-center justify-center mr-4`}>
-              <Ionicons name="time-outline" size={22} color={bookingType === "TRANSPORT" ? "#0EA5E9" : "#0EA5E9"} />
+              <Ionicons name="time-outline" size={22} color="#0EA5E9" />
             </View>
             <View>
               <Text className="text-gray-500 text-xs">End Time</Text>
@@ -861,7 +987,7 @@ const RescheduleBooking = () => {
         <View className="flex-row gap-3">
           <TouchableOpacity
             onPress={() => router.back()}
-            className={`flex-1 py-4 rounded-xl border border-${bookingType === "TRANSPORT" ? "sky" : "sky"}-100 items-center justify-center bg-white`}
+            className="flex-1 py-4 rounded-xl border border-sky-100 items-center justify-center bg-white"
           >
             <Text className={`${theme.text} font-semibold`}>Cancel</Text>
           </TouchableOpacity>
@@ -900,6 +1026,15 @@ const RescheduleBooking = () => {
         onTimeChange={setNewEndTime}
         title="Select End Time"
         dateString={newDate}
+      />
+      
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={alertVisible}
+        type={alertType}
+        message={alertMessage}
+        onClose={() => setAlertVisible(false)}
+        bookingType={bookingType}
       />
     </View>
   );

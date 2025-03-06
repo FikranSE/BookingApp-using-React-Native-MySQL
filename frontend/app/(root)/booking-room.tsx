@@ -1,70 +1,515 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
+import { 
+  View, 
+  Text, 
+  ScrollView, 
+  TouchableOpacity, 
+  ActivityIndicator, 
+  Image,
+  Modal,
+  FlatList,
+  TextInput
+} from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
-import InputField from '@/components/Inputfield_form';
 import { tokenCache } from "@/lib/auth";
 import { AUTH_TOKEN_KEY } from "@/lib/constants";
-import Modal from 'react-native-modal';
-import { Button } from 'react-native-paper';
-import { Picker } from '@react-native-picker/picker';
 
-interface BookingForm {
-  room_id: number | null;
-  booking_date: Date;
-  start_time: string;
-  end_time: string;
-  pic: string;
-  section: string;
-  description: string;
-}
+// Custom Alert Component
+const CustomAlert = ({ 
+  visible, 
+  type = 'success',
+  title = '', 
+  message = '', 
+  onClose = () => {},
+  autoClose = true,
+  duration = 3000
+}) => {
+  const [isVisible, setIsVisible] = useState(visible);
 
-interface Room {
-  room_id: number;
-  room_name: string;
-  room_type: string;
-  capacity: number;
-  image: string;
-  facilities: string;
-}
+  // Default colors
+  const SUCCESS_COLORS = {
+    bg: 'bg-green-500',
+    bgLight: 'bg-green-50',
+    text: 'text-green-800',
+    border: 'border-green-200',
+    icon: 'checkmark-circle'
+  };
+  
+  const ERROR_COLORS = {
+    bg: 'bg-red-500',
+    bgLight: 'bg-red-50',
+    text: 'text-red-800',
+    border: 'border-red-200',
+    icon: 'close-circle'
+  };
+  
+  // Info colors
+  const INFO_COLORS = {
+    bg: 'bg-sky-500',
+    bgLight: 'bg-sky-50',
+    text: 'text-sky-800',
+    border: 'border-sky-200',
+    icon: 'information-circle'
+  };
+  
+  // Select the color scheme based on alert type
+  const colors = type === 'success' 
+    ? SUCCESS_COLORS 
+    : type === 'error' 
+      ? ERROR_COLORS 
+      : INFO_COLORS;
 
-// Generate time options for picker (from 00:00 to 23:59 with 30 min intervals)
-const generateTimeOptions = () => {
-  const options = [];
-  for (let hour = 0; hour < 24; hour++) {
-    for (let minute of [0, 30]) {
-      const formattedHour = hour.toString().padStart(2, '0');
-      const formattedMinute = minute.toString().padStart(2, '0');
-      options.push(`${formattedHour}:${formattedMinute}`);
+  // Effect to handle auto-close
+  useEffect(() => {
+    setIsVisible(visible);
+    
+    // Auto close timer
+    if (visible && autoClose) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, duration);
+      
+      return () => clearTimeout(timer);
     }
-  }
-  return options;
+  }, [visible, autoClose, duration, onClose]);
+
+  // Don't render anything if not visible
+  if (!isVisible) return null;
+
+  return (
+    <Modal
+      transparent={true}
+      visible={isVisible}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 justify-center items-center bg-black bg-opacity-20">
+        <View className={`w-11/12 rounded-xl p-5 ${colors.bgLight} ${colors.border} border shadow-lg`}>
+          {/* Header */}
+          <View className="flex-row justify-between items-center mb-3">
+            <View className="flex-row items-center">
+              <View className={`w-8 h-8 ${colors.bg} rounded-full items-center justify-center mr-3`}>
+                <Ionicons name={colors.icon} size={18} color="white" />
+              </View>
+              <Text className={`${colors.text} font-bold text-lg`}>
+                {title || (type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Information')}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Message */}
+          <Text className="text-gray-700 mb-4 pl-11">{message}</Text>
+          
+          {/* Action Button */}
+          <TouchableOpacity
+            onPress={onClose}
+            className={`py-3 ${colors.bg} rounded-lg items-center mt-2`}
+          >
+            <Text className="text-white font-medium">
+              {type === 'error' ? 'Try Again' : 'Got It'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
 };
 
-// Generate month options
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
-];
-
-// Generate year options (current year and next 5 years)
-const generateYearOptions = () => {
-  const currentYear = new Date().getFullYear();
-  return Array.from({ length: 6 }, (_, index) => currentYear + index);
+// Improved date picker with a cleaner interface
+const DatePickerModal = ({ visible, onClose, date, onDateChange }) => {
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
+  const [activeTab, setActiveTab] = useState('day'); // 'day', 'month', or 'year'
+  
+  useEffect(() => {
+    if (date) {
+      try {
+        const dateObj = new Date(date);
+        if (!isNaN(dateObj.getTime())) {
+          setSelectedYear(dateObj.getFullYear());
+          setSelectedMonth(dateObj.getMonth());
+          setSelectedDay(dateObj.getDate());
+        }
+      } catch (error) {
+        console.error("Error parsing date:", error);
+      }
+    }
+  }, [date, visible]);
+  
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June', 
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  
+  // Generate 5 years starting from current year
+  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() + i);
+  
+  const getDaysInMonth = (year, month) => {
+    return new Date(year, month + 1, 0).getDate();
+  };
+  
+  const handleConfirm = () => {
+    const formattedDate = `${selectedYear}-${(selectedMonth + 1).toString().padStart(2, '0')}-${selectedDay.toString().padStart(2, '0')}`;
+    const selectedDate = new Date(selectedYear, selectedMonth, selectedDay);
+    onDateChange(selectedDate);
+    onClose();
+  };
+  
+  // Calculate days of week header (Sun, Mon, Tue, etc.)
+  const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  
+  // Function to render the calendar grid with proper week alignment
+  const renderCalendarGrid = () => {
+    const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
+    const firstDayOfMonth = new Date(selectedYear, selectedMonth, 1).getDay();
+    
+    // Create an array for all the day cells, including empty ones for proper alignment
+    const days = [];
+    
+    // Add empty cells for days before the 1st of the month
+    for (let i = 0; i < firstDayOfMonth; i++) {
+      days.push(<View key={`empty-${i}`} className="w-10 h-10 m-1" />);
+    }
+    
+    // Add cells for actual days
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(
+        <TouchableOpacity 
+          key={i}
+          className={`w-10 h-10 items-center justify-center rounded-full m-1 ${
+            selectedDay === i 
+              ? 'bg-orange-500' 
+              : 'bg-gray-100'
+          }`}
+          onPress={() => setSelectedDay(i)}
+        >
+          <Text className={`${
+            selectedDay === i 
+              ? 'text-white' 
+              : 'text-gray-800'
+          } font-medium`}>{i}</Text>
+        </TouchableOpacity>
+      );
+    }
+    
+    return days;
+  };
+  
+  return (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
+        <View className="bg-white w-11/12 rounded-2xl p-5 shadow-xl">
+          <View className="flex-row justify-between items-center mb-3">
+            <Text className="text-gray-800 font-bold text-lg">Select Date</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Current selected date display */}
+          <View className="bg-sky-50 p-3 rounded-xl mb-4">
+            <Text className="text-center text-sky-800 font-medium text-lg">
+              {months[selectedMonth]} {selectedDay}, {selectedYear}
+            </Text>
+          </View>
+          
+          {/* Navigation tabs */}
+          <View className="flex-row mb-4 border-b border-gray-200">
+            <TouchableOpacity 
+              className={`flex-1 py-2 ${activeTab === 'day' ? 'border-b-2 border-orange-500' : ''}`}
+              onPress={() => setActiveTab('day')}
+            >
+              <Text className={`text-center font-medium ${activeTab === 'day' ? 'text-orange-500' : 'text-gray-500'}`}>Day</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              className={`flex-1 py-2 ${activeTab === 'month' ? 'border-b-2 border-orange-500' : ''}`}
+              onPress={() => setActiveTab('month')}
+            >
+              <Text className={`text-center font-medium ${activeTab === 'month' ? 'text-orange-500' : 'text-gray-500'}`}>Month</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              className={`flex-1 py-2 ${activeTab === 'year' ? 'border-b-2 border-orange-500' : ''}`}
+              onPress={() => setActiveTab('year')}
+            >
+              <Text className={`text-center font-medium ${activeTab === 'year' ? 'text-orange-500' : 'text-gray-500'}`}>Year</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {/* Content based on active tab */}
+          {activeTab === 'day' && (
+            <View>
+              {/* Month/Year selector for day view */}
+              <View className="flex-row justify-between items-center mb-4">
+                <TouchableOpacity 
+                  className="flex-row items-center bg-sky-50 py-1 px-3 rounded-full"
+                  onPress={() => setActiveTab('month')}
+                >
+                  <Text className="text-sky-800 font-medium">{months[selectedMonth]}</Text>
+                  <MaterialIcons name="arrow-drop-down" size={20} color="#0EA5E9" />
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  className="flex-row items-center bg-sky-50 py-1 px-3 rounded-full"
+                  onPress={() => setActiveTab('year')}
+                >
+                  <Text className="text-sky-800 font-medium">{selectedYear}</Text>
+                  <MaterialIcons name="arrow-drop-down" size={20} color="#0EA5E9" />
+                </TouchableOpacity>
+              </View>
+              
+              {/* Weekday headers */}
+              <View className="flex-row justify-around mb-2">
+                {weekDays.map(day => (
+                  <Text key={day} className="w-10 text-center text-gray-500 font-medium">{day}</Text>
+                ))}
+              </View>
+              
+              {/* Calendar grid */}
+              <View className="flex-row flex-wrap justify-center mb-4">
+                {renderCalendarGrid()}
+              </View>
+            </View>
+          )}
+          
+          {activeTab === 'month' && (
+            <View className="flex-row flex-wrap justify-center mb-4">
+              {months.map((month, index) => (
+                <TouchableOpacity
+                  key={month}
+                  className={`w-24 h-12 items-center justify-center m-1 rounded-lg ${
+                    selectedMonth === index ? 'bg-orange-500' : 'bg-gray-100'
+                  }`}
+                  onPress={() => {
+                    setSelectedMonth(index);
+                    setActiveTab('day');
+                  }}
+                >
+                  <Text className={`${
+                    selectedMonth === index ? 'text-white' : 'text-gray-800'
+                  } font-medium`}>{month.substring(0, 3)}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          
+          {activeTab === 'year' && (
+            <View className="flex-row flex-wrap justify-center mb-4">
+              {years.map((year) => (
+                <TouchableOpacity
+                  key={year}
+                  className={`w-24 h-12 items-center justify-center m-1 rounded-lg ${
+                    selectedYear === year ? 'bg-orange-500' : 'bg-gray-100'
+                  }`}
+                  onPress={() => {
+                    setSelectedYear(year);
+                    setActiveTab('day');
+                  }}
+                >
+                  <Text className={`${
+                    selectedYear === year ? 'text-white' : 'text-gray-800'
+                  } font-medium`}>{year}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          
+          <TouchableOpacity
+            onPress={handleConfirm}
+            className="mt-2 py-3 bg-orange-500 rounded-xl items-center"
+          >
+            <Text className="text-white font-semibold">Confirm Date</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
 };
 
-// Generate day options (1-31)
-const generateDayOptions = (year: number, month: number) => {
-  const lastDay = new Date(year, month + 1, 0).getDate();
-  return Array.from({ length: lastDay }, (_, index) => index + 1);
+// Improved time picker with grid-based selection
+const TimePickerModal = ({ visible, onClose, time, onTimeChange, title }) => {
+  const [hours, setHours] = useState('09');
+  const [minutes, setMinutes] = useState('00');
+  const [showHours, setShowHours] = useState(true); // Toggle between hours and minutes view
+  
+  useEffect(() => {
+    if (time) {
+      const [h, m] = time.split(':');
+      setHours(h || '09');
+      setMinutes(m || '00');
+    }
+  }, [time, visible]);
+  
+  const handleConfirm = () => {
+    const newTime = `${hours}:${minutes}`;
+    onTimeChange(newTime);
+    onClose();
+  };
+  
+  const renderTimeGrid = (isHours) => {
+    const items = isHours 
+      ? Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'))
+      : Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
+    
+    const selectedValue = isHours ? hours : minutes;
+    
+    return (
+      <FlatList
+        data={items}
+        numColumns={6}
+        keyExtractor={(item) => item}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            className={`w-14 h-14 items-center justify-center m-1 rounded-lg ${
+              selectedValue === item ? 'bg-orange-500' : 'bg-gray-100'
+            }`}
+            onPress={() => {
+              if (isHours) {
+                setHours(item);
+              } else {
+                setMinutes(item);
+              }
+            }}
+          >
+            <Text className={`${
+              selectedValue === item ? 'text-white' : 'text-gray-800'
+            } font-medium text-lg`}>{item}</Text>
+          </TouchableOpacity>
+        )}
+        contentContainerStyle={{ paddingBottom: 10 }}
+      />
+    );
+  };
+  
+  return (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
+        <View className="bg-white w-11/12 rounded-2xl p-5 shadow-xl">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-gray-800 font-bold text-lg">{title}</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+          
+          <View className="flex-row justify-center items-center py-3 mb-2">
+            <TouchableOpacity
+              onPress={() => setShowHours(true)}
+              className={`px-5 py-2 rounded-lg mr-2 ${showHours ? 'bg-sky-500' : 'bg-gray-200'}`}
+            >
+              <Text className={showHours ? 'text-white font-medium' : 'text-gray-700'}>Hours</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              onPress={() => setShowHours(false)}
+              className={`px-5 py-2 rounded-lg ml-2 ${!showHours ? 'bg-sky-500' : 'bg-gray-200'}`}
+            >
+              <Text className={!showHours ? 'text-white font-medium' : 'text-gray-700'}>Minutes</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View className="flex-row justify-center items-center mb-3">
+            <TouchableOpacity
+              onPress={() => setShowHours(true)}
+              className="items-center"
+            >
+              <Text className={`text-2xl font-medium ${showHours ? 'text-sky-500' : 'text-gray-800'}`}>{hours}</Text>
+            </TouchableOpacity>
+            
+            <Text className="text-2xl font-bold text-gray-800 mx-2">:</Text>
+            
+            <TouchableOpacity
+              onPress={() => setShowHours(false)}
+              className="items-center"
+            >
+              <Text className={`text-2xl font-medium ${!showHours ? 'text-sky-500' : 'text-gray-800'}`}>{minutes}</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View className="border border-gray-200 rounded-lg p-2 bg-white max-h-56">
+            {renderTimeGrid(showHours)}
+          </View>
+          
+          <TouchableOpacity
+            onPress={handleConfirm}
+            className="mt-4 py-3 bg-orange-500 rounded-xl items-center"
+          >
+            <Text className="text-white font-semibold">Confirm Time</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+const SectionHeader = ({ title, icon }) => (
+  <View className="flex-row items-center mb-4 mt-4">
+    <View className="w-8 h-8 bg-orange-500 rounded-full items-center justify-center">
+      <Ionicons name={icon} size={18} color="white" />
+    </View>
+    <Text className="text-gray-800 font-bold text-lg ml-3">{title}</Text>
+  </View>
+);
+
+// Modern input field component with animation and validation
+const ModernTextInput = ({ 
+  icon, 
+  placeholder, 
+  value, 
+  onChangeText, 
+  error, 
+  keyboardType = 'default',
+  secureTextEntry = false,
+  multiline = false
+}) => {
+  const [isFocused, setIsFocused] = useState(false);
+  
+  return (
+    <View className="mb-4">
+      <View className={`flex-row items-center bg-white border ${error ? 'border-red-500' : isFocused ? 'border-sky-500' : 'border-gray-200'} 
+        rounded-xl ${multiline ? 'py-3' : 'py-0'} px-3 shadow-sm`}>
+        <MaterialIcons name={icon} size={22} color={isFocused ? "#0EA5E9" : "#94A3B8"} />
+        <TextInput
+          className={`flex-1 ml-3 text-gray-700 ${multiline ? 'min-h-[80px] text-base py-1' : 'h-12 text-base'}`}
+          placeholder={placeholder}
+          placeholderTextColor="#94A3B8"
+          value={value}
+          onChangeText={onChangeText}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          keyboardType={keyboardType}
+          secureTextEntry={secureTextEntry}
+          multiline={multiline}
+        />
+        {error && (
+          <Ionicons name="alert-circle" size={22} color="#EF4444" />
+        )}
+      </View>
+      {error && <Text className="text-red-500 text-xs ml-1 mt-1">{error}</Text>}
+    </View>
+  );
 };
 
 const BookingRoom = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState<BookingForm>({
+  const [form, setForm] = useState({
     room_id: null,
     booking_date: new Date(),
     start_time: '',
@@ -73,38 +518,25 @@ const BookingRoom = () => {
     section: '',
     description: '',
   });
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [rooms, setRooms] = useState([]);
+  const [errors, setErrors] = useState({});
   
-  // Time options for picker
-  const timeOptions = generateTimeOptions();
-
-  // States for custom date and time pickers
-  const [showDatePickerModal, setShowDatePickerModal] = useState(false);
-  const [showStartTimePickerModal, setShowStartTimePickerModal] = useState(false);
-  const [showEndTimePickerModal, setShowEndTimePickerModal] = useState(false);
-
-  // Date picker state
-  const [selectedDay, setSelectedDay] = useState(form.booking_date.getDate());
-  const [selectedMonth, setSelectedMonth] = useState(form.booking_date.getMonth());
-  const [selectedYear, setSelectedYear] = useState(form.booking_date.getFullYear());
-
-  // Days options based on selected month and year
-  const [dayOptions, setDayOptions] = useState(generateDayOptions(selectedYear, selectedMonth));
-
-  // Alert modal state
-  const [modalVisible, setModalVisible] = useState(false);
+  // Modal visibility states
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  
+  // Alert states
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertType, setAlertType] = useState('success');
   const [alertMessage, setAlertMessage] = useState('');
-  const [alertType, setAlertType] = useState<'success' | 'error'>('success');
 
-  // Update day options when month or year changes
-  useEffect(() => {
-    setDayOptions(generateDayOptions(selectedYear, selectedMonth));
-    const maxDay = generateDayOptions(selectedYear, selectedMonth).length;
-    if (selectedDay > maxDay) {
-      setSelectedDay(maxDay);
-    }
-  }, [selectedMonth, selectedYear]);
+  // Function to show custom alert
+  const showAlert = (type, message) => {
+    setAlertType(type);
+    setAlertMessage(message);
+    setAlertVisible(true);
+  };
 
   const fetchAuthToken = async () => {
     return await tokenCache.getToken(AUTH_TOKEN_KEY);
@@ -115,7 +547,7 @@ const BookingRoom = () => {
       try {
         const authToken = await fetchAuthToken();
         if (!authToken) {
-          Alert.alert('Error', 'Not authenticated');
+          showAlert('error', 'Not authenticated');
           router.push('/(auth)/sign-in');
           return;
         }
@@ -127,18 +559,18 @@ const BookingRoom = () => {
         if (response.data && Array.isArray(response.data)) {
           setRooms(response.data);
         } else {
-          showAlert('Error', 'Invalid room data received.', 'error');
+          showAlert('error', 'Invalid room data received.');
         }
       } catch (error) {
         console.error('Error fetching rooms:', error);
-        showAlert('Error', 'Failed to load rooms. Please try again.', 'error');
+        showAlert('error', 'Failed to load rooms. Please try again.');
       }
     };
     fetchRooms();
   }, []);
 
   const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+    const newErrors = {};
     
     if (!form.pic.trim()) {
       newErrors.pic = 'PIC name is required';
@@ -169,7 +601,7 @@ const BookingRoom = () => {
   const handleSubmit = async () => {
     if (!validateForm()) {
       const firstError = Object.values(errors)[0];
-      showAlert('Validation Error', firstError, 'error');
+      showAlert('error', firstError);
       return;
     }
 
@@ -178,51 +610,60 @@ const BookingRoom = () => {
     try {
       const authToken = await fetchAuthToken();
       if (!authToken) {
-        showAlert('Error', 'Not authenticated', 'error');
+        showAlert('error', 'Not authenticated');
         return;
       }
 
-      const response = await axios.post('https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings', form, {
+      // Format the date to the expected format for the API
+      const formattedDate = formatDateForAPI(form.booking_date);
+      
+      const bookingData = {
+        ...form,
+        booking_date: formattedDate
+      };
+
+      const response = await axios.post('https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings', bookingData, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
       });
 
       if (response.status === 201) {
-        showAlert('Success', 'Booking submitted successfully', 'success');
+        showAlert('success', 'Booking submitted successfully');
         setTimeout(() => {
           router.replace('/(root)/(tabs)/my-booking');
         }, 2000);
       } else {
-        showAlert('Error', 'Unexpected response from server', 'error');
+        showAlert('error', 'Unexpected response from server');
       }
     } catch (error) {
       console.error('Booking error:', error);
       if (error.response) {
-        showAlert('Error', error.response.data.message || 'Failed to submit booking. Please try again.', 'error');
+        showAlert('error', error.response.data.message || 'Failed to submit booking. Please try again.');
       } else {
-        showAlert('Error', 'Failed to submit booking. Please try again.', 'error');
+        showAlert('error', 'Failed to submit booking. Please try again.');
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const showAlert = (message: string, details: string, type: 'success' | 'error') => {
-    setAlertMessage(`${message}: ${details}`);
-    setAlertType(type);
-    setModalVisible(true);
+  const formatDateForAPI = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
-   const SectionHeader = ({ title }: { title: string }) => (
-      <View className="flex-row items-center mb-4 mt-2">
-        <View className="flex-1 h-px bg-sky-200" />
-        <Text className="mx-4 text-sky-600 font-medium">{title}</Text>
-        <View className="flex-1 h-px bg-sky-200" />
-      </View>
-    );
+  const formatDateDisplay = (date) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
 
-  const isValidTimeRange = (start: string, end: string) => {
+  const isValidTimeRange = (start, end) => {
     const [startHour, startMinute] = start.split(':').map(Number);
     const [endHour, endMinute] = end.split(':').map(Number);
 
@@ -231,322 +672,192 @@ const BookingRoom = () => {
     return true;
   };
 
-  const confirmDateSelection = () => {
-    const newDate = new Date(selectedYear, selectedMonth, selectedDay);
-    setForm(prev => ({ ...prev, booking_date: newDate }));
-    setShowDatePickerModal(false);
-  };
-
-  const confirmStartTimeSelection = (time: string) => {
-    setForm(prev => ({ ...prev, start_time: time }));
-    setShowStartTimePickerModal(false);
-  };
-
-  const confirmEndTimeSelection = (time: string) => {
-    setForm(prev => ({ ...prev, end_time: time }));
-    setShowEndTimePickerModal(false);
-  };
-
-  const renderRooms = () => (
-    <View className="mb-6">
-      <Text className="text-sky-700 font-medium mb-3">Select Room *</Text>
-      {errors.room_id && <Text className="text-orange-500 mb-2 text-xs">{errors.room_id}</Text>}
-      <ScrollView className="max-h-full">
-        {rooms.map((room) => (
-          <TouchableOpacity
-            key={room.room_id}
-            onPress={() => {
-              setForm(prev => ({ ...prev, room_id: room.room_id }));
-              if (errors.room_id) {
-                setErrors(prev => ({ ...prev, room_id: undefined }));
-              }
-            }}
-            className={`p-4 mb-4 rounded-xl border ${
-              room.room_id === form.room_id 
-                ? 'bg-sky-50 border-sky-500' 
-                : 'bg-white border-gray-200'
-            }`}
-          >
-            <View className="flex-row items-center">
-              <Image
-                source={{ uri: room.image }}
-                style={{ width: 60, height: 60, borderRadius: 10 }}
-                className="mr-4"
-              />
-              <View className="flex-1">
-                <Text className={`text-base ${
-                  room.room_id === form.room_id ? 'text-sky-900 font-medium' : 'text-gray-700'
-                }`}>
-                  {room.room_name}
-                </Text>
-                <Text className={`text-sm ${
-                  room.room_id === form.room_id ? 'text-sky-700' : 'text-gray-500'
-                }`}>
-                  Type: {room.room_type} | Capacity: {room.capacity}
-                </Text>
-              </View>
-              {room.room_id === form.room_id && (
-                <Ionicons name="checkmark-circle" size={24} color="#0EA5E9" />
-              )}
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View> 
-  );
-
   return (
-    <SafeAreaView className="flex-1 bg-white pb-10">
-      <View className="shadow-sm bg-sky-500">
-        <View className="flex-row items-center justify-between px-4 py-4">
+    <SafeAreaView className="flex-1 bg-white">
+      <View className="bg-sky-500 shadow-md rounded-b-3xl">
+        <View className="flex-row items-center space-x-3 px-6 pt-6 pb-8">
           <TouchableOpacity 
-            onPress={() => router.back()}
-            className="w-10 h-10 rounded-full items-center justify-center bg-white"
+            onPress={() => router.back()} 
+            className="w-10 h-10 justify-center items-center bg-white/20 rounded-full"
           >
-            <Ionicons name="arrow-back" size={20} color="#0EA5E9" />
+            <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
-          <Text className="text-lg font-bold text-white">New Room Booking</Text>
-          <View className="w-10" />
+          <View>
+            <Text className="text-white text-2xl font-bold">Book a Room</Text>
+            <Text className="text-white text-opacity-90 mt-1">Reserve a meeting space</Text>
+          </View>
         </View>
       </View>
 
-      <ScrollView className="flex-1 p-4">
-        <View className="bg-white rounded-2xl p-6 shadow-sm mb-6 border border-sky-100">
-          <SectionHeader title="BASIC INFORMATION" />
+      <ScrollView className="flex-1 px-5">
+        <View className="mt-6">
+          <SectionHeader title="Basic Information" icon="person-outline" />
           
-          <InputField
-            label="PIC Name *"
-            value={form.pic}
-            onChangeText={(text: string) => setForm(prev => ({ ...prev, pic: text }))}
+          <ModernTextInput
+            icon="person"
             placeholder="Enter person in charge"
-            errorMessage={errors.pic}
+            value={form.pic}
+            onChangeText={(text) => {
+              setForm(prev => ({ ...prev, pic: text }));
+              if (errors.pic) {
+                setErrors(prev => ({ ...prev, pic: null }));
+              }
+            }}
+            error={errors.pic}
           />
           
-          <InputField
-            label="Section *"
-            value={form.section}
-            onChangeText={(text: string) => setForm(prev => ({ ...prev, section: text }))}
+          <ModernTextInput
+            icon="business"
             placeholder="Enter section name"
-            errorMessage={errors.section}
+            value={form.section}
+            onChangeText={(text) => {
+              setForm(prev => ({ ...prev, section: text }));
+              if (errors.section) {
+                setErrors(prev => ({ ...prev, section: null }));
+              }
+            }}
+            error={errors.section}
           />
-
-          {renderRooms()}
-
-          <SectionHeader title="DATE & TIME" />
-
-          <View className="mb-6">
-            <Text className="text-sky-700 font-medium mb-3">Booking Date *</Text>
-            <TouchableOpacity 
-              onPress={() => setShowDatePickerModal(true)}
-              className="flex-row items-center space-x-2 bg-sky-50 border border-gray-200 rounded-xl p-4"
-            >
-              <Ionicons name="calendar" size={20} color="#0EA5E9" className="mr-3" />
-              <Text className="text-gray-900">{form.booking_date.toLocaleDateString()}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View className="flex-row mb-6 space-x-4">
-            <View className="flex-1">
-              <Text className="text-sky-700 font-medium mb-2">Start Time *</Text>
-              {errors.start_time && <Text className="text-orange-500 mb-1 text-xs">{errors.start_time}</Text>}
-              <TouchableOpacity 
-                onPress={() => setShowStartTimePickerModal(true)}
-                className={`flex-row items-center space-x-2 bg-sky-50 border ${errors.start_time ? 'border-orange-500' : 'border-gray-200'} rounded-xl p-4`}
-              >
-                <Ionicons name="time" size={20} color="#0EA5E9" className="mr-3" />
-                <Text className="text-gray-900">{form.start_time || 'Select time'}</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View className="flex-1">
-              <Text className="text-sky-700 font-medium mb-2">End Time *</Text>
-              {errors.end_time && <Text className="text-orange-500 mb-1 text-xs">{errors.end_time}</Text>}
-              <TouchableOpacity 
-                onPress={() => setShowEndTimePickerModal(true)}
-                className={`flex-row items-center space-x-2 bg-sky-50 border ${errors.end_time ? 'border-orange-500' : 'border-gray-200'} rounded-xl p-4`}
-              >
-                <Ionicons name="time" size={20} color="#0EA5E9" className="mr-3" />
-                <Text className="text-gray-900">{form.end_time || 'Select time'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <SectionHeader title="ADDITIONAL DETAILS" />
-
-          <InputField
-            label="Description"
+          
+          <ModernTextInput
+            icon="description"
+            placeholder="Enter meeting description (optional)"
             value={form.description}
-            onChangeText={(text: string) => setForm(prev => ({ ...prev, description: text }))}
-            placeholder="Enter booking description"
-            multiline
-            errorMessage={errors.description}
+            onChangeText={(text) => setForm(prev => ({ ...prev, description: text }))}
+            multiline={true}
           />
-        </View>
 
-        <TouchableOpacity
-          onPress={handleSubmit}
-          disabled={loading}
-          className={`bg-orange-500 py-4 rounded-xl mb-6 ${loading ? 'opacity-70' : ''}`}
-        >
-          {loading ? ( 
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text className="text-white text-center font-bold text-base">Submit Booking</Text>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
+          <SectionHeader title="Room Selection" icon="business-outline" />
+          
+          {errors.room_id && <Text className="text-red-500 text-xs mb-2">{errors.room_id}</Text>}
+          <View className="mb-6">
+            {rooms.map((room) => (
+              <TouchableOpacity
+                key={room.room_id}
+                onPress={() => {
+                  setForm(prev => ({ ...prev, room_id: room.room_id }));
+                  if (errors.room_id) {
+                    setErrors(prev => ({ ...prev, room_id: null }));
+                  }
+                }}
+                className={`p-4 mb-4 rounded-xl border ${
+                  room.room_id === form.room_id 
+                    ? 'bg-sky-50 border-sky-500' 
+                    : 'bg-white border-gray-200'
+                } shadow-sm`}
+              >
+                <View className="flex-row items-center">
+                  <Image
+                    source={{ uri: room.image }}
+                    style={{ width: 60, height: 60, borderRadius: 10 }}
+                    className="mr-4"
+                  />
+                  <View className="flex-1">
+                    <Text className={`text-base ${
+                      room.room_id === form.room_id ? 'text-sky-900 font-medium' : 'text-gray-700'
+                    }`}>
+                      {room.room_name}
+                    </Text>
+                    <Text className={`text-sm ${
+                      room.room_id === form.room_id ? 'text-sky-700' : 'text-gray-500'
+                    }`}>
+                      Type: {room.room_type} | Capacity: {room.capacity}
+                    </Text>
+                  </View>
+                  {room.room_id === form.room_id && (
+                    <Ionicons name="checkmark-circle" size={24} color="#0EA5E9" />
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-      <Modal isVisible={modalVisible} onBackdropPress={() => setModalVisible(false)} animationIn="fadeIn" animationOut="fadeOut">
-        <View className={`flex-col items-center justify-center bg-white rounded-xl p-6 shadow-lg ${alertType === 'error' ? 'border-orange-500' : 'border-sky-500'}`}>
-          <Ionicons 
-            name={alertType === 'error' ? 'close-circle' : 'checkmark-circle'} 
-            size={75} 
-            color={alertType === 'error' ? '#F97316' : '#0EA5E9'} 
+          <SectionHeader title="Date & Time" icon="calendar-outline" />
+          
+          <View className="mb-5">
+            <Text className="text-gray-700 mb-2 font-medium">Booking Date *</Text>
+            <TouchableOpacity
+              onPress={() => setShowDatePicker(true)}
+              className="flex-row items-center bg-white border border-gray-200 rounded-xl p-4 shadow-sm"
+            >
+              <MaterialIcons name="calendar-today" size={22} color="#0EA5E9" />
+              <Text className="ml-3 text-gray-700 font-medium">{formatDateDisplay(form.booking_date)}</Text>
+            </TouchableOpacity>
+            {errors.booking_date && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.booking_date}</Text>}
+          </View>
+
+          <View className="mb-5">
+            <Text className="text-gray-700 mb-2 font-medium">Start Time *</Text>
+            <TouchableOpacity
+              onPress={() => setShowStartTimePicker(true)}
+              className="flex-row items-center bg-white border border-gray-200 rounded-xl p-4 shadow-sm"
+            >
+              <MaterialIcons name="access-time" size={22} color="#0EA5E9" />
+              <Text className="ml-3 text-gray-700 font-medium">{form.start_time || 'Select start time'}</Text>
+            </TouchableOpacity>
+            {errors.start_time && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.start_time}</Text>}
+          </View>
+
+          <View className="mb-5">
+            <Text className="text-gray-700 mb-2 font-medium">End Time *</Text>
+            <TouchableOpacity
+              onPress={() => setShowEndTimePicker(true)}
+              className="flex-row items-center bg-white border border-gray-200 rounded-xl p-4 shadow-sm"
+            >
+              <MaterialIcons name="access-time" size={22} color="#0EA5E9" />
+              <Text className="ml-3 text-gray-700 font-medium">{form.end_time || 'Select end time'}</Text>
+            </TouchableOpacity>
+            {errors.end_time && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.end_time}</Text>}
+          </View>
+
+          {/* Alert Component */}
+          <CustomAlert
+            visible={alertVisible}
+            type={alertType}
+            message={alertMessage}
+            onClose={() => setAlertVisible(false)}
           />
-          <Text className={`text-xl font-bold mt-1 ${alertType === 'error' ? 'text-orange-500' : 'text-sky-500'}`}>
-            {alertType === 'error' ? 'Error' : 'Success'}
-          </Text>
-          <Text className="text-gray-600 text-center mt-2">{alertMessage}</Text>
-          <TouchableOpacity 
-            onPress={() => setModalVisible(false)}
-            className={`mt-4 py-2 px-6 rounded-full ${alertType === 'error' ? 'bg-orange-500' : 'bg-sky-500'}`}
+
+          {/* Date and Time Pickers Modals */}
+          <DatePickerModal
+            visible={showDatePicker}
+            onClose={() => setShowDatePicker(false)}
+            date={form.booking_date}
+            onDateChange={(date) => setForm({ ...form, booking_date: date })}
+          />
+
+          <TimePickerModal
+            visible={showStartTimePicker}
+            onClose={() => setShowStartTimePicker(false)}
+            time={form.start_time}
+            onTimeChange={(time) => setForm({ ...form, start_time: time })}
+            title="Select Start Time"
+          />
+
+          <TimePickerModal
+            visible={showEndTimePicker}
+            onClose={() => setShowEndTimePicker(false)}
+            time={form.end_time}
+            onTimeChange={(time) => setForm({ ...form, end_time: time })}
+            title="Select End Time"
+          />
+          
+          {/* Submit Button with loading state */}
+          <TouchableOpacity
+            onPress={handleSubmit}
+            disabled={loading}
+            className={`mt-6 py-4 ${loading ? 'bg-sky-400' : 'bg-sky-500'} rounded-xl items-center shadow-md mb-8`}
           >
-            <Text className="text-white font-bold">OK</Text>
+            {loading ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <Text className="text-white font-semibold text-lg">Submit Booking</Text>
+            )}
           </TouchableOpacity>
         </View>
-      </Modal>
-
-      <Modal
-        isVisible={showDatePickerModal}
-        onBackdropPress={() => setShowDatePickerModal(false)}
-        animationIn="fadeIn"
-        animationOut="fadeOut"
-      >
-        <View className="bg-white rounded-xl p-4">
-          <Text className="text-sky-700 font-bold text-lg text-center mb-4">Select Date</Text>
-          <View className="flex-row">
-            <View className="flex-1">
-              <Text className="text-sky-700 text-center">Day</Text>
-              <Picker
-                selectedValue={selectedDay}
-                onValueChange={(itemValue) => setSelectedDay(itemValue)}
-              >
-                {dayOptions.map((day) => (
-                  <Picker.Item key={day} label={day.toString()} value={day} />
-                ))}
-              </Picker>
-            </View>
-            <View className="flex-1">
-              <Text className="text-sky-700 text-center">Month</Text>
-              <Picker
-                selectedValue={selectedMonth}
-                onValueChange={(itemValue) => setSelectedMonth(itemValue)}
-              >
-                                {MONTHS.map((month, index) => (
-                  <Picker.Item key={index} label={month} value={index} />
-                ))}
-              </Picker>
-            </View>
-            <View className="flex-1">
-              <Text className="text-sky-700 text-center">Year</Text>
-              <Picker
-                selectedValue={selectedYear}
-                onValueChange={(itemValue) => setSelectedYear(itemValue)}
-              >
-                {generateYearOptions().map((year) => (
-                  <Picker.Item key={year} label={year.toString()} value={year} />
-                ))}
-              </Picker>
-            </View>
-          </View>
-          <View className="flex-row mt-2 space-x-2">
-            <TouchableOpacity 
-              onPress={() => setShowDatePickerModal(false)}
-              className="flex-1 bg-gray-200 py-3 rounded-lg"
-            >
-              <Text className="text-center font-semibold text-gray-700">Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={confirmDateSelection}
-              className="flex-1 bg-sky-500 py-3 rounded-lg"
-            >
-              <Text className="text-center font-semibold text-white">Confirm</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Start Time Picker Modal */}
-      <Modal
-        isVisible={showStartTimePickerModal}
-        onBackdropPress={() => setShowStartTimePickerModal(false)}
-        animationIn="fadeIn"
-        animationOut="fadeOut"
-      >
-        <View className="bg-white rounded-xl p-4">
-          <Text className="text-sky-700 font-bold text-lg text-center mb-4">Select Start Time</Text>
-          <Picker
-            selectedValue={form.start_time}
-            onValueChange={(itemValue) => setForm(prev => ({ ...prev, start_time: itemValue }))}
-          >
-            {timeOptions.map((time) => (
-              <Picker.Item key={time} label={time} value={time} />
-            ))}
-          </Picker>
-          <View className="flex-row mt-2 space-x-2">
-            <TouchableOpacity 
-              onPress={() => setShowStartTimePickerModal(false)}
-              className="flex-1 bg-gray-200 py-3 rounded-lg"
-            >
-              <Text className="text-center font-semibold text-gray-700">Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => confirmStartTimeSelection(form.start_time)}
-              className="flex-1 bg-sky-500 py-3 rounded-lg"
-            >
-              <Text className="text-center font-semibold text-white">Confirm</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* End Time Picker Modal */}
-      <Modal
-        isVisible={showEndTimePickerModal}
-        onBackdropPress={() => setShowEndTimePickerModal(false)}
-        animationIn="fadeIn"
-        animationOut="fadeOut"
-      >
-        <View className="bg-white rounded-xl p-4">
-          <Text className="text-sky-700 font-bold text-lg text-center mb-4">Select End Time</Text>
-          <Picker
-            selectedValue={form.end_time}
-            onValueChange={(itemValue) => setForm(prev => ({ ...prev, end_time: itemValue }))}
-          >
-            {timeOptions.map((time) => (
-              <Picker.Item key={time} label={time} value={time} />
-            ))}
-          </Picker>
-          <View className="flex-row mt-2 space-x-2">
-            <TouchableOpacity 
-              onPress={() => setShowEndTimePickerModal(false)}
-              className="flex-1 bg-gray-200 py-3 rounded-lg"
-            >
-              <Text className="text-center font-semibold text-gray-700">Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => confirmEndTimeSelection(form.end_time)}
-              className="flex-1 bg-sky-500 py-3 rounded-lg"
-            >
-              <Text className="text-center font-semibold text-white">Confirm</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
 export default BookingRoom;
-
