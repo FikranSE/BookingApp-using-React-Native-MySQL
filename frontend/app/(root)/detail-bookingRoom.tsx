@@ -250,7 +250,7 @@ const DetailBookingRoom = () => {
       </SafeAreaView>
     );
   }
-
+ 
   if (!bookingDetail) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
@@ -260,6 +260,7 @@ const DetailBookingRoom = () => {
   }
 
   const theme = getStatusTheme(bookingDetail.approval.status);
+  const isPendingStatus = bookingDetail.approval.status === 'PENDING';
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: theme.gradientColors[1] }}>
@@ -270,7 +271,7 @@ const DetailBookingRoom = () => {
         end={{ x: 1, y: 0 }}
         className="shadow-lg rounded-b-3xl"
       >
-        <View className="px-4 pt-4 pb-8">
+        <View className="px-4 pt-4 pb-8">  
           {/* Back button & status text */}
           <View className="flex-row items-center justify-between">
             <TouchableOpacity 
@@ -390,12 +391,15 @@ const DetailBookingRoom = () => {
         <View className="bg-white rounded-xl shadow-sm mb-4 overflow-hidden">
           <View className="border-b border-gray-100 p-4 flex-row justify-between items-center">
             <Text className="text-gray-800 font-semibold text-lg">Room Schedule</Text>
-            <TouchableOpacity 
-              onPress={handleReschedule}
-              className={`py-1 px-3 rounded-full ${theme.secondaryButtonBg}`}
-            >
-              <Text className={theme.secondaryButtonText}>Change</Text>
-            </TouchableOpacity>
+            {/* Only show "Change" button if status is PENDING */}
+            {isPendingStatus && (
+              <TouchableOpacity 
+                onPress={handleReschedule}
+                className={`py-1 px-3 rounded-full ${theme.secondaryButtonBg}`}
+              >
+                <Text className={theme.secondaryButtonText}>Change</Text>
+              </TouchableOpacity>
+            )}
           </View>
           
           <View className="p-4">
@@ -495,22 +499,24 @@ const DetailBookingRoom = () => {
           </View>
         )}
 
-        {/* Action Buttons */}
-        <View className="flex-row mb-4">
-          <TouchableOpacity 
-            onPress={handleReschedule}
-            className={`flex-1 py-4 rounded-xl mr-2 items-center shadow-sm ${theme.buttonBg}`}
-          >
-            <Text className="text-white font-semibold">Reschedule</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            onPress={handleCancel}
-            className="flex-1 bg-white py-4 rounded-xl ml-2 items-center shadow-sm border border-gray-200"
-          >
-            <Text className="text-red-500 font-semibold">Cancel</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Action Buttons - Only show if status is PENDING */}
+        {isPendingStatus && (
+          <View className="flex-row mb-4">
+            <TouchableOpacity 
+              onPress={handleReschedule}
+              className={`flex-1 py-4 rounded-xl mr-2 items-center shadow-sm ${theme.buttonBg}`}
+            >
+              <Text className="text-white font-semibold">Reschedule</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              onPress={handleCancel}
+              className="flex-1 bg-white py-4 rounded-xl ml-2 items-center shadow-sm border border-gray-200"
+            >
+              <Text className="text-red-500 font-semibold">Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

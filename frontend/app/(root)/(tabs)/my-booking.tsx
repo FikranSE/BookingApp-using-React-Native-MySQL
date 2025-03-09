@@ -155,7 +155,7 @@ const MyBooking = () => {
 
         if (vehicleImagesResponse.ok) {
           const vehicleImagesData = await vehicleImagesResponse.json();
-          vehicleImagesData.forEach((item: any) => {
+          vehicleImagesData.forEach((item: any) => { 
             vehicleImages[item.vehicle_id] = item.image_url;
           });
         }

@@ -269,6 +269,7 @@ const DetailBookingTransport = () => {
   }
 
   const theme = getStatusTheme(bookingDetail.approval.status);
+  const isPendingStatus = bookingDetail.approval.status === 'PENDING';
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: theme.gradientColors[1] }}>
@@ -508,22 +509,24 @@ const DetailBookingTransport = () => {
           </View>
         )}
 
-        {/* Action Buttons */}
-        <View className="flex-row mb-4">
-          <TouchableOpacity 
-            onPress={handleReschedule}
-            className={`flex-1 py-4 rounded-xl mr-2 items-center shadow-sm ${theme.buttonBg}`}
-          >
-            <Text className="text-white font-semibold">Reschedule</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            onPress={handleCancel}
-            className="flex-1 bg-white py-4 rounded-xl ml-2 items-center shadow-sm border border-gray-200"
-          >
-            <Text className="text-red-500 font-semibold">Cancel</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Action Buttons - Only show if status is PENDING */}
+        {isPendingStatus && (
+          <View className="flex-row mb-4">
+            <TouchableOpacity 
+              onPress={handleReschedule}
+              className={`flex-1 py-4 rounded-xl mr-2 items-center shadow-sm ${theme.buttonBg}`}
+            >
+              <Text className="text-white font-semibold">Reschedule</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              onPress={handleCancel}
+              className="flex-1 bg-white py-4 rounded-xl ml-2 items-center shadow-sm border border-gray-200"
+            >
+              <Text className="text-red-500 font-semibold">Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
