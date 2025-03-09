@@ -914,44 +914,7 @@ const BookingRoom = () => {
     </View>
   );
   
-  // Modern input field component with animation and validation
-  const ModernTextInput = ({ 
-    icon, 
-    placeholder, 
-    value, 
-    onChangeText, 
-    error, 
-    keyboardType = 'default',
-    secureTextEntry = false,
-    multiline = false
-  }) => {
-    const [isFocused, setIsFocused] = useState(false);
-    
-    return (
-      <View className="mb-4">
-        <View className={`flex-row items-center bg-white border ${error ? 'border-red-500' : isFocused ? 'border-sky-500' : 'border-gray-200'} 
-          rounded-xl ${multiline ? 'py-3' : 'py-0'} px-3 shadow-sm`}>
-          <MaterialIcons name={icon} size={22} color={isFocused ? "#0EA5E9" : "#94A3B8"} />
-          <TextInput
-            className={`flex-1 ml-3 text-gray-700 ${multiline ? 'min-h-[80px] text-base py-1' : 'h-12 text-base'}`}
-            placeholder={placeholder}
-            placeholderTextColor="#94A3B8"
-            value={value}
-            onChangeText={onChangeText}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            keyboardType={keyboardType}
-            secureTextEntry={secureTextEntry}
-            multiline={multiline}
-          />
-          {error && (
-            <Ionicons name="alert-circle" size={22} color="#EF4444" />
-          )}
-        </View>
-        {error && <Text className="text-red-500 text-xs ml-1 mt-1">{error}</Text>}
-      </View>
-    );
-  };
+
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -974,39 +937,82 @@ const BookingRoom = () => {
         <View className="mt-6">
           <SectionHeader title="Basic Information" icon="person-outline" />
           
-          <ModernTextInput
-            icon="person"
-            placeholder="Enter person in charge"
-            value={form.pic}
-            onChangeText={(text) => {
-              setForm(prev => ({ ...prev, pic: text }));
-              if (errors.pic) {
-                setErrors(prev => ({ ...prev, pic: null }));
-              }
-            }}
-            error={errors.pic}
-          />
-          
-          <ModernTextInput
-            icon="business"
-            placeholder="Enter section name"
-            value={form.section}
-            onChangeText={(text) => {
-              setForm(prev => ({ ...prev, section: text }));
-              if (errors.section) {
-                setErrors(prev => ({ ...prev, section: null }));
-              }
-            }}
-            error={errors.section}
-          />
-          
-          <ModernTextInput
-            icon="description"
-            placeholder="Enter meeting description (optional)"
-            value={form.description}
-            onChangeText={(text) => setForm(prev => ({ ...prev, description: text }))}
-            multiline={true}
-          />
+          <View className="mb-4">
+            <View className={`flex-row items-center bg-white border ${errors.pic ? 'border-red-500' : 'border-gray-200'} 
+              rounded-xl py-0 px-3 shadow-sm`}>
+              <MaterialIcons name="person" size={22} color="#94A3B8" />
+              <TextInput
+                className="flex-1 ml-3 text-gray-700 h-12 text-base"
+                placeholder="Enter person in charge"
+                placeholderTextColor="#94A3B8"
+                defaultValue={pic || ''}
+                onChangeText={(text) => {
+                  console.log('PIC changed:', text);
+                  setForm(prev => ({ ...prev, pic: text }));
+                  if (errors.pic) setErrors(prev => ({ ...prev, pic: null }));
+                }}
+                editable={true}
+                autoCapitalize="none"
+                autoCorrect={false}
+                blurOnSubmit={false}
+                style={{ height: 48 }}
+              />
+              {errors.pic && (
+                <Ionicons name="alert-circle" size={22} color="#EF4444" />
+              )}
+            </View>
+            {errors.pic && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.pic}</Text>}
+          </View>
+
+          <View className="mb-4">
+            <View className={`flex-row items-center bg-white border ${errors.section ? 'border-red-500' : 'border-gray-200'} 
+              rounded-xl py-0 px-3 shadow-sm`}>
+              <MaterialIcons name="business" size={22} color="#94A3B8" />
+              <TextInput
+                className="flex-1 ml-3 text-gray-700 h-12 text-base"
+                placeholder="Enter section name"
+                placeholderTextColor="#94A3B8"
+                defaultValue={section || ''}
+                onChangeText={(text) => {
+                  console.log('Section changed:', text);
+                  setForm(prev => ({ ...prev, section: text }));
+                  if (errors.section) setErrors(prev => ({ ...prev, section: null }));
+                }}
+                editable={true}
+                autoCapitalize="none"
+                autoCorrect={false}
+                blurOnSubmit={false}
+                style={{ height: 48 }}
+              />
+              {errors.section && (
+                <Ionicons name="alert-circle" size={22} color="#EF4444" />
+              )}
+            </View>
+            {errors.section && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.section}</Text>}
+          </View>
+
+          <View className="mb-4">
+            <View className={`flex-row items-center bg-white border border-gray-200 
+              rounded-xl py-3 px-3 shadow-sm`}>
+              <MaterialIcons name="description" size={22} color="#94A3B8" />
+              <TextInput
+                className="flex-1 ml-3 text-gray-700 min-h-[80px] text-base py-1"
+                placeholder="Enter meeting description (optional)"
+                placeholderTextColor="#94A3B8"
+                defaultValue={description || ''}
+                onChangeText={(text) => {
+                  console.log('Description changed:', text);
+                  setForm(prev => ({ ...prev, description: text }));
+                }}
+                editable={true}
+                autoCapitalize="none"
+                autoCorrect={false}
+                multiline={true}
+                blurOnSubmit={false}
+                style={{ minHeight: 80, textAlignVertical: 'top' }}
+              />
+            </View>
+          </View>
 
           <SectionHeader title="Room Selection" icon="business-outline" />
           

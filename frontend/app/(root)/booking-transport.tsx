@@ -372,43 +372,7 @@ const Bookingtransport = () => {
     }
   };
 
-  const ModernTextInput = ({ 
-    icon, 
-    placeholder, 
-    value, 
-    onChangeText, 
-    error, 
-    keyboardType = 'default',
-    secureTextEntry = false,
-    multiline = false
-  }) => {
-    const [isFocused, setIsFocused] = useState(false);
-  
-    return (
-      <View className="mb-4">
-        <View className={`flex-row items-center bg-white border ${error ? 'border-red-500' : isFocused ? 'border-sky-500' : 'border-gray-200'} 
-          rounded-xl ${multiline ? 'py-3' : 'py-0'} px-3 shadow-sm`}>
-          <MaterialIcons name={icon} size={22} color={isFocused ? "#0EA5E9" : "#94A3B8"} />
-          <TextInput
-            className={`flex-1 ml-3 text-gray-700 ${multiline ? 'min-h-[80px] text-base py-1' : 'h-12 text-base'}`}
-            placeholder={placeholder}
-            placeholderTextColor="#94A3B8"
-            value={value} // This binds the value to the state properly
-            onChangeText={onChangeText} // This updates the state when text changes
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            keyboardType={keyboardType}
-            secureTextEntry={secureTextEntry}
-            multiline={multiline}
-          />
-          {error && (
-            <Ionicons name="alert-circle" size={22} color="#EF4444" />
-          )}
-        </View>
-        {error && <Text className="text-red-500 text-xs ml-1 mt-1">{error}</Text>}
-      </View>
-    );
-  };
+
   
 
   const DatePickerModal = ({ visible, onClose, date, onDateChange }) => {
@@ -917,52 +881,118 @@ const Bookingtransport = () => {
         <View className="mt-6">
           <SectionHeader title="Basic Information" icon="person-outline" />
           
-          <ModernTextInput
-        icon="person"
-        placeholder="Enter person in charge"
-        value={form.pic}
-        onChangeText={(text) => {
-          setForm(prev => ({ ...prev, pic: text }));
-          if (errors.pic) {
-            setErrors(prev => ({ ...prev, pic: null }));
-          }
-        }}
-        error={errors.pic}
-      />
-      
-      <ModernTextInput
-        icon="business"
-        placeholder="Enter section name"
-        value={form.section}
-        onChangeText={(text) => {
-          setForm(prev => ({ ...prev, section: text }));
-          if (errors.section) {
-            setErrors(prev => ({ ...prev, section: null }));
-          }
-        }}
-        error={errors.section}
-      />
+       {/* Person in charge input */}
+<View className="mb-4">
+  <View className={`flex-row items-center bg-white border ${errors.pic ? 'border-red-500' : 'border-gray-200'} 
+    rounded-xl py-0 px-3 shadow-sm`}>
+    <MaterialIcons name="person" size={22} color="#94A3B8" />
+    <TextInput
+      className="flex-1 ml-3 text-gray-700 h-12 text-base"
+      placeholder="Enter person in charge"
+      placeholderTextColor="#94A3B8"
+      defaultValue={form.pic}
+      onChangeText={(text) => {
+        setForm(prev => ({ ...prev, pic: text }));
+        if (errors.pic) {
+          setErrors(prev => ({ ...prev, pic: null }));
+        }
+      }}
+      editable={true}
+      autoCapitalize="none"
+      autoCorrect={false}
+      blurOnSubmit={false}
+      style={{ height: 48 }}
+    />
+    {errors.pic && (
+      <Ionicons name="alert-circle" size={22} color="#EF4444" />
+    )}
+  </View>
+  {errors.pic && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.pic}</Text>}
+</View>
 
-          <ModernTextInput
-            icon="place"
-            placeholder="Enter destination"
-            value={form.destination}
-            onChangeText={(text) => {
-              setForm(prev => ({ ...prev, destination: text }));
-              if (errors.destination) {
-                setErrors(prev => ({ ...prev, destination: null }));
-              }
-            }}
-            error={errors.destination}
-          />
-          
-          <ModernTextInput
-        icon="description"
-        placeholder="Enter meeting description (optional)"
-        value={form.description}
-        onChangeText={(text) => setForm(prev => ({ ...prev, description: text }))}
-        multiline={true}
-      />
+{/* Section name input */}
+<View className="mb-4">
+  <View className={`flex-row items-center bg-white border ${errors.section ? 'border-red-500' : 'border-gray-200'} 
+    rounded-xl py-0 px-3 shadow-sm`}>
+    <MaterialIcons name="business" size={22} color="#94A3B8" />
+    <TextInput
+      className="flex-1 ml-3 text-gray-700 h-12 text-base"
+      placeholder="Enter section name"
+      placeholderTextColor="#94A3B8"
+      defaultValue={form.section}
+      onChangeText={(text) => {
+        setForm(prev => ({ ...prev, section: text }));
+        if (errors.section) {
+          setErrors(prev => ({ ...prev, section: null }));
+        }
+      }}
+      editable={true}
+      autoCapitalize="none"
+      autoCorrect={false}
+      blurOnSubmit={false}
+      returnKeyType="next"
+      style={{ height: 48 }}
+    />
+    {errors.section && (
+      <Ionicons name="alert-circle" size={22} color="#EF4444" />
+    )}
+  </View>
+  {errors.section && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.section}</Text>}
+</View>
+
+{/* Destination input */}
+<View className="mb-4">
+  <View className={`flex-row items-center bg-white border ${errors.destination ? 'border-red-500' : 'border-gray-200'} 
+    rounded-xl py-0 px-3 shadow-sm`}>
+    <MaterialIcons name="place" size={22} color="#94A3B8" />
+    <TextInput
+      className="flex-1 ml-3 text-gray-700 h-12 text-base"
+      placeholder="Enter destination"
+      placeholderTextColor="#94A3B8"
+      defaultValue={form.destination}
+      onChangeText={(text) => {
+        setForm(prev => ({ ...prev, destination: text }));
+        if (errors.destination) {
+          setErrors(prev => ({ ...prev, destination: null }));
+        }
+      }}
+      editable={true}
+      autoCapitalize="none"
+      autoCorrect={false}
+      blurOnSubmit={false}
+      returnKeyType="next"
+      style={{ height: 48 }}
+    />
+    {errors.destination && (
+      <Ionicons name="alert-circle" size={22} color="#EF4444" />
+    )}
+  </View>
+  {errors.destination && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.destination}</Text>}
+</View>
+
+{/* Description input - multiline */}
+<View className="mb-4">
+  <View className={`flex-row items-start bg-white border border-gray-200 
+    rounded-xl py-3 px-3 shadow-sm`}>
+    <MaterialIcons name="description" size={22} color="#94A3B8" style={{ marginTop: 8 }} />
+    <TextInput
+      className="flex-1 ml-3 text-gray-700 text-base py-1"
+      placeholder="Enter meeting description (optional)"
+      placeholderTextColor="#94A3B8"
+      defaultValue={form.description}
+      onChangeText={(text) => {
+        setForm(prev => ({ ...prev, description: text }));
+      }}
+      editable={true}
+      autoCapitalize="sentences"
+      autoCorrect={false}
+      multiline={true}
+      blurOnSubmit={false}
+      returnKeyType="default"
+      style={{ minHeight: 80, textAlignVertical: 'top' }}
+    />
+  </View>
+</View>
 
           <SectionHeader title="Transport Selection" icon="car" />
           

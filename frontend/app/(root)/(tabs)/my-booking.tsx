@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, Image, ScrollView, ActivityIndicator, Alert, TextInput, SafeAreaView } from "react-native";
+import { View, Text, TouchableOpacity, Image, ScrollView, ActivityIndicator, Alert, TextInput, SafeAreaView, Modal } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { icons } from "@/constants";
 import { Ionicons } from '@expo/vector-icons';
 import { router } from "expo-router";
 import { tokenCache } from "@/lib/auth";
 import { AUTH_TOKEN_KEY } from "@/lib/constants";
-import { LinearGradient } from 'expo-linear-gradient'; // Import LinearGradient
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface IApprovalStatus {
   status: "PENDING" | "APPROVED" | "REJECTED";
@@ -31,6 +31,12 @@ interface IBooking {
   imageUrl?: string;
 }
 
+interface FilterOptions {
+  type: "ALL" | "ROOM" | "TRANSPORT";
+  timeframe: "ALL" | "RECENT" | "PASSED";
+  status: "ALL" | "PENDING" | "APPROVED" | "REJECTED";
+}
+
 const MyBooking = () => {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<"BOOKED" | "HISTORY">("BOOKED");
@@ -38,6 +44,12 @@ const MyBooking = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+    type: "ALL",
+    timeframe: "ALL",
+    status: "ALL",
+  });
 
   // Default image URLs in case API doesn't provide them
   const defaultRoomImageUrl = "https://images.unsplash.com/photo-1606744824163-985d376605aa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80";
@@ -160,7 +172,7 @@ const MyBooking = () => {
           });
         }
 
-        const mappedRoomBookings = roomData
+        const mappedRoomBookings = roomData 
           .filter((item: any) => item.user_id === userId)
           .map((item: any) => {
             const bookingDate = new Date(item.booking_date);
@@ -186,6 +198,7 @@ const MyBooking = () => {
                 feedback: item.notes || undefined,
               },
               imageUrl: imageUrl,
+              rawDate: new Date(item.booking_date), // Store raw date for sorting
             };
           });
 
@@ -218,6 +231,7 @@ const MyBooking = () => {
               driverName: item.driver_name || "No driver name",
               capacity: item.capacity || "Not specified",
               imageUrl: imageUrl,
+              rawDate: new Date(item.booking_date), // Store raw date for sorting
             };
           });
 
@@ -237,16 +251,40 @@ const MyBooking = () => {
   }, [userId]);
 
   const filteredBookings = bookings.filter((booking) => {
+    // Text search filter
     const matchesSearch =
       booking.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       booking.section.toLowerCase().includes(searchQuery.toLowerCase());
 
+    // Tab filter (active vs history)
     const matchesTab =
       activeTab === "BOOKED"
         ? (booking.approval.status === "APPROVED" || booking.approval.status === "PENDING")
         : booking.approval.status === "REJECTED";
 
-    return matchesSearch && matchesTab;
+    // Type filter (room vs transport)
+    const matchesType =
+      filterOptions.type === "ALL" ||
+      booking.type === filterOptions.type;
+
+    // Status filter
+    const matchesStatus =
+      filterOptions.status === "ALL" ||
+      booking.approval.status === filterOptions.status;
+
+    // Timeframe filter
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const bookingDate = new Date(booking.rawDate);
+    const isPassed = bookingDate < today;
+    const isRecent = !isPassed;
+
+    const matchesTimeframe =
+      filterOptions.timeframe === "ALL" ||
+      (filterOptions.timeframe === "RECENT" && isRecent) ||
+      (filterOptions.timeframe === "PASSED" && isPassed);
+
+    return matchesSearch && matchesTab && matchesType && matchesStatus && matchesTimeframe;
   });
 
   const getStatusColorAndBackground = (status: string) => {
@@ -273,6 +311,154 @@ const MyBooking = () => {
         };
     }
   };
+
+  // Reset filters to default
+  const resetFilters = () => {
+    setFilterOptions({
+      type: "ALL",
+      timeframe: "ALL",
+      status: "ALL",
+    });
+  };
+
+  // Apply filters and close modal
+  const applyFilters = () => {
+    setFilterModalVisible(false);
+  };
+
+  // Filter option button component
+  const FilterButton = ({ 
+    title, 
+    isActive, 
+    onPress 
+  }: { 
+    title: string; 
+    isActive: boolean; 
+    onPress: () => void 
+  }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      className={`px-4 py-2 rounded-full mr-2 mb-2 ${
+        isActive ? "bg-sky-500" : "bg-gray-100"
+      }`}
+    >
+      <Text
+        className={`text-sm font-medium ${
+          isActive ? "text-white" : "text-gray-600"
+        }`}
+      >
+        {title}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  // Filter Modal Component
+  const FilterModal = () => (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={filterModalVisible}
+      onRequestClose={() => setFilterModalVisible(false)}
+    >
+      <View className="flex-1 justify-end bg-black/50">
+        <View className="bg-white rounded-t-3xl px-4 pt-4 pb-8">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-xl font-bold text-gray-800">Filter Bookings</Text>
+            <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
+              <Ionicons name="close" size={24} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Filter by type */}
+          <View className="mb-4">
+            <Text className="text-base font-semibold text-gray-700 mb-2">Booking Type</Text>
+            <View className="flex-row flex-wrap">
+              <FilterButton 
+                title="All Types" 
+                isActive={filterOptions.type === "ALL"} 
+                onPress={() => setFilterOptions({...filterOptions, type: "ALL"})}
+              />
+              <FilterButton 
+                title="Room" 
+                isActive={filterOptions.type === "ROOM"} 
+                onPress={() => setFilterOptions({...filterOptions, type: "ROOM"})}
+              />
+              <FilterButton 
+                title="Transport" 
+                isActive={filterOptions.type === "TRANSPORT"} 
+                onPress={() => setFilterOptions({...filterOptions, type: "TRANSPORT"})}
+              />
+            </View>
+          </View>
+
+          {/* Filter by timeframe */}
+          <View className="mb-4">
+            <Text className="text-base font-semibold text-gray-700 mb-2">Time Frame</Text>
+            <View className="flex-row flex-wrap">
+              <FilterButton 
+                title="All Time" 
+                isActive={filterOptions.timeframe === "ALL"} 
+                onPress={() => setFilterOptions({...filterOptions, timeframe: "ALL"})}
+              />
+              <FilterButton 
+                title="Recent/Upcoming" 
+                isActive={filterOptions.timeframe === "RECENT"} 
+                onPress={() => setFilterOptions({...filterOptions, timeframe: "RECENT"})}
+              />
+              <FilterButton 
+                title="Passed" 
+                isActive={filterOptions.timeframe === "PASSED"} 
+                onPress={() => setFilterOptions({...filterOptions, timeframe: "PASSED"})}
+              />
+            </View>
+          </View>
+
+          {/* Filter by status */}
+          <View className="mb-6">
+            <Text className="text-base font-semibold text-gray-700 mb-2">Status</Text>
+            <View className="flex-row flex-wrap">
+              <FilterButton 
+                title="All Status" 
+                isActive={filterOptions.status === "ALL"} 
+                onPress={() => setFilterOptions({...filterOptions, status: "ALL"})}
+              />
+              <FilterButton 
+                title="Pending" 
+                isActive={filterOptions.status === "PENDING"} 
+                onPress={() => setFilterOptions({...filterOptions, status: "PENDING"})}
+              />
+              <FilterButton 
+                title="Approved" 
+                isActive={filterOptions.status === "APPROVED"} 
+                onPress={() => setFilterOptions({...filterOptions, status: "APPROVED"})}
+              />
+              <FilterButton 
+                title="Rejected" 
+                isActive={filterOptions.status === "REJECTED"} 
+                onPress={() => setFilterOptions({...filterOptions, status: "REJECTED"})}
+              />
+            </View>
+          </View>
+
+          {/* Action buttons */}
+          <View className="flex-row">
+            <TouchableOpacity
+              onPress={resetFilters}
+              className="flex-1 py-3 mr-2 border border-sky-500 rounded-xl"
+            >
+              <Text className="text-sky-500 font-semibold text-center">Reset</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={applyFilters}
+              className="flex-1 py-3 ml-2 bg-sky-500 rounded-xl"
+            >
+              <Text className="text-white font-semibold text-center">Apply</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 
   const BookingCard = ({ booking }: { booking: IBooking }) => {
     const handlePress = () => {
@@ -329,6 +515,16 @@ const MyBooking = () => {
                 {booking.start_time} - {booking.end_time}
               </Text>
             </View>
+            <View className="flex-row items-center">
+              <Ionicons 
+                name={booking.type === "ROOM" ? "business" : "car"} 
+                size={13} 
+                color="#6366F1" 
+              />
+              <Text className="text-[10px] text-indigo-500 font-medium ml-1.5">
+                {booking.type}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -350,8 +546,17 @@ const MyBooking = () => {
     </View>
   );
 
+  // Active filters indicator
+  const hasActiveFilters = 
+    filterOptions.type !== "ALL" || 
+    filterOptions.timeframe !== "ALL" || 
+    filterOptions.status !== "ALL";
+
   return (
     <SafeAreaView className="flex-1 pb-20 bg-sky-50">
+      {/* Filter Modal */}
+      <FilterModal />
+      
       {/* Header with LinearGradient */}
       <LinearGradient
         colors={['#0EA5E9', '#E0F2FE']}
@@ -364,7 +569,7 @@ const MyBooking = () => {
           <Text className="text-xl font-bold text-white">My Booking</Text>
         </View>
 
-        {/* Search bar */}
+        {/* Search bar and filter button */}
         <View className="flex-row items-center space-x-2 mx-4 mb-4">
           <View className="flex-1 bg-white border border-sky-100 shadow-sm flex-row items-center px-3 py-0.5 rounded-xl">
             <Image
@@ -389,13 +594,71 @@ const MyBooking = () => {
               </TouchableOpacity>
             )}
           </View>
-          <TouchableOpacity className="bg-white p-1.5 rounded-lg">
-            <Image source={icons.filter} className="w-5 h-5" tintColor="#0EA5E9" />
+          <TouchableOpacity 
+            className={`p-1.5 rounded-lg ${hasActiveFilters ? 'bg-sky-500' : 'bg-white'}`}
+            onPress={() => setFilterModalVisible(true)}
+          >
+            <Image 
+              source={icons.filter} 
+              className="w-5 h-5" 
+              tintColor={hasActiveFilters ? '#ffffff' : '#0EA5E9'} 
+            />
           </TouchableOpacity>
         </View>
 
+        {/* Active filters indicators */}
+        {hasActiveFilters && (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            className="mx-4 mb-3"
+          >
+            {filterOptions.type !== "ALL" && (
+              <View className="bg-sky-100 rounded-full px-3 py-1 mr-2 flex-row items-center">
+                <Text className="text-sky-700 text-xs">{filterOptions.type}</Text>
+                <TouchableOpacity 
+                  onPress={() => setFilterOptions({...filterOptions, type: "ALL"})}
+                  className="ml-1"
+                >
+                  <Ionicons name="close-circle" size={16} color="#0284C7" />
+                </TouchableOpacity>
+              </View>
+            )}
+            {filterOptions.timeframe !== "ALL" && (
+              <View className="bg-sky-100 rounded-full px-3 py-1 mr-2 flex-row items-center">
+                <Text className="text-sky-700 text-xs">{filterOptions.timeframe}</Text>
+                <TouchableOpacity 
+                  onPress={() => setFilterOptions({...filterOptions, timeframe: "ALL"})}
+                  className="ml-1"
+                >
+                  <Ionicons name="close-circle" size={16} color="#0284C7" />
+                </TouchableOpacity>
+              </View>
+            )}
+            {filterOptions.status !== "ALL" && (
+              <View className="bg-sky-100 rounded-full px-3 py-1 mr-2 flex-row items-center">
+                <Text className="text-sky-700 text-xs">{filterOptions.status}</Text>
+                <TouchableOpacity 
+                  onPress={() => setFilterOptions({...filterOptions, status: "ALL"})}
+                  className="ml-1"
+                >
+                  <Ionicons name="close-circle" size={16} color="#0284C7" />
+                </TouchableOpacity>
+              </View>
+            )}
+            {hasActiveFilters && (
+              <TouchableOpacity 
+                onPress={resetFilters}
+                className="bg-sky-100 rounded-full px-3 py-1"
+              >
+                <Text className="text-sky-700 text-xs">Clear All</Text>
+              </TouchableOpacity>
+            )}
+          </ScrollView>
+        )}
+
         {/* Tab buttons */}
-        <View className="flex-row mx-12 bg-white border border-white rounded-full  shadow-sm">
+        <View className="flex-row mx-12 bg-white border border-white rounded-full shadow-sm">
           <TouchableOpacity
             onPress={() => setActiveTab("BOOKED")}
             className={`flex-1 py-1.5 px-5 rounded-full ${
@@ -448,4 +711,4 @@ const MyBooking = () => {
   );
 };
 
-export default MyBooking;
+export default MyBooking; 
