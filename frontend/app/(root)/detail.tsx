@@ -72,6 +72,30 @@ const Detail = () => {
     fetchDetail();
   }, [id, type]);
 
+  const handleBookNow = () => {
+    if (!data) return;
+    
+    if (type === 'room') {
+      // Navigate to room booking page with pre-selected room
+      router.push({
+        pathname: '/(root)/booking-room',
+        params: { 
+          selectedRoomId: (data as IRoom).room_id,
+          selectedRoomName: (data as IRoom).room_name
+        }
+      });
+    } else {
+      // Navigate to transport booking page with pre-selected transport
+      router.push({
+        pathname: '/(root)/booking-transport',
+        params: { 
+          selectedTransportId: (data as ITransport).transport_id,
+          selectedTransportName: (data as ITransport).vehicle_name
+        }
+      });
+    }
+  };
+
   const InfoRow = ({ icon, label, value }: { 
     icon: string; 
     label: string; 
@@ -192,7 +216,10 @@ const Detail = () => {
           )}
         </View>
         
-        <TouchableOpacity className="bg-orange-500 py-4 rounded-lg items-center mb-6 shadow-sm">
+        <TouchableOpacity 
+          className="bg-orange-500 py-4 rounded-lg items-center mb-6 shadow-sm"
+          onPress={handleBookNow}
+        >
           <Text className="text-white font-bold">Book Now</Text>
         </TouchableOpacity>
       </ScrollView>

@@ -491,7 +491,7 @@ const TimePickerModal = ({ visible, onClose, time, onTimeChange, title, dateStri
             
           return (
             <TouchableOpacity
-              className={`w-14 h-14 items-center justify-center m-1 rounded-lg ${
+              className={`w-10 h-10 items-center justify-center m-1 rounded-lg ${
                 selectedValue === item 
                   ? 'bg-orange-500' 
                   : isPastTime 

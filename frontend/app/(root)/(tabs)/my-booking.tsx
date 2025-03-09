@@ -143,7 +143,7 @@ const MyBooking = () => {
           }
         );
 
-        let roomImages = {};
+        let roomImages = {}; 
         let vehicleImages = {};
 
         if (roomImagesResponse.ok) {

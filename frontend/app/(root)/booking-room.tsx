@@ -11,7 +11,7 @@ import {
   TextInput
 } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import { tokenCache } from "@/lib/auth";
@@ -121,402 +121,71 @@ const CustomAlert = ({
   );
 };
 
-// Improved date picker with a cleaner interface
-const DatePickerModal = ({ visible, onClose, date, onDateChange }) => {
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
-  const [activeTab, setActiveTab] = useState('day'); // 'day', 'month', or 'year'
-  
-  useEffect(() => {
-    if (date) {
-      try {
-        const dateObj = new Date(date);
-        if (!isNaN(dateObj.getTime())) {
-          setSelectedYear(dateObj.getFullYear());
-          setSelectedMonth(dateObj.getMonth());
-          setSelectedDay(dateObj.getDate());
-        }
-      } catch (error) {
-        console.error("Error parsing date:", error);
-      }
-    }
-  }, [date, visible]);
-  
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June', 
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-  
-  // Generate 5 years starting from current year
-  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() + i);
-  
-  const getDaysInMonth = (year, month) => {
-    return new Date(year, month + 1, 0).getDate();
-  };
-  
-  const handleConfirm = () => {
-    const formattedDate = `${selectedYear}-${(selectedMonth + 1).toString().padStart(2, '0')}-${selectedDay.toString().padStart(2, '0')}`;
-    const selectedDate = new Date(selectedYear, selectedMonth, selectedDay);
-    onDateChange(selectedDate);
-    onClose();
-  };
-  
-  // Calculate days of week header (Sun, Mon, Tue, etc.)
-  const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-  
-  // Function to render the calendar grid with proper week alignment
-  const renderCalendarGrid = () => {
-    const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
-    const firstDayOfMonth = new Date(selectedYear, selectedMonth, 1).getDay();
-    
-    // Create an array for all the day cells, including empty ones for proper alignment
-    const days = [];
-    
-    // Add empty cells for days before the 1st of the month
-    for (let i = 0; i < firstDayOfMonth; i++) {
-      days.push(<View key={`empty-${i}`} className="w-10 h-10 m-1" />);
-    }
-    
-    // Add cells for actual days
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(
-        <TouchableOpacity 
-          key={i}
-          className={`w-10 h-10 items-center justify-center rounded-full m-1 ${
-            selectedDay === i 
-              ? 'bg-orange-500' 
-              : 'bg-gray-100'
-          }`}
-          onPress={() => setSelectedDay(i)}
-        >
-          <Text className={`${
-            selectedDay === i 
-              ? 'text-white' 
-              : 'text-gray-800'
-          } font-medium`}>{i}</Text>
-        </TouchableOpacity>
-      );
-    }
-    
-    return days;
-  };
-  
-  return (
-    <Modal
-      animationType="fade"
-      transparent={true}
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
-        <View className="bg-white w-11/12 rounded-2xl p-5 shadow-xl">
-          <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-gray-800 font-bold text-lg">Select Date</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#64748B" />
-            </TouchableOpacity>
-          </View>
-          
-          {/* Current selected date display */}
-          <View className="bg-sky-50 p-3 rounded-xl mb-4">
-            <Text className="text-center text-sky-800 font-medium text-lg">
-              {months[selectedMonth]} {selectedDay}, {selectedYear}
-            </Text>
-          </View>
-          
-          {/* Navigation tabs */}
-          <View className="flex-row mb-4 border-b border-gray-200">
-            <TouchableOpacity 
-              className={`flex-1 py-2 ${activeTab === 'day' ? 'border-b-2 border-orange-500' : ''}`}
-              onPress={() => setActiveTab('day')}
-            >
-              <Text className={`text-center font-medium ${activeTab === 'day' ? 'text-orange-500' : 'text-gray-500'}`}>Day</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              className={`flex-1 py-2 ${activeTab === 'month' ? 'border-b-2 border-orange-500' : ''}`}
-              onPress={() => setActiveTab('month')}
-            >
-              <Text className={`text-center font-medium ${activeTab === 'month' ? 'text-orange-500' : 'text-gray-500'}`}>Month</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              className={`flex-1 py-2 ${activeTab === 'year' ? 'border-b-2 border-orange-500' : ''}`}
-              onPress={() => setActiveTab('year')}
-            >
-              <Text className={`text-center font-medium ${activeTab === 'year' ? 'text-orange-500' : 'text-gray-500'}`}>Year</Text>
-            </TouchableOpacity>
-          </View>
-          
-          {/* Content based on active tab */}
-          {activeTab === 'day' && (
-            <View>
-              {/* Month/Year selector for day view */}
-              <View className="flex-row justify-between items-center mb-4">
-                <TouchableOpacity 
-                  className="flex-row items-center bg-sky-50 py-1 px-3 rounded-full"
-                  onPress={() => setActiveTab('month')}
-                >
-                  <Text className="text-sky-800 font-medium">{months[selectedMonth]}</Text>
-                  <MaterialIcons name="arrow-drop-down" size={20} color="#0EA5E9" />
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  className="flex-row items-center bg-sky-50 py-1 px-3 rounded-full"
-                  onPress={() => setActiveTab('year')}
-                >
-                  <Text className="text-sky-800 font-medium">{selectedYear}</Text>
-                  <MaterialIcons name="arrow-drop-down" size={20} color="#0EA5E9" />
-                </TouchableOpacity>
-              </View>
-              
-              {/* Weekday headers */}
-              <View className="flex-row justify-around mb-2">
-                {weekDays.map(day => (
-                  <Text key={day} className="w-10 text-center text-gray-500 font-medium">{day}</Text>
-                ))}
-              </View>
-              
-              {/* Calendar grid */}
-              <View className="flex-row flex-wrap justify-center mb-4">
-                {renderCalendarGrid()}
-              </View>
-            </View>
-          )}
-          
-          {activeTab === 'month' && (
-            <View className="flex-row flex-wrap justify-center mb-4">
-              {months.map((month, index) => (
-                <TouchableOpacity
-                  key={month}
-                  className={`w-24 h-12 items-center justify-center m-1 rounded-lg ${
-                    selectedMonth === index ? 'bg-orange-500' : 'bg-gray-100'
-                  }`}
-                  onPress={() => {
-                    setSelectedMonth(index);
-                    setActiveTab('day');
-                  }}
-                >
-                  <Text className={`${
-                    selectedMonth === index ? 'text-white' : 'text-gray-800'
-                  } font-medium`}>{month.substring(0, 3)}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-          
-          {activeTab === 'year' && (
-            <View className="flex-row flex-wrap justify-center mb-4">
-              {years.map((year) => (
-                <TouchableOpacity
-                  key={year}
-                  className={`w-24 h-12 items-center justify-center m-1 rounded-lg ${
-                    selectedYear === year ? 'bg-orange-500' : 'bg-gray-100'
-                  }`}
-                  onPress={() => {
-                    setSelectedYear(year);
-                    setActiveTab('day');
-                  }}
-                >
-                  <Text className={`${
-                    selectedYear === year ? 'text-white' : 'text-gray-800'
-                  } font-medium`}>{year}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-          
-          <TouchableOpacity
-            onPress={handleConfirm}
-            className="mt-2 py-3 bg-orange-500 rounded-xl items-center"
-          >
-            <Text className="text-white font-semibold">Confirm Date</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-};
-
-// Improved time picker with grid-based selection
-const TimePickerModal = ({ visible, onClose, time, onTimeChange, title }) => {
-  const [hours, setHours] = useState('09');
-  const [minutes, setMinutes] = useState('00');
-  const [showHours, setShowHours] = useState(true); // Toggle between hours and minutes view
-  
-  useEffect(() => {
-    if (time) {
-      const [h, m] = time.split(':');
-      setHours(h || '09');
-      setMinutes(m || '00');
-    }
-  }, [time, visible]);
-  
-  const handleConfirm = () => {
-    const newTime = `${hours}:${minutes}`;
-    onTimeChange(newTime);
-    onClose();
-  };
-  
-  const renderTimeGrid = (isHours) => {
-    const items = isHours 
-      ? Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'))
-      : Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
-    
-    const selectedValue = isHours ? hours : minutes;
-    
-    return (
-      <FlatList
-        data={items}
-        numColumns={6}
-        keyExtractor={(item) => item}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            className={`w-14 h-14 items-center justify-center m-1 rounded-lg ${
-              selectedValue === item ? 'bg-orange-500' : 'bg-gray-100'
-            }`}
-            onPress={() => {
-              if (isHours) {
-                setHours(item);
-              } else {
-                setMinutes(item);
-              }
-            }}
-          >
-            <Text className={`${
-              selectedValue === item ? 'text-white' : 'text-gray-800'
-            } font-medium text-lg`}>{item}</Text>
-          </TouchableOpacity>
-        )}
-        contentContainerStyle={{ paddingBottom: 10 }}
-      />
-    );
-  };
-  
-  return (
-    <Modal
-      animationType="fade"
-      transparent={true}
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
-        <View className="bg-white w-11/12 rounded-2xl p-5 shadow-xl">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-gray-800 font-bold text-lg">{title}</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#64748B" />
-            </TouchableOpacity>
-          </View>
-          
-          <View className="flex-row justify-center items-center py-3 mb-2">
-            <TouchableOpacity
-              onPress={() => setShowHours(true)}
-              className={`px-5 py-2 rounded-lg mr-2 ${showHours ? 'bg-sky-500' : 'bg-gray-200'}`}
-            >
-              <Text className={showHours ? 'text-white font-medium' : 'text-gray-700'}>Hours</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              onPress={() => setShowHours(false)}
-              className={`px-5 py-2 rounded-lg ml-2 ${!showHours ? 'bg-sky-500' : 'bg-gray-200'}`}
-            >
-              <Text className={!showHours ? 'text-white font-medium' : 'text-gray-700'}>Minutes</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View className="flex-row justify-center items-center mb-3">
-            <TouchableOpacity
-              onPress={() => setShowHours(true)}
-              className="items-center"
-            >
-              <Text className={`text-2xl font-medium ${showHours ? 'text-sky-500' : 'text-gray-800'}`}>{hours}</Text>
-            </TouchableOpacity>
-            
-            <Text className="text-2xl font-bold text-gray-800 mx-2">:</Text>
-            
-            <TouchableOpacity
-              onPress={() => setShowHours(false)}
-              className="items-center"
-            >
-              <Text className={`text-2xl font-medium ${!showHours ? 'text-sky-500' : 'text-gray-800'}`}>{minutes}</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View className="border border-gray-200 rounded-lg p-2 bg-white max-h-56">
-            {renderTimeGrid(showHours)}
-          </View>
-          
-          <TouchableOpacity
-            onPress={handleConfirm}
-            className="mt-4 py-3 bg-orange-500 rounded-xl items-center"
-          >
-            <Text className="text-white font-semibold">Confirm Time</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-};
-
-const SectionHeader = ({ title, icon }) => (
-  <View className="flex-row items-center mb-4 mt-4">
-    <View className="w-8 h-8 bg-orange-500 rounded-full items-center justify-center">
-      <Ionicons name={icon} size={18} color="white" />
-    </View>
-    <Text className="text-gray-800 font-bold text-lg ml-3">{title}</Text>
-  </View>
-);
-
-// Modern input field component with animation and validation
-const ModernTextInput = ({ 
-  icon, 
-  placeholder, 
-  value, 
-  onChangeText, 
-  error, 
-  keyboardType = 'default',
-  secureTextEntry = false,
-  multiline = false
-}) => {
-  const [isFocused, setIsFocused] = useState(false);
-  
-  return (
-    <View className="mb-4">
-      <View className={`flex-row items-center bg-white border ${error ? 'border-red-500' : isFocused ? 'border-sky-500' : 'border-gray-200'} 
-        rounded-xl ${multiline ? 'py-3' : 'py-0'} px-3 shadow-sm`}>
-        <MaterialIcons name={icon} size={22} color={isFocused ? "#0EA5E9" : "#94A3B8"} />
-        <TextInput
-          className={`flex-1 ml-3 text-gray-700 ${multiline ? 'min-h-[80px] text-base py-1' : 'h-12 text-base'}`}
-          placeholder={placeholder}
-          placeholderTextColor="#94A3B8"
-          value={value}
-          onChangeText={onChangeText}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          keyboardType={keyboardType}
-          secureTextEntry={secureTextEntry}
-          multiline={multiline}
-        />
-        {error && (
-          <Ionicons name="alert-circle" size={22} color="#EF4444" />
-        )}
-      </View>
-      {error && <Text className="text-red-500 text-xs ml-1 mt-1">{error}</Text>}
-    </View>
-  );
-};
-
 const BookingRoom = () => {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  
+  // IMPORTANT: Define validation helper functions first before they're used
+  // Check if a date is in the past (before today)
+  const isDateInPast = (date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to beginning of day for date comparison only
+    return date < today;
+  };
+
+  // Check if a time is in the past for the selected date
+  const isTimeInPast = (date, timeString) => {
+    const now = new Date();
+    const selectedDate = new Date(date);
+    
+    // If date is in future, time is not in past
+    if (selectedDate.getDate() > now.getDate() || 
+        selectedDate.getMonth() > now.getMonth() || 
+        selectedDate.getFullYear() > now.getFullYear()) {
+      return false;
+    }
+    
+    // If date is today, check if time is in past
+    if (selectedDate.getDate() === now.getDate() && 
+        selectedDate.getMonth() === now.getMonth() && 
+        selectedDate.getFullYear() === now.getFullYear()) {
+      
+      const [hours, minutes] = timeString.split(':').map(Number);
+      const selectedTime = new Date();
+      selectedTime.setHours(hours, minutes, 0, 0);
+      
+      return selectedTime < now;
+    }
+    
+    return false;
+  };
+
+  const isValidTimeRange = (start, end) => {
+    const [startHour, startMinute] = start.split(':').map(Number);
+    const [endHour, endMinute] = end.split(':').map(Number);
+  
+    if (startHour > endHour) return false;
+    if (startHour === endHour && startMinute >= endMinute) return false;
+    return true;
+  };
+  
+  const { 
+    selectedRoomId, 
+    selectedRoomName, 
+    pic, 
+    section, 
+    description, 
+    bookAgain  } = params;
+  
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
-    room_id: null,
+    room_id: selectedRoomId ? Number(selectedRoomId) : null,
     booking_date: new Date(),
     start_time: '',
     end_time: '',
-    pic: '',
-    section: '',
-    description: '',
+    pic: pic || '',
+    section: section || '',
+    description: description || '',
   });
   const [rooms, setRooms] = useState([]);
   const [errors, setErrors] = useState({});
@@ -542,6 +211,32 @@ const BookingRoom = () => {
     return await tokenCache.getToken(AUTH_TOKEN_KEY);
   };
 
+  // Create a function to handle sequential alerts
+  const showSequentialAlerts = () => {
+    // First check if there's a pre-selected room to show that alert first
+    if (selectedRoomId) {
+      showAlert('info', `Room "${selectedRoomName}" has been pre-selected for your booking.`);
+      
+      // If this is also a "book again" action, show that alert after a delay
+      if (bookAgain === 'true') {
+        setTimeout(() => {
+          showAlert(
+            'info', 
+            'Please update the date and time for your new booking. All other details have been filled in for you.'
+          );
+        }, 3000); // 3 second delay before showing the second alert
+      }
+    } 
+    // If no room is pre-selected but it's a "book again" action
+    else if (bookAgain === 'true') {
+      showAlert(
+        'info', 
+        'Please update the date and time for your new booking. All other details have been filled in for you.'
+      );
+    }
+  };
+
+  // Replace the separate useEffects with a combined approach
   useEffect(() => {
     const fetchRooms = async () => {
       try {
@@ -558,6 +253,9 @@ const BookingRoom = () => {
 
         if (response.data && Array.isArray(response.data)) {
           setRooms(response.data);
+          
+          // After rooms are loaded, show the sequential alerts
+          showSequentialAlerts();
         } else {
           showAlert('error', 'Invalid room data received.');
         }
@@ -566,8 +264,83 @@ const BookingRoom = () => {
         showAlert('error', 'Failed to load rooms. Please try again.');
       }
     };
+    
     fetchRooms();
+    
+    // Remove the separate bookAgain useEffect since we're handling it in showSequentialAlerts
   }, []);
+
+  const handleDateChange = (date) => {
+    setForm({ ...form, booking_date: date });
+    
+    // Clear any existing date errors
+    if (errors.booking_date) {
+      setErrors(prev => ({ ...prev, booking_date: null }));
+    }
+    
+    // If the date changes, we should check if the times need to be updated
+    if (isDateInPast(date)) {
+      showAlert('error', 'Cannot book for a past date');
+      return;
+    }
+    
+    // If we're changing to today's date, check if the times are valid
+    const today = new Date();
+    const isToday = 
+      date.getDate() === today.getDate() && 
+      date.getMonth() === today.getMonth() && 
+      date.getFullYear() === today.getFullYear();
+    
+    if (isToday && form.start_time) {
+      if (isTimeInPast(date, form.start_time)) {
+        // Start time is now in the past, clear it
+        setForm(prev => ({ ...prev, start_time: '', end_time: '' }));
+        showAlert('info', 'Time has been cleared as previous selection is now in the past');
+      } else if (form.end_time && !isValidTimeRange(form.start_time, form.end_time)) {
+        // End time is before start time, clear it
+        setForm(prev => ({ ...prev, end_time: '' }));
+      }
+    }
+  };
+
+  const handleStartTimeChange = (time) => {
+    if (isTimeInPast(form.booking_date, time)) {
+      showAlert('error', 'Cannot select a time that has already passed');
+      return;
+    }
+    
+    setForm(prev => ({ ...prev, start_time: time }));
+    
+    // Clear any errors related to start time
+    if (errors.start_time) {
+      setErrors(prev => ({ ...prev, start_time: null }));
+    }
+    
+    // If end time exists but is now invalid, clear it
+    if (form.end_time && !isValidTimeRange(time, form.end_time)) {
+      setForm(prev => ({ ...prev, end_time: '' }));
+      showAlert('info', 'End time has been cleared as it must be after the new start time');
+    }
+  };
+
+  const handleEndTimeChange = (time) => {
+    if (!form.start_time) {
+      showAlert('error', 'Please select a start time first');
+      return;
+    }
+    
+    if (!isValidTimeRange(form.start_time, time)) {
+      showAlert('error', 'End time must be after start time');
+      return;
+    }
+    
+    setForm(prev => ({ ...prev, end_time: time }));
+    
+    // Clear any errors related to end time
+    if (errors.end_time) {
+      setErrors(prev => ({ ...prev, end_time: null }));
+    }
+  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -580,8 +353,15 @@ const BookingRoom = () => {
       newErrors.section = 'Section is required';
     }
     
+    // Date validation
+    if (isDateInPast(form.booking_date)) {
+      newErrors.booking_date = 'Cannot book for a past date';
+    }
+    
     if (!form.start_time) {
       newErrors.start_time = 'Start time is required';
+    } else if (isTimeInPast(form.booking_date, form.start_time)) {
+      newErrors.start_time = 'Cannot book for a time that has already passed';
     }
     
     if (!form.end_time) {
@@ -663,13 +443,514 @@ const BookingRoom = () => {
     return `${day} ${month} ${year}`;
   };
 
-  const isValidTimeRange = (start, end) => {
-    const [startHour, startMinute] = start.split(':').map(Number);
-    const [endHour, endMinute] = end.split(':').map(Number);
-
-    if (startHour > endHour) return false;
-    if (startHour === endHour && startMinute >= endMinute) return false;
-    return true;
+  const DatePickerModal = ({ visible, onClose, date, onDateChange }) => {
+    const today = new Date();
+    const [selectedYear, setSelectedYear] = useState(today.getFullYear());
+    const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
+    const [selectedDay, setSelectedDay] = useState(today.getDate());
+    const [activeTab, setActiveTab] = useState('day'); // 'day', 'month', or 'year'
+    
+    useEffect(() => {
+      if (date) {
+        try {
+          const dateObj = new Date(date);
+          if (!isNaN(dateObj.getTime())) {
+            // If date is in the past, use today's date
+            if (isDateInPast(dateObj)) {
+              setSelectedYear(today.getFullYear());
+              setSelectedMonth(today.getMonth());
+              setSelectedDay(today.getDate());
+            } else {
+              setSelectedYear(dateObj.getFullYear());
+              setSelectedMonth(dateObj.getMonth());
+              setSelectedDay(dateObj.getDate());
+            }
+          }
+        } catch (error) {
+          console.error("Error parsing date:", error);
+        }
+      }
+    }, [date, visible]);
+    
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June', 
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    // Generate 5 years starting from current year
+    const years = Array.from({ length: 5 }, (_, i) => today.getFullYear() + i);
+    
+    const getDaysInMonth = (year, month) => {
+      return new Date(year, month + 1, 0).getDate();
+    };
+    
+    const handleConfirm = () => {
+      const selectedDate = new Date(selectedYear, selectedMonth, selectedDay);
+      onDateChange(selectedDate);
+      onClose();
+    };
+    
+    // Calculate days of week header (Sun, Mon, Tue, etc.)
+    const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    
+    // Function to render the calendar grid with proper week alignment
+    const renderCalendarGrid = () => {
+      const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
+      const firstDayOfMonth = new Date(selectedYear, selectedMonth, 1).getDay();
+      
+      // Create an array for all the day cells, including empty ones for proper alignment
+      const days = [];
+      
+      // Add empty cells for days before the 1st of the month
+      for (let i = 0; i < firstDayOfMonth; i++) {
+        days.push(<View key={`empty-${i}`} className="w-10 h-10 m-1" />);
+      }
+      
+      // Add cells for actual days
+      for (let i = 1; i <= daysInMonth; i++) {
+        // Check if this date would be in the past
+        const currentDate = new Date(selectedYear, selectedMonth, i);
+        const isPastDate = isDateInPast(currentDate);
+        
+        days.push(
+          <TouchableOpacity 
+            key={i}
+            className={`w-10 h-10 items-center justify-center rounded-full m-1 ${
+              selectedDay === i 
+                ? 'bg-orange-500' 
+                : isPastDate
+                  ? 'bg-gray-200'
+                  : 'bg-gray-100'
+            }`}
+            onPress={() => {
+              // Only allow selection of today or future dates
+              if (!isPastDate) {
+                setSelectedDay(i);
+              } else {
+                // Show a quick feedback for past dates
+                showAlert('error', 'Cannot select a past date');
+              }
+            }}
+            disabled={isPastDate}
+          >
+            <Text className={`${
+              selectedDay === i 
+                ? 'text-white' 
+                : isPastDate
+                  ? 'text-gray-400'
+                  : 'text-gray-800'
+            } font-medium`}>{i}</Text>
+          </TouchableOpacity>
+        );
+      }
+      
+      return days;
+    };
+    
+    return (
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={visible}
+        onRequestClose={onClose}
+      >
+        <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
+          <View className="bg-white w-11/12 rounded-2xl p-5 shadow-xl">
+            <View className="flex-row justify-between items-center mb-3">
+              <Text className="text-gray-800 font-bold text-lg">Select Date</Text>
+              <TouchableOpacity onPress={onClose}>
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Current selected date display */}
+            <View className="bg-sky-50 p-3 rounded-xl mb-4">
+              <Text className="text-center text-sky-800 font-medium text-lg">
+                {months[selectedMonth]} {selectedDay}, {selectedYear}
+              </Text>
+            </View>
+            
+            {/* Navigation tabs */}
+            <View className="flex-row mb-4 border-b border-gray-200">
+              <TouchableOpacity 
+                className={`flex-1 py-2 ${activeTab === 'day' ? 'border-b-2 border-orange-500' : ''}`}
+                onPress={() => setActiveTab('day')}
+              >
+                <Text className={`text-center font-medium ${activeTab === 'day' ? 'text-orange-500' : 'text-gray-500'}`}>Day</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                className={`flex-1 py-2 ${activeTab === 'month' ? 'border-b-2 border-orange-500' : ''}`}
+                onPress={() => setActiveTab('month')}
+              >
+                <Text className={`text-center font-medium ${activeTab === 'month' ? 'text-orange-500' : 'text-gray-500'}`}>Month</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                className={`flex-1 py-2 ${activeTab === 'year' ? 'border-b-2 border-orange-500' : ''}`}
+                onPress={() => setActiveTab('year')}
+              >
+                <Text className={`text-center font-medium ${activeTab === 'year' ? 'text-orange-500' : 'text-gray-500'}`}>Year</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {/* Content based on active tab */}
+            {activeTab === 'day' && (
+              <View>
+                {/* Month/Year selector for day view */}
+                <View className="flex-row justify-between items-center mb-4">
+                  <TouchableOpacity 
+                    className="flex-row items-center bg-sky-50 py-1 px-3 rounded-full"
+                    onPress={() => setActiveTab('month')}
+                  >
+                    <Text className="text-sky-800 font-medium">{months[selectedMonth]}</Text>
+                    <MaterialIcons name="arrow-drop-down" size={20} color="#0EA5E9" />
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    className="flex-row items-center bg-sky-50 py-1 px-3 rounded-full"
+                    onPress={() => setActiveTab('year')}
+                  >
+                    <Text className="text-sky-800 font-medium">{selectedYear}</Text>
+                    <MaterialIcons name="arrow-drop-down" size={20} color="#0EA5E9" />
+                  </TouchableOpacity>
+                </View>
+                
+                {/* Weekday headers */}
+                <View className="flex-row justify-around mb-2">
+                  {weekDays.map(day => (
+                    <Text key={day} className="w-10 text-center text-gray-500 font-medium">{day}</Text>
+                  ))}
+                </View>
+                
+                {/* Calendar grid */}
+                <View className="flex-row flex-wrap justify-center mb-4">
+                  {renderCalendarGrid()}
+                </View>
+              </View>
+            )}
+            
+            {activeTab === 'month' && (
+              <View className="flex-row flex-wrap justify-center mb-4">
+                {months.map((month, index) => {
+                  // Disable past months in current year
+                  const isPastMonth = 
+                    selectedYear === today.getFullYear() && 
+                    index < today.getMonth();
+                  
+                  return (
+                    <TouchableOpacity
+                      key={month}
+                      className={`w-24 h-12 items-center justify-center m-1 rounded-lg ${
+                        selectedMonth === index 
+                          ? 'bg-orange-500' 
+                          : isPastMonth
+                            ? 'bg-gray-200'
+                            : 'bg-gray-100'
+                      }`}
+                      onPress={() => {
+                        if (!isPastMonth) {
+                          setSelectedMonth(index);
+                          // If we're selecting the current month, make sure the day is not in the past
+                          if (index === today.getMonth() && selectedYear === today.getFullYear()) {
+                            if (selectedDay < today.getDate()) {
+                              setSelectedDay(today.getDate());
+                            }
+                          }
+                          setActiveTab('day');
+                        } else {
+                          showAlert('error', 'Cannot select a past month');
+                        }
+                      }}
+                      disabled={isPastMonth}
+                    >
+                      <Text className={`${
+                        selectedMonth === index 
+                          ? 'text-white' 
+                          : isPastMonth
+                            ? 'text-gray-400'
+                            : 'text-gray-800'
+                      } font-medium`}>{month.substring(0, 3)}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+            
+            {activeTab === 'year' && (
+              <View className="flex-row flex-wrap justify-center mb-4">
+                {years.map((year) => (
+                  <TouchableOpacity
+                    key={year}
+                    className={`w-24 h-12 items-center justify-center m-1 rounded-lg ${
+                      selectedYear === year ? 'bg-orange-500' : 'bg-gray-100'
+                    }`}
+                    onPress={() => {
+                      setSelectedYear(year);
+                      // If we're selecting current year, adjust month/day if needed
+                      if (year === today.getFullYear()) {
+                        if (selectedMonth < today.getMonth()) {
+                          setSelectedMonth(today.getMonth());
+                        }
+                        if (selectedMonth === today.getMonth() && selectedDay < today.getDate()) {
+                          setSelectedDay(today.getDate());
+                        }
+                      }
+                      setActiveTab('day');
+                    }}
+                  >
+                    <Text className={`${
+                      selectedYear === year ? 'text-white' : 'text-gray-800'
+                    } font-medium`}>{year}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            
+            <TouchableOpacity
+              onPress={handleConfirm}
+              className="mt-2 py-3 bg-orange-500 rounded-xl items-center"
+            >
+              <Text className="text-white font-semibold">Confirm Date</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+  
+  // Improved time picker with grid-based selection
+  const TimePickerModal = ({ visible, onClose, time, onTimeChange, title }) => {
+    const now = new Date();
+    const [hours, setHours] = useState('09');
+    const [minutes, setMinutes] = useState('00');
+    const [showHours, setShowHours] = useState(true); // Toggle between hours and minutes view
+    
+    // Check if booking date is today
+    const isToday = () => {
+      const today = new Date();
+      const bookingDate = form.booking_date;
+      return (
+        today.getDate() === bookingDate.getDate() &&
+        today.getMonth() === bookingDate.getMonth() &&
+        today.getFullYear() === bookingDate.getFullYear()
+      );
+    };
+    
+    useEffect(() => {
+      if (time) {
+        const [h, m] = time.split(':');
+        setHours(h || '09');
+        setMinutes(m || '00');
+      } else {
+        // Default to current time + 1 hour, rounded to nearest hour
+        const defaultHour = (now.getHours() + 1).toString().padStart(2, '0');
+        setHours(defaultHour);
+        setMinutes('00');
+      }
+    }, [time, visible]);
+    
+    const handleConfirm = () => {
+      const newTime = `${hours}:${minutes}`;
+      
+      // If booking for today, verify the time is not in the past
+      if (isToday()) {
+        const selectedTime = new Date();
+        selectedTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        
+        if (selectedTime < now) {
+          showAlert('error', 'Cannot select a time that has already passed');
+          return;
+        }
+      }
+      
+      onTimeChange(newTime);
+      onClose();
+    };
+    
+    const renderTimeGrid = (isHours) => {
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      
+      const items = isHours 
+        ? Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'))
+        : Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
+      
+      const selectedValue = isHours ? hours : minutes;
+      
+      return (
+        <FlatList
+          data={items}
+          numColumns={6}
+          keyExtractor={(item) => item}
+          renderItem={({ item }) => {
+            // Check if this time is in the past (for today's bookings only)
+            const isPastTime = isToday() && (
+              (isHours && parseInt(item) < currentHour) || 
+              (isHours && parseInt(item) === currentHour && !showHours && parseInt(minutes) < currentMinute) ||
+              (!isHours && parseInt(hours) === currentHour && parseInt(item) < currentMinute)
+            );
+            
+            return (
+              <TouchableOpacity
+                className={`w-10 h-10 items-center justify-center m-1 rounded-lg ${
+                  selectedValue === item 
+                    ? 'bg-orange-500' 
+                    : isPastTime
+                      ? 'bg-gray-200'
+                      : 'bg-gray-100'
+                }`}
+                onPress={() => {
+                  if (!isPastTime) {
+                    if (isHours) {
+                      setHours(item);
+                      // If selecting current hour on today, ensure minutes are not in past
+                      if (isToday() && parseInt(item) === currentHour) {
+                        const newMinutes = Math.max(currentMinute, parseInt(minutes)).toString().padStart(2, '0');
+                        setMinutes(newMinutes);
+                      }
+                    } else {
+                      setMinutes(item);
+                    }
+                  } else {
+                    showAlert('error', 'Cannot select a time that has already passed');
+                  }
+                }}
+                disabled={isPastTime}
+              >
+                <Text className={`${
+                  selectedValue === item 
+                    ? 'text-white' 
+                    : isPastTime
+                      ? 'text-gray-400'
+                      : 'text-gray-800'
+                } font-medium text-lg`}>{item}</Text>
+              </TouchableOpacity>
+            );
+          }}
+          contentContainerStyle={{ paddingBottom: 10 }}
+        />
+      );
+    };
+    
+    return (
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={visible}
+        onRequestClose={onClose}
+      >
+        <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
+          <View className="bg-white w-11/12 rounded-2xl p-5 shadow-xl">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-gray-800 font-bold text-lg">{title}</Text>
+              <TouchableOpacity onPress={onClose}>
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+            
+            {isToday() && (
+              <View className="mb-2 bg-sky-50 p-2 rounded-lg">
+                <Text className="text-sky-700 text-sm text-center">
+                  Booking for today - times in the past are disabled
+                </Text>
+              </View>
+            )}
+            
+            <View className="flex-row justify-center items-center py-3 mb-2">
+              <TouchableOpacity
+                onPress={() => setShowHours(true)}
+                className={`px-5 py-2 rounded-lg mr-2 ${showHours ? 'bg-sky-500' : 'bg-gray-200'}`}
+              >
+                <Text className={showHours ? 'text-white font-medium' : 'text-gray-700'}>Hours</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={() => setShowHours(false)}
+                className={`px-5 py-2 rounded-lg ml-2 ${!showHours ? 'bg-sky-500' : 'bg-gray-200'}`}
+              >
+                <Text className={!showHours ? 'text-white font-medium' : 'text-gray-700'}>Minutes</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View className="flex-row justify-center items-center mb-3">
+              <TouchableOpacity
+                onPress={() => setShowHours(true)}
+                className="items-center"
+              >
+                <Text className={`text-2xl font-medium ${showHours ? 'text-sky-500' : 'text-gray-800'}`}>{hours}</Text>
+              </TouchableOpacity>
+              
+              <Text className="text-2xl font-bold text-gray-800 mx-2">:</Text>
+              
+              <TouchableOpacity
+                onPress={() => setShowHours(false)}
+                className="items-center"
+              >
+                <Text className={`text-2xl font-medium ${!showHours ? 'text-sky-500' : 'text-gray-800'}`}>{minutes}</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View className="border border-gray-200 rounded-lg p-2 bg-white max-h-56">
+              {renderTimeGrid(showHours)}
+            </View>
+            
+            <TouchableOpacity
+              onPress={handleConfirm}
+              className="mt-4 py-3 bg-orange-500 rounded-xl items-center"
+            >
+              <Text className="text-white font-semibold">Confirm Time</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+  
+  const SectionHeader = ({ title, icon }) => (
+    <View className="flex-row items-center mb-4 mt-4">
+      <View className="w-8 h-8 bg-orange-500 rounded-full items-center justify-center">
+        <Ionicons name={icon} size={18} color="white" />
+      </View>
+      <Text className="text-gray-800 font-bold text-lg ml-3">{title}</Text>
+    </View>
+  );
+  
+  // Modern input field component with animation and validation
+  const ModernTextInput = ({ 
+    icon, 
+    placeholder, 
+    value, 
+    onChangeText, 
+    error, 
+    keyboardType = 'default',
+    secureTextEntry = false,
+    multiline = false
+  }) => {
+    const [isFocused, setIsFocused] = useState(false);
+    
+    return (
+      <View className="mb-4">
+        <View className={`flex-row items-center bg-white border ${error ? 'border-red-500' : isFocused ? 'border-sky-500' : 'border-gray-200'} 
+          rounded-xl ${multiline ? 'py-3' : 'py-0'} px-3 shadow-sm`}>
+          <MaterialIcons name={icon} size={22} color={isFocused ? "#0EA5E9" : "#94A3B8"} />
+          <TextInput
+            className={`flex-1 ml-3 text-gray-700 ${multiline ? 'min-h-[80px] text-base py-1' : 'h-12 text-base'}`}
+            placeholder={placeholder}
+            placeholderTextColor="#94A3B8"
+            value={value}
+            onChangeText={onChangeText}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            keyboardType={keyboardType}
+            secureTextEntry={secureTextEntry}
+            multiline={multiline}
+          />
+          {error && (
+            <Ionicons name="alert-circle" size={22} color="#EF4444" />
+          )}
+        </View>
+        {error && <Text className="text-red-500 text-xs ml-1 mt-1">{error}</Text>}
+      </View>
+    );
   };
 
   return (
@@ -782,6 +1063,9 @@ const BookingRoom = () => {
             >
               <MaterialIcons name="calendar-today" size={22} color="#0EA5E9" />
               <Text className="ml-3 text-gray-700 font-medium">{formatDateDisplay(form.booking_date)}</Text>
+              <View className="ml-auto">
+                <MaterialIcons name="arrow-drop-down" size={24} color="#0EA5E9" />
+              </View>
             </TouchableOpacity>
             {errors.booking_date && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.booking_date}</Text>}
           </View>
@@ -794,6 +1078,9 @@ const BookingRoom = () => {
             >
               <MaterialIcons name="access-time" size={22} color="#0EA5E9" />
               <Text className="ml-3 text-gray-700 font-medium">{form.start_time || 'Select start time'}</Text>
+               <View className="ml-auto">
+                <MaterialIcons name="arrow-drop-down" size={24} color="#0EA5E9" />
+              </View>
             </TouchableOpacity>
             {errors.start_time && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.start_time}</Text>}
           </View>
@@ -806,6 +1093,9 @@ const BookingRoom = () => {
             >
               <MaterialIcons name="access-time" size={22} color="#0EA5E9" />
               <Text className="ml-3 text-gray-700 font-medium">{form.end_time || 'Select end time'}</Text>
+              <View className="ml-auto">
+                <MaterialIcons name="arrow-drop-down" size={24} color="#0EA5E9" />
+              </View>
             </TouchableOpacity>
             {errors.end_time && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.end_time}</Text>}
           </View>
@@ -823,14 +1113,14 @@ const BookingRoom = () => {
             visible={showDatePicker}
             onClose={() => setShowDatePicker(false)}
             date={form.booking_date}
-            onDateChange={(date) => setForm({ ...form, booking_date: date })}
+            onDateChange={handleDateChange}
           />
 
           <TimePickerModal
             visible={showStartTimePicker}
             onClose={() => setShowStartTimePicker(false)}
             time={form.start_time}
-            onTimeChange={(time) => setForm({ ...form, start_time: time })}
+            onTimeChange={handleStartTimeChange}
             title="Select Start Time"
           />
 
@@ -838,7 +1128,7 @@ const BookingRoom = () => {
             visible={showEndTimePicker}
             onClose={() => setShowEndTimePicker(false)}
             time={form.end_time}
-            onTimeChange={(time) => setForm({ ...form, end_time: time })}
+            onTimeChange={handleEndTimeChange}
             title="Select End Time"
           />
           

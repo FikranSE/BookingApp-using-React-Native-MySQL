@@ -22,6 +22,7 @@ interface IBooking {
   pic: string;
   section: string;
   roomName: string;
+  roomId: number;
   date: string;
   startTime: string;
   endTime: string;
@@ -93,6 +94,7 @@ const DetailBookingRoom = () => {
           pic: bookingData.pic || "Not assigned",
           section: bookingData.section || "No section",
           roomName: roomData.room_name || "Unknown Room",
+          roomId: bookingData.room_id,
           date: bookingData.booking_date,
           startTime: bookingData.start_time,
           endTime: bookingData.end_time,
@@ -197,6 +199,28 @@ const DetailBookingRoom = () => {
     }
   };
 
+  const handleBookAgain = () => {
+    if (bookingDetail) {
+      // Check if transportId exists before using toString()
+      const roomIdString = bookingDetail.roomId ? 
+        bookingDetail.roomId.toString() : 
+        '';
+        
+      // Navigate to booking page with existing data
+      router.push({
+        pathname: '/booking-room',
+        params: { 
+          selectedRoomId: roomIdString,
+          selectedRoomName: bookingDetail.roomName || '',
+          pic: bookingDetail.pic || '',
+          section: bookingDetail.section || '',
+          description: bookingDetail.description || '',
+          bookAgain: 'true' // Flag to show alert on booking page
+        }
+      });
+    }
+  };
+
   const handleCancel = async () => {
     Alert.alert(
       'Cancel Booking',
@@ -261,6 +285,7 @@ const DetailBookingRoom = () => {
 
   const theme = getStatusTheme(bookingDetail.approval.status);
   const isPendingStatus = bookingDetail.approval.status === 'PENDING';
+  const isApprovedStatus = bookingDetail.approval.status === 'APPROVED';
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: theme.gradientColors[1] }}>
@@ -499,7 +524,7 @@ const DetailBookingRoom = () => {
           </View>
         )}
 
-        {/* Action Buttons - Only show if status is PENDING */}
+        {/* Action Buttons */}
         {isPendingStatus && (
           <View className="flex-row mb-4">
             <TouchableOpacity 
@@ -516,6 +541,16 @@ const DetailBookingRoom = () => {
               <Text className="text-red-500 font-semibold">Cancel</Text>
             </TouchableOpacity>
           </View>
+        )}
+
+        {/* Book Again button for APPROVED bookings */}
+        {isApprovedStatus && (
+          <TouchableOpacity 
+            onPress={handleBookAgain}
+            className={`mb-4 py-4 rounded-xl items-center shadow-sm ${theme.buttonBg}`}
+          >
+            <Text className="text-white font-semibold">Book Again</Text>
+          </TouchableOpacity>
         )}
       </ScrollView>
     </SafeAreaView>

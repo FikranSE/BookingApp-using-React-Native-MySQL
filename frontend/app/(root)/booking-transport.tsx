@@ -11,7 +11,7 @@ import {
   TextInput
 } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import { tokenCache } from "@/lib/auth";
@@ -130,16 +130,27 @@ const fetchAuthToken = async () => {
 
 const Bookingtransport = () => {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const { 
+    selectedTransportId, 
+    selectedTransportName,
+    pic, 
+    section, 
+    description, 
+    destination,
+    bookAgain 
+  } = params;
+  
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
-    transport_id: null,
+    transport_id: selectedTransportId ? Number(selectedTransportId) : null,
     booking_date: new Date(),
     start_time: '',
     end_time: '',
-    pic: '',
-    section: '',
-    destination: '',
-    description: '',
+    pic: pic || '',
+    section: section || '',
+    description: description || '',
+    destination: destination || '',
   });
   const [transports, setTransports] = useState([]);
   const [errors, setErrors] = useState({});
@@ -161,6 +172,31 @@ const Bookingtransport = () => {
     setAlertVisible(true);
   };
 
+  const showSequentialAlerts = () => {
+    // First check if there's a pre-selected transport to show that alert first
+    if (selectedTransportId) {
+      showAlert('info', `Transport "${selectedTransportName}" has been pre-selected for your booking.`);
+      
+      // If this is also a "book again" action, show that alert after a delay
+      if (bookAgain === 'true') {
+        setTimeout(() => {
+          showAlert(
+            'info', 
+            'Please update the date and time for your new booking. All other details have been filled in for you.'
+          );
+        }, 3000); // 3 second delay before showing the second alert
+      }
+    } 
+    // If no transport is pre-selected but it's a "book again" action
+    else if (bookAgain === 'true') {
+      showAlert(
+        'info', 
+        'Please update the date and time for your new booking. All other details have been filled in for you.'
+      );
+    }
+  };
+  
+  // Replace the separate useEffects with a combined approach
   useEffect(() => {
     const fetchTransports = async () => {
       try {
@@ -170,13 +206,16 @@ const Bookingtransport = () => {
           router.push('/(auth)/sign-in');
           return;
         }
-
+  
         const response = await axios.get('https://j9d3hc82-3001.asse.devtunnels.ms/api/transports', {
           headers: { 'Authorization': `Bearer ${authToken}` },
         });
-
+  
         if (response.data && Array.isArray(response.data)) {
           setTransports(response.data);
+          
+          // After transports are loaded, show the sequential alerts
+          showSequentialAlerts();
         } else {
           showAlert('error', 'Invalid transport data received.');
         }
@@ -185,8 +224,21 @@ const Bookingtransport = () => {
         showAlert('error', 'Failed to load transports. Please try again.');
       }
     };
+    
     fetchTransports();
+    
+    // Remove the separate bookAgain useEffect since we're handling it in showSequentialAlerts
   }, []);
+
+  useEffect(() => {
+    console.log('Selected Transport ID from params:', selectedTransportId);
+    console.log('Form transport_id:', form.transport_id);
+    
+    if (transports.length > 0) {
+      console.log('Available transport IDs:', transports.map(t => t.transport_id));
+    }
+  }, [selectedTransportId, form.transport_id, transports]);
+  
 
   const validateForm = () => {
     const newErrors = {};
@@ -198,13 +250,20 @@ const Bookingtransport = () => {
     if (!form.section.trim()) {
       newErrors.section = 'Section is required';
     }
-
+  
     if (!form.destination.trim()) {
-      newErrors.destination = 'destination is required';
+      newErrors.destination = 'Destination is required';
+    }
+    
+    // Date validation
+    if (isDateInPast(form.booking_date)) {
+      newErrors.booking_date = 'Cannot book for a past date';
     }
     
     if (!form.start_time) {
       newErrors.start_time = 'Start time is required';
+    } else if (isTimeInPast(form.booking_date, form.start_time)) {
+      newErrors.start_time = 'Cannot book for a time that has already passed';
     }
     
     if (!form.end_time) {
@@ -212,14 +271,47 @@ const Bookingtransport = () => {
     } else if (form.start_time && !isValidTimeRange(form.start_time, form.end_time)) {
       newErrors.end_time = 'End time must be after start time';
     }
-
+  
     if (form.transport_id === null) {
       newErrors.transport_id = 'Please select a transport';
     }
-
+  
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  const isDateInPast = (date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to beginning of day for date comparison only
+    return date < today;
+  };
+
+  const isTimeInPast = (date, timeString) => {
+    const now = new Date();
+    const selectedDate = new Date(date);
+    
+    // If date is in future, time is not in past
+    if (selectedDate.getDate() > now.getDate() || 
+        selectedDate.getMonth() > now.getMonth() || 
+        selectedDate.getFullYear() > now.getFullYear()) {
+      return false;
+    }
+    
+    // If date is today, check if time is in past
+    if (selectedDate.getDate() === now.getDate() && 
+        selectedDate.getMonth() === now.getMonth() && 
+        selectedDate.getFullYear() === now.getFullYear()) {
+      
+      const [hours, minutes] = timeString.split(':').map(Number);
+      const selectedTime = new Date();
+      selectedTime.setHours(hours, minutes, 0, 0);
+      
+      return selectedTime < now;
+    }
+    
+    return false;
+  };
+  
 
   const SectionHeader = ({ title, icon }) => (
     <View className="flex-row items-center mb-4 mt-4">
@@ -320,9 +412,10 @@ const Bookingtransport = () => {
   
 
   const DatePickerModal = ({ visible, onClose, date, onDateChange }) => {
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-    const [selectedDay, setSelectedDay] = useState(new Date().getDate());
+    const today = new Date();
+    const [selectedYear, setSelectedYear] = useState(today.getFullYear());
+    const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
+    const [selectedDay, setSelectedDay] = useState(today.getDate());
     const [activeTab, setActiveTab] = useState('day'); // 'day', 'month', or 'year'
     
     useEffect(() => {
@@ -330,9 +423,16 @@ const Bookingtransport = () => {
         try {
           const dateObj = new Date(date);
           if (!isNaN(dateObj.getTime())) {
-            setSelectedYear(dateObj.getFullYear());
-            setSelectedMonth(dateObj.getMonth());
-            setSelectedDay(dateObj.getDate());
+            // If date is in the past, use today's date
+            if (isDateInPast(dateObj)) {
+              setSelectedYear(today.getFullYear());
+              setSelectedMonth(today.getMonth());
+              setSelectedDay(today.getDate());
+            } else {
+              setSelectedYear(dateObj.getFullYear());
+              setSelectedMonth(dateObj.getMonth());
+              setSelectedDay(dateObj.getDate());
+            }
           }
         } catch (error) {
           console.error("Error parsing date:", error);
@@ -346,14 +446,13 @@ const Bookingtransport = () => {
     ];
     
     // Generate 5 years starting from current year
-    const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() + i);
+    const years = Array.from({ length: 5 }, (_, i) => today.getFullYear() + i);
     
     const getDaysInMonth = (year, month) => {
       return new Date(year, month + 1, 0).getDate();
     };
     
     const handleConfirm = () => {
-      const formattedDate = `${selectedYear}-${(selectedMonth + 1).toString().padStart(2, '0')}-${selectedDay.toString().padStart(2, '0')}`;
       const selectedDate = new Date(selectedYear, selectedMonth, selectedDay);
       onDateChange(selectedDate);
       onClose();
@@ -377,20 +476,37 @@ const Bookingtransport = () => {
       
       // Add cells for actual days
       for (let i = 1; i <= daysInMonth; i++) {
+        // Check if this date would be in the past
+        const currentDate = new Date(selectedYear, selectedMonth, i);
+        const isPastDate = isDateInPast(currentDate);
+        
         days.push(
           <TouchableOpacity 
             key={i}
             className={`w-10 h-10 items-center justify-center rounded-full m-1 ${
               selectedDay === i 
                 ? 'bg-orange-500' 
-                : 'bg-gray-100'
+                : isPastDate
+                  ? 'bg-gray-200'
+                  : 'bg-gray-100'
             }`}
-            onPress={() => setSelectedDay(i)}
+            onPress={() => {
+              // Only allow selection of today or future dates
+              if (!isPastDate) {
+                setSelectedDay(i);
+              } else {
+                // Show a quick feedback for past dates
+                showAlert('error', 'Cannot select a past date');
+              }
+            }}
+            disabled={isPastDate}
           >
             <Text className={`${
               selectedDay === i 
                 ? 'text-white' 
-                : 'text-gray-800'
+                : isPastDate
+                  ? 'text-gray-400'
+                  : 'text-gray-800'
             } font-medium`}>{i}</Text>
           </TouchableOpacity>
         );
@@ -482,22 +598,48 @@ const Bookingtransport = () => {
             
             {activeTab === 'month' && (
               <View className="flex-row flex-wrap justify-center mb-4">
-                {months.map((month, index) => (
-                  <TouchableOpacity
-                    key={month}
-                    className={`w-24 h-12 items-center justify-center m-1 rounded-lg ${
-                      selectedMonth === index ? 'bg-orange-500' : 'bg-gray-100'
-                    }`}
-                    onPress={() => {
-                      setSelectedMonth(index);
-                      setActiveTab('day');
-                    }}
-                  >
-                    <Text className={`${
-                      selectedMonth === index ? 'text-white' : 'text-gray-800'
-                    } font-medium`}>{month.substring(0, 3)}</Text>
-                  </TouchableOpacity>
-                ))}
+                {months.map((month, index) => {
+                  // Disable past months in current year
+                  const isPastMonth = 
+                    selectedYear === today.getFullYear() && 
+                    index < today.getMonth();
+                  
+                  return (
+                    <TouchableOpacity
+                      key={month}
+                      className={`w-24 h-12 items-center justify-center m-1 rounded-lg ${
+                        selectedMonth === index 
+                          ? 'bg-orange-500' 
+                          : isPastMonth
+                            ? 'bg-gray-200'
+                            : 'bg-gray-100'
+                      }`}
+                      onPress={() => {
+                        if (!isPastMonth) {
+                          setSelectedMonth(index);
+                          // If we're selecting the current month, make sure the day is not in the past
+                          if (index === today.getMonth() && selectedYear === today.getFullYear()) {
+                            if (selectedDay < today.getDate()) {
+                              setSelectedDay(today.getDate());
+                            }
+                          }
+                          setActiveTab('day');
+                        } else {
+                          showAlert('error', 'Cannot select a past month');
+                        }
+                      }}
+                      disabled={isPastMonth}
+                    >
+                      <Text className={`${
+                        selectedMonth === index 
+                          ? 'text-white' 
+                          : isPastMonth
+                            ? 'text-gray-400'
+                            : 'text-gray-800'
+                      } font-medium`}>{month.substring(0, 3)}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             )}
             
@@ -511,6 +653,15 @@ const Bookingtransport = () => {
                     }`}
                     onPress={() => {
                       setSelectedYear(year);
+                      // If we're selecting current year, adjust month/day if needed
+                      if (year === today.getFullYear()) {
+                        if (selectedMonth < today.getMonth()) {
+                          setSelectedMonth(today.getMonth());
+                        }
+                        if (selectedMonth === today.getMonth() && selectedDay < today.getDate()) {
+                          setSelectedDay(today.getDate());
+                        }
+                      }
                       setActiveTab('day');
                     }}
                   >
@@ -533,27 +684,59 @@ const Bookingtransport = () => {
       </Modal>
     );
   };
-
+  
   const TimePickerModal = ({ visible, onClose, time, onTimeChange, title }) => {
+    const now = new Date();
     const [hours, setHours] = useState('09');
     const [minutes, setMinutes] = useState('00');
     const [showHours, setShowHours] = useState(true); // Toggle between hours and minutes view
+    
+    // Check if booking date is today
+    const isToday = () => {
+      const today = new Date();
+      const bookingDate = form.booking_date;
+      return (
+        today.getDate() === bookingDate.getDate() &&
+        today.getMonth() === bookingDate.getMonth() &&
+        today.getFullYear() === bookingDate.getFullYear()
+      );
+    };
     
     useEffect(() => {
       if (time) {
         const [h, m] = time.split(':');
         setHours(h || '09');
         setMinutes(m || '00');
+      } else {
+        // Default to current time + 1 hour, rounded to nearest hour
+        const defaultHour = (now.getHours() + 1).toString().padStart(2, '0');
+        setHours(defaultHour);
+        setMinutes('00');
       }
     }, [time, visible]);
     
     const handleConfirm = () => {
       const newTime = `${hours}:${minutes}`;
+      
+      // If booking for today, verify the time is not in the past
+      if (isToday()) {
+        const selectedTime = new Date();
+        selectedTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        
+        if (selectedTime < now) {
+          showAlert('error', 'Cannot select a time that has already passed');
+          return;
+        }
+      }
+      
       onTimeChange(newTime);
       onClose();
     };
     
     const renderTimeGrid = (isHours) => {
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      
       const items = isHours 
         ? Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'))
         : Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
@@ -565,24 +748,51 @@ const Bookingtransport = () => {
           data={items}
           numColumns={6}
           keyExtractor={(item) => item}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              className={`w-14 h-14 items-center justify-center m-1 rounded-lg ${
-                selectedValue === item ? 'bg-orange-500' : 'bg-gray-100'
-              }`}
-              onPress={() => {
-                if (isHours) {
-                  setHours(item);
-                } else {
-                  setMinutes(item);
-                }
-              }}
-            >
-              <Text className={`${
-                selectedValue === item ? 'text-white' : 'text-gray-800'
-              } font-medium text-lg`}>{item}</Text>
-            </TouchableOpacity>
-          )}
+          renderItem={({ item }) => {
+            // Check if this time is in the past (for today's bookings only)
+            const isPastTime = isToday() && (
+              (isHours && parseInt(item) < currentHour) || 
+              (isHours && parseInt(item) === currentHour && !showHours && parseInt(minutes) < currentMinute) ||
+              (!isHours && parseInt(hours) === currentHour && parseInt(item) < currentMinute)
+            );
+            
+            return (
+              <TouchableOpacity
+                className={`w-10 h-10 items-center justify-center m-1 rounded-lg ${
+                  selectedValue === item 
+                    ? 'bg-orange-500' 
+                    : isPastTime
+                      ? 'bg-gray-200'
+                      : 'bg-gray-100'
+                }`}
+                onPress={() => {
+                  if (!isPastTime) {
+                    if (isHours) {
+                      setHours(item);
+                      // If selecting current hour on today, ensure minutes are not in past
+                      if (isToday() && parseInt(item) === currentHour) {
+                        const newMinutes = Math.max(currentMinute, parseInt(minutes)).toString().padStart(2, '0');
+                        setMinutes(newMinutes);
+                      }
+                    } else {
+                      setMinutes(item);
+                    }
+                  } else {
+                    showAlert('error', 'Cannot select a time that has already passed');
+                  }
+                }}
+                disabled={isPastTime}
+              >
+                <Text className={`${
+                  selectedValue === item 
+                    ? 'text-white' 
+                    : isPastTime
+                      ? 'text-gray-400'
+                      : 'text-gray-800'
+                } font-medium text-lg`}>{item}</Text>
+              </TouchableOpacity>
+            );
+          }}
           contentContainerStyle={{ paddingBottom: 10 }}
         />
       );
@@ -603,6 +813,14 @@ const Bookingtransport = () => {
                 <Ionicons name="close" size={24} color="#64748B" />
               </TouchableOpacity>
             </View>
+            
+            {isToday() && (
+              <View className="mb-2 bg-sky-50 p-2 rounded-lg">
+                <Text className="text-sky-700 text-sm text-center">
+                  Booking for today - times in the past are disabled
+                </Text>
+              </View>
+            )}
             
             <View className="flex-row justify-center items-center py-3 mb-2">
               <TouchableOpacity
@@ -700,30 +918,30 @@ const Bookingtransport = () => {
           <SectionHeader title="Basic Information" icon="person-outline" />
           
           <ModernTextInput
-            icon="person"
-            placeholder="Enter person in charge"
-            value={form.pic}
-            onChangeText={(text) => {
-              setForm(prev => ({ ...prev, pic: text }));
-              if (errors.pic) {
-                setErrors(prev => ({ ...prev, pic: null }));
-              }
-            }}
-            error={errors.pic}
-          />
-          
-          <ModernTextInput
-            icon="business"
-            placeholder="Enter section name"
-            value={form.section}
-            onChangeText={(text) => {
-              setForm(prev => ({ ...prev, section: text }));
-              if (errors.section) {
-                setErrors(prev => ({ ...prev, section: null }));
-              }
-            }}
-            error={errors.section}
-          />
+        icon="person"
+        placeholder="Enter person in charge"
+        value={form.pic}
+        onChangeText={(text) => {
+          setForm(prev => ({ ...prev, pic: text }));
+          if (errors.pic) {
+            setErrors(prev => ({ ...prev, pic: null }));
+          }
+        }}
+        error={errors.pic}
+      />
+      
+      <ModernTextInput
+        icon="business"
+        placeholder="Enter section name"
+        value={form.section}
+        onChangeText={(text) => {
+          setForm(prev => ({ ...prev, section: text }));
+          if (errors.section) {
+            setErrors(prev => ({ ...prev, section: null }));
+          }
+        }}
+        error={errors.section}
+      />
 
           <ModernTextInput
             icon="place"
@@ -739,56 +957,61 @@ const Bookingtransport = () => {
           />
           
           <ModernTextInput
-            icon="description"
-            placeholder="Enter meeting description (optional)"
-            value={form.description}
-            onChangeText={(text) => setForm(prev => ({ ...prev, description: text }))}
-            multiline={true}
-          />
+        icon="description"
+        placeholder="Enter meeting description (optional)"
+        value={form.description}
+        onChangeText={(text) => setForm(prev => ({ ...prev, description: text }))}
+        multiline={true}
+      />
 
           <SectionHeader title="Transport Selection" icon="car" />
           
           {errors.transport_id && <Text className="text-red-500 text-xs mb-2">{errors.transport_id}</Text>}
           <View className="mb-6">
-            {transports.map((transport) => (
-              <TouchableOpacity
-                key={transport.transport_id}
-                onPress={() => {
-                  setForm(prev => ({ ...prev, transport_id: transport.transport_id }));
-                  if (errors.transport_id) {
-                    setErrors(prev => ({ ...prev, transport_id: null }));
-                  }
-                }}
-                className={`p-4 mb-4 rounded-xl border ${
-                  transport.transport_id === form.transport_id 
-                    ? 'bg-sky-50 border-sky-500' 
-                    : 'bg-white border-gray-200'
-                } shadow-sm`}
-              >
-                <View className="flex-row items-center">
-                  <Image
-                    source={{ uri: transport.image }}
-                    style={{ width: 60, height: 60, borderRadius: 10 }}
-                    className="mr-4"
-                  />
-                  <View className="flex-1">
-                    <Text className={`text-base ${
-                      transport.transport_id === form.transport_id ? 'text-sky-900 font-medium' : 'text-gray-700'
-                    }`}>
-                      {transport.vehicle_name}
-                    </Text>
-                    <Text className={`text-sm ${
-                      transport.transport_id === form.transport_id ? 'text-sky-700' : 'text-gray-500'
-                    }`}>
-                      Capacity: {transport.capacity}
-                    </Text>
-                  </View>
-                  {transport.transport_id === form.transport_id && (
-                    <Ionicons name="checkmark-circle" size={24} color="#0EA5E9" />
-                  )}
+          {transports.map((transport) => (
+            <TouchableOpacity
+              key={transport.transport_id}
+              onPress={() => {
+                setForm(prev => ({ ...prev, transport_id: transport.transport_id }));
+                if (errors.transport_id) {
+                  setErrors(prev => ({ ...prev, transport_id: null }));
+                }
+              }}
+              className={`p-4 mb-4 rounded-xl border ${
+                // Use Number() to ensure both are compared as numbers
+                Number(transport.transport_id) === Number(form.transport_id) 
+                  ? 'bg-sky-50 border-sky-500' 
+                  : 'bg-white border-gray-200'
+              } shadow-sm`}
+            >
+              <View className="flex-row items-center">
+                <Image
+                  source={{ uri: transport.image }}
+                  style={{ width: 60, height: 60, borderRadius: 10 }}
+                  className="mr-4"
+                />
+                <View className="flex-1">
+                  <Text className={`text-base ${
+                    Number(transport.transport_id) === Number(form.transport_id) 
+                      ? 'text-sky-900 font-medium' 
+                      : 'text-gray-700'
+                  }`}>
+                    {transport.vehicle_name}
+                  </Text>
+                  <Text className={`text-sm ${
+                    Number(transport.transport_id) === Number(form.transport_id) 
+                      ? 'text-sky-700' 
+                      : 'text-gray-500'
+                  }`}>
+                    Capacity: {transport.capacity}
+                  </Text>
                 </View>
-              </TouchableOpacity>
-            ))}
+                {Number(transport.transport_id) === Number(form.transport_id) && (
+                  <Ionicons name="checkmark-circle" size={24} color="#0EA5E9" />
+                )}
+              </View>
+            </TouchableOpacity>
+          ))}
           </View>
 
           <SectionHeader title="Date & Time" icon="calendar-outline" />

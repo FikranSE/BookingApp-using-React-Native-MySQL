@@ -33,6 +33,7 @@ interface IBooking {
   description: string;
   isOngoing: boolean;
   approval: IApprovalStatus;
+  transportId?: number; 
 }
 
 const DetailBookingTransport = () => {
@@ -107,6 +108,8 @@ const DetailBookingTransport = () => {
           endTime: bookingData.end_time,
           description: bookingData.description,
           isOngoing: false,
+          // Store the transport_id from API in the transportId field
+          transportId: bookingData.transport_id, 
           approval: {
             status: bookingData.status.toUpperCase() as 'PENDING' | 'APPROVED' | 'REJECTED',
             approverName: approverName,
@@ -206,6 +209,32 @@ const DetailBookingTransport = () => {
     }
   };
 
+  const handleBookAgain = () => {
+    if (bookingDetail) {
+      // Navigate to booking page with existing data - use the correct property name
+      const transportData = {
+        pathname: '/booking-transport',
+        params: { 
+          // Use transportId instead of transport_id
+          selectedTransportId: bookingDetail.transportId?.toString() || '',
+          selectedTransportName: bookingDetail.vehicleName || '',
+          pic: bookingDetail.pic || '',
+          section: bookingDetail.section || '',
+          description: bookingDetail.description || '',
+          destination: bookingDetail.destination || '',
+          bookAgain: 'true' // Flag to show alert on booking page
+        }
+      };
+      
+      // For debugging
+      console.log('Transport booking params:', transportData);
+      
+      router.push(transportData);
+    }
+  };
+
+  
+
   const handleCancel = async () => {
     Alert.alert(
       'Cancel Booking',
@@ -270,6 +299,7 @@ const DetailBookingTransport = () => {
 
   const theme = getStatusTheme(bookingDetail.approval.status);
   const isPendingStatus = bookingDetail.approval.status === 'PENDING';
+  const isApprovedStatus = bookingDetail.approval.status === 'APPROVED';
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: theme.gradientColors[1] }}>
@@ -463,7 +493,7 @@ const DetailBookingTransport = () => {
             </View>
             <View className="py-3">
               <Text className="text-gray-500 mb-1">Transport Type</Text>
-              <Text className="text-gray-800">{bookingDetail.type}</Text>
+              <Text className="text-gray-800">{bookingDetail.vehicleName}</Text>
             </View>
           </View>
         </View>
@@ -527,6 +557,15 @@ const DetailBookingTransport = () => {
             </TouchableOpacity>
           </View>
         )}
+        {isApprovedStatus && (
+          <TouchableOpacity 
+            onPress={handleBookAgain}
+            className={`mb-4 py-4 rounded-xl items-center shadow-sm ${theme.buttonBg}`}
+          >
+            <Text className="text-white font-semibold">Book Again</Text>
+          </TouchableOpacity>
+        )}
+
       </ScrollView>
     </SafeAreaView>
   );
