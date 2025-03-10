@@ -10,7 +10,7 @@ import { AUTH_TOKEN_KEY } from "@/lib/constants";
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface IApprovalStatus {
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
   feedback?: string;
   approverName?: string;
   approvedAt?: string;
@@ -93,6 +93,24 @@ const DetailBookingTransport = () => {
           approverName = `${approverResponse.data.first_name} ${approverResponse.data.last_name}`;
         }
 
+        // Check if the booking is expired (for PENDING bookings)
+        let bookingStatus = bookingData.status.toUpperCase();
+        if (bookingStatus === 'PENDING') {
+          const now = new Date();
+          const bookingDate = new Date(bookingData.booking_date);
+          
+          // Parse end time
+          const endTimeParts = bookingData.end_time.split(':');
+          if (endTimeParts.length >= 2) {
+            bookingDate.setHours(parseInt(endTimeParts[0]), parseInt(endTimeParts[1]));
+          }
+          
+          // If the booking end time is in the past and status is PENDING, mark as EXPIRED
+          if (bookingDate < now) {
+            bookingStatus = 'EXPIRED';
+          }
+        }
+
         const mappedBooking: IBooking = {
           id: bookingData.booking_id.toString(),
           type: 'TRANSPORT',
@@ -111,7 +129,7 @@ const DetailBookingTransport = () => {
           // Store the transport_id from API in the transportId field
           transportId: bookingData.transport_id, 
           approval: {
-            status: bookingData.status.toUpperCase() as 'PENDING' | 'APPROVED' | 'REJECTED',
+            status: bookingStatus as 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED',
             approverName: approverName,
             approvedAt: bookingData.approved_at ? new Date(bookingData.approved_at).toISOString() : undefined,
             feedback: bookingData.notes || undefined,
@@ -180,6 +198,24 @@ const DetailBookingTransport = () => {
           message: "Unfortunately, your booking couldn't be processed.",
           statusText: "Rejected",
           statusBadgeBg: 'bg-red-100',
+          iconSize: 24
+        };
+      case 'EXPIRED':
+        return {
+          gradientColors: ['#FFFFFFFF', '#FFFFFFFF'],
+          headerGradient: ['#6B7280', '#4B5563'],
+          iconBg: 'bg-gray-50',
+          iconColor: '#6B7280',
+          textColor: 'text-gray-800',
+          cardBg: 'bg-gray-50',
+          buttonBg: 'bg-gray-600',
+          secondaryButtonBg: 'bg-gray-50',
+          secondaryButtonText: 'text-gray-700',
+          icon: 'time-outline',
+          illustration: images.expired || images.profile1,
+          message: "This booking has expired and is no longer valid.",
+          statusText: "Expired",
+          statusBadgeBg: 'bg-gray-100',
           iconSize: 24
         };
       default:
@@ -300,6 +336,7 @@ const DetailBookingTransport = () => {
   const theme = getStatusTheme(bookingDetail.approval.status);
   const isPendingStatus = bookingDetail.approval.status === 'PENDING';
   const isApprovedStatus = bookingDetail.approval.status === 'APPROVED';
+  const isExpiredStatus = bookingDetail.approval.status === 'EXPIRED';
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: theme.gradientColors[1] }}>
@@ -332,7 +369,8 @@ const DetailBookingTransport = () => {
             </View>
             <Text className="text-white text-xl font-bold mb-1">
               {bookingDetail.approval.status === 'APPROVED' ? 'Booking Confirmed!' : 
-               bookingDetail.approval.status === 'REJECTED' ? 'Booking Rejected' : 'Booking Pending'}
+               bookingDetail.approval.status === 'REJECTED' ? 'Booking Rejected' : 
+               bookingDetail.approval.status === 'EXPIRED' ? 'Booking Expired' : 'Booking Pending'}
             </Text>
             <Text className="text-white/90 text-center max-w-xs">
               {theme.message}
@@ -430,12 +468,15 @@ const DetailBookingTransport = () => {
         <View className="bg-white rounded-xl shadow-sm mb-4 overflow-hidden">
           <View className="border-b border-gray-100 p-4 flex-row justify-between items-center">
             <Text className="text-gray-800 font-semibold text-lg">Trip Schedule</Text>
-            <TouchableOpacity 
-              onPress={handleReschedule}
-              className={`py-1 px-3 rounded-full ${theme.secondaryButtonBg}`}
-            >
-              <Text className={theme.secondaryButtonText}>Change</Text>
-            </TouchableOpacity>
+            {/* Only show "Change" button if status is PENDING */}
+            {isPendingStatus && (
+              <TouchableOpacity 
+                onPress={handleReschedule}
+                className={`py-1 px-3 rounded-full ${theme.secondaryButtonBg}`}
+              >
+                <Text className={theme.secondaryButtonText}>Change</Text>
+              </TouchableOpacity>
+            )}
           </View>
           
           <View className="p-4">
@@ -539,6 +580,21 @@ const DetailBookingTransport = () => {
           </View>
         )}
 
+        {/* Expired notice (only shown for expired bookings) */}
+        {isExpiredStatus && (
+          <View className={`${theme.cardBg} rounded-xl shadow-sm mb-4 p-4`}>
+            <View className="flex-row items-start">
+              <Ionicons name="alert-circle-outline" size={24} color={theme.iconColor} />
+              <View className="ml-3 flex-1">
+                <Text className={`${theme.textColor} font-semibold`}>Expired Booking</Text>
+                <Text className="text-gray-600 mt-1">
+                  This booking has expired because the scheduled time has passed. You can book this transport again if you still need it.
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Action Buttons - Only show if status is PENDING */}
         {isPendingStatus && (
           <View className="flex-row mb-4">
@@ -557,7 +613,19 @@ const DetailBookingTransport = () => {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Book Again button for APPROVED bookings */}
         {isApprovedStatus && (
+          <TouchableOpacity 
+            onPress={handleBookAgain}
+            className={`mb-4 py-4 rounded-xl items-center shadow-sm ${theme.buttonBg}`}
+          >
+            <Text className="text-white font-semibold">Book Again</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Book Again button for EXPIRED bookings */}
+        {isExpiredStatus && (
           <TouchableOpacity 
             onPress={handleBookAgain}
             className={`mb-4 py-4 rounded-xl items-center shadow-sm ${theme.buttonBg}`}
