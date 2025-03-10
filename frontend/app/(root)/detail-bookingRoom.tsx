@@ -4,13 +4,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
-import { images } from "@/constants";
+import { images, icons } from "@/constants";
 import { tokenCache } from "@/lib/auth";
 import { AUTH_TOKEN_KEY } from "@/lib/constants";
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface IApprovalStatus {
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
   feedback?: string;
   approverName?: string;
   approvedAt?: string;
@@ -43,7 +43,7 @@ const DetailBookingRoom = () => {
         setLoading(false);
         return;
       }
-
+  
       try {
         const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
         
@@ -52,7 +52,7 @@ const DetailBookingRoom = () => {
           router.push('/(auth)/sign-in');
           return;
         }
-
+  
         const axiosInstance = axios.create({
           baseURL: 'https://j9d3hc82-3001.asse.devtunnels.ms/api',
           headers: {
@@ -60,7 +60,7 @@ const DetailBookingRoom = () => {
             'Content-Type': 'application/json',
           },
         });
-
+  
         // Handle axios errors globally
         axiosInstance.interceptors.response.use(
           response => response,
@@ -72,22 +72,40 @@ const DetailBookingRoom = () => {
             return Promise.reject(error);
           }
         );
-
+  
         // Get room booking details
         const bookingResponse = await axiosInstance.get(`/room-bookings/${id}`);
         const bookingData = bookingResponse.data;
-
+  
         // Get room details
         const roomResponse = await axiosInstance.get(`/rooms/${bookingData.room_id}`);
         const roomData = roomResponse.data;
-
+  
         // Get approver details if exists
         let approverName;
         if (bookingData.approved_by) {
           const approverResponse = await axiosInstance.get(`/users/${bookingData.approved_by}`);
           approverName = `${approverResponse.data.first_name} ${approverResponse.data.last_name}`;
         }
-
+  
+        // Check if the booking is expired (for PENDING bookings)
+        let bookingStatus = bookingData.status.toUpperCase();
+        if (bookingStatus === 'PENDING') {
+          const now = new Date();
+          const bookingDate = new Date(bookingData.booking_date);
+          
+          // Parse end time
+          const endTimeParts = bookingData.end_time.split(':');
+          if (endTimeParts.length >= 2) {
+            bookingDate.setHours(parseInt(endTimeParts[0]), parseInt(endTimeParts[1]));
+          }
+          
+          // If the booking end time is in the past and status is PENDING, mark as EXPIRED
+          if (bookingDate < now) {
+            bookingStatus = 'EXPIRED';
+          }
+        }
+  
         const mappedBooking: IBooking = {
           id: bookingData.booking_id.toString(),
           type: 'ROOM',
@@ -101,13 +119,13 @@ const DetailBookingRoom = () => {
           description: bookingData.description,
           isOngoing: false,
           approval: {
-            status: bookingData.status.toUpperCase() as 'PENDING' | 'APPROVED' | 'REJECTED',
+            status: bookingStatus as 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED',
             approverName: approverName,
             approvedAt: bookingData.approved_at ? new Date(bookingData.approved_at).toISOString() : undefined,
             feedback: bookingData.notes || undefined,
           },
         };
-
+  
         setBookingDetail(mappedBooking);
       } catch (error) {
         console.error("Error fetching booking details: ", error);
@@ -119,7 +137,7 @@ const DetailBookingRoom = () => {
         setLoading(false);
       }
     };
-
+  
     fetchBookingDetail();
   }, [id]);
 
@@ -170,6 +188,24 @@ const DetailBookingRoom = () => {
           message: "Unfortunately, your booking couldn't be processed.",
           statusText: "Rejected",
           statusBadgeBg: 'bg-red-100',
+          iconSize: 24
+        };
+      case 'EXPIRED':
+        return {
+          gradientColors: ['#FFFFFFFF', '#FFFFFFFF'],
+          headerGradient: ['#6B7280', '#4B5563'],
+          iconBg: 'bg-gray-50',
+          iconColor: '#6B7280',
+          textColor: 'text-gray-800',
+          cardBg: 'bg-gray-50',
+          buttonBg: 'bg-gray-600',
+          secondaryButtonBg: 'bg-gray-50',
+          secondaryButtonText: 'text-gray-700',
+          icon: 'time-outline',
+          illustration: icons.expired || images.profile1,
+          message: "This booking has expired and is no longer valid.",
+          statusText: "Expired",
+          statusBadgeBg: 'bg-gray-100',
           iconSize: 24
         };
       default:
@@ -286,6 +322,8 @@ const DetailBookingRoom = () => {
   const theme = getStatusTheme(bookingDetail.approval.status);
   const isPendingStatus = bookingDetail.approval.status === 'PENDING';
   const isApprovedStatus = bookingDetail.approval.status === 'APPROVED';
+  const isExpiredStatus = bookingDetail.approval.status === 'EXPIRED';
+
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: theme.gradientColors[1] }}>
@@ -317,8 +355,9 @@ const DetailBookingRoom = () => {
               <Ionicons name={theme.icon} size={36} color={theme.iconColor} />
             </View>
             <Text className="text-white text-xl font-bold mb-1">
-              {bookingDetail.approval.status === 'APPROVED' ? 'Booking Confirmed!' : 
-               bookingDetail.approval.status === 'REJECTED' ? 'Booking Rejected' : 'Booking Pending'}
+            {bookingDetail.approval.status === 'APPROVED' ? 'Booking Confirmed!' : 
+            bookingDetail.approval.status === 'REJECTED' ? 'Booking Rejected' : 
+            bookingDetail.approval.status === 'EXPIRED' ? 'Booking Expired' : 'Booking Pending'}
             </Text>
             <Text className="text-white/90 text-center max-w-xs">
               {theme.message}
@@ -545,6 +584,16 @@ const DetailBookingRoom = () => {
 
         {/* Book Again button for APPROVED bookings */}
         {isApprovedStatus && (
+          <TouchableOpacity 
+            onPress={handleBookAgain}
+            className={`mb-4 py-4 rounded-xl items-center shadow-sm ${theme.buttonBg}`}
+          >
+            <Text className="text-white font-semibold">Book Again</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Book Again button for EXPIRED bookings */}
+        {isExpiredStatus && (
           <TouchableOpacity 
             onPress={handleBookAgain}
             className={`mb-4 py-4 rounded-xl items-center shadow-sm ${theme.buttonBg}`}

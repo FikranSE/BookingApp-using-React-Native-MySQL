@@ -9,7 +9,7 @@ import { AUTH_TOKEN_KEY } from "@/lib/constants";
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface IApprovalStatus {
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
   feedback?: string;
   approverName?: string;
   approvedAt?: string;
@@ -29,12 +29,13 @@ interface IBooking {
   driverName?: string;
   capacity?: string;
   imageUrl?: string;
+  rawDate?: Date;
 }
 
 interface FilterOptions {
   type: "ALL" | "ROOM" | "TRANSPORT";
   timeframe: "ALL" | "RECENT" | "PASSED";
-  status: "ALL" | "PENDING" | "APPROVED" | "REJECTED";
+  status: "ALL" | "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
 }
 
 const MyBooking = () => {
@@ -54,6 +55,25 @@ const MyBooking = () => {
   // Default image URLs in case API doesn't provide them
   const defaultRoomImageUrl = "https://images.unsplash.com/photo-1606744824163-985d376605aa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80";
   const defaultTransportImageUrl = "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80";
+
+  // Function to determine if a booking is expired
+  const getBookingStatus = (status: string, bookingDate: Date, endTime: string) => {
+    if (status.toUpperCase() !== "PENDING") {
+      return status.toUpperCase();
+    }
+    
+    const now = new Date();
+    const bookingDateTime = new Date(bookingDate);
+    
+    // Parse end time
+    const endTimeParts = endTime.split(':');
+    if (endTimeParts.length >= 2) {
+      bookingDateTime.setHours(parseInt(endTimeParts[0]), parseInt(endTimeParts[1]));
+    }
+    
+    // If the booking end time is in the past and status is PENDING, mark as EXPIRED
+    return bookingDateTime < now ? "EXPIRED" : "PENDING";
+  };
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -181,6 +201,13 @@ const MyBooking = () => {
             const end_time = item.end_time ? new Date(`1970-01-01T${item.end_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
 
             const imageUrl = roomImages[item.room_id] || defaultRoomImageUrl;
+            
+            // Determine the status (check if expired for PENDING status)
+            const status = getBookingStatus(
+              item.status, 
+              bookingDate, 
+              item.end_time
+            );
 
             return {
               id: item.booking_id.toString(),
@@ -192,13 +219,13 @@ const MyBooking = () => {
               section: item.section || "Office section",
               isOngoing: false,
               approval: {
-                status: item.status.toUpperCase() as "PENDING" | "APPROVED" | "REJECTED",
+                status: status as "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED",
                 approverName: item.pic,
                 approvedAt: item.approved_at ? new Date(item.approved_at).toISOString() : undefined,
                 feedback: item.notes || undefined,
               },
               imageUrl: imageUrl,
-              rawDate: new Date(item.booking_date), // Store raw date for sorting
+              rawDate: bookingDate, // Store raw date for sorting and expired check
             };
           });
 
@@ -211,6 +238,13 @@ const MyBooking = () => {
             const end_time = item.end_time ? new Date(`1970-01-01T${item.end_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
 
             const imageUrl = vehicleImages[item.vehicle_id] || defaultTransportImageUrl;
+            
+            // Determine the status (check if expired for PENDING status)
+            const status = getBookingStatus(
+              item.status, 
+              bookingDate, 
+              item.end_time
+            );
 
             return {
               id: item.booking_id.toString(),
@@ -222,7 +256,7 @@ const MyBooking = () => {
               section: item.section || "Transport section",
               isOngoing: false,
               approval: {
-                status: item.status.toUpperCase() as "PENDING" | "APPROVED" | "REJECTED",
+                status: status as "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED",
                 approverName: item.pic,
                 approvedAt: item.approved_at ? new Date(item.approved_at).toISOString() : undefined,
                 feedback: item.notes || undefined,
@@ -231,12 +265,12 @@ const MyBooking = () => {
               driverName: item.driver_name || "No driver name",
               capacity: item.capacity || "Not specified",
               imageUrl: imageUrl,
-              rawDate: new Date(item.booking_date), // Store raw date for sorting
+              rawDate: bookingDate, // Store raw date for sorting and expired check
             };
           });
 
         const allBookings = [...mappedRoomBookings, ...mappedTransportBookings];
-        allBookings.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        allBookings.sort((a, b) => (b.rawDate?.getTime() || 0) - (a.rawDate?.getTime() || 0));
 
         setBookings(allBookings);
       } catch (error) {
@@ -260,7 +294,7 @@ const MyBooking = () => {
     const matchesTab =
       activeTab === "BOOKED"
         ? (booking.approval.status === "APPROVED" || booking.approval.status === "PENDING")
-        : booking.approval.status === "REJECTED";
+        : (booking.approval.status === "REJECTED" || booking.approval.status === "EXPIRED");
 
     // Type filter (room vs transport)
     const matchesType =
@@ -275,8 +309,8 @@ const MyBooking = () => {
     // Timeframe filter
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const bookingDate = new Date(booking.rawDate);
-    const isPassed = bookingDate < today;
+    const bookingDate = booking.rawDate;
+    const isPassed = bookingDate && bookingDate < today;
     const isRecent = !isPassed;
 
     const matchesTimeframe =
@@ -303,6 +337,11 @@ const MyBooking = () => {
         return { 
           color: "#EF4444", // Red text
           background: "rgba(239, 68, 68, 0.1)" // Light red background
+        };
+      case "EXPIRED": 
+        return { 
+          color: "#6B7280", // Gray text
+          background: "rgba(107, 114, 128, 0.1)" // Light gray background
         };
       default: 
         return { 
@@ -436,6 +475,11 @@ const MyBooking = () => {
                 title="Rejected" 
                 isActive={filterOptions.status === "REJECTED"} 
                 onPress={() => setFilterOptions({...filterOptions, status: "REJECTED"})}
+              />
+              <FilterButton 
+                title="Expired" 
+                isActive={filterOptions.status === "EXPIRED"} 
+                onPress={() => setFilterOptions({...filterOptions, status: "EXPIRED"})}
               />
             </View>
           </View>
@@ -711,4 +755,4 @@ const MyBooking = () => {
   );
 };
 
-export default MyBooking; 
+export default MyBooking;

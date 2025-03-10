@@ -22,6 +22,7 @@ import title from "@/assets/icons/text.png";
 import phone from "@/assets/icons/phone.png";
 import chevron from "@/assets/icons/chevron.png";
 import map from "@/assets/icons/map.png";
+import expired from "@/assets/icons/expired.png";
 import mic from "@/assets/icons/mic.png";
 import faq from "@/assets/icons/faq.png";
 import password from "@/assets/icons/password.png";
@@ -109,6 +110,7 @@ export const icons = {
   person,
   pin,
   point,
+  expired,
   profile,
   search,
   selectedMarker,

@@ -81,7 +81,7 @@ RoomBooking.init(
       allowNull: true,
     },
     status: {
-      type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+      type: DataTypes.ENUM('pending', 'approved', 'rejected','cancelled'),
       allowNull: false,
       defaultValue: 'pending',
     },
