@@ -200,6 +200,13 @@ const BookingRoom = () => {
   const [alertType, setAlertType] = useState('success');
   const [alertMessage, setAlertMessage] = useState('');
 
+  // New state for booking data
+  const [bookings, setBookings] = useState([]);
+  const [bookedDates, setBookedDates] = useState({});
+  const [bookedTimes, setBookedTimes] = useState({});
+  const [loadingBookings, setLoadingBookings] = useState(false);
+
+
   // Function to show custom alert
   const showAlert = (type, message) => {
     setAlertType(type);
@@ -209,6 +216,14 @@ const BookingRoom = () => {
 
   const fetchAuthToken = async () => {
     return await tokenCache.getToken(AUTH_TOKEN_KEY);
+  };
+
+  // Function to format API date to YYYY-MM-DD
+  const formatApiDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   // Create a function to handle sequential alerts
@@ -233,6 +248,144 @@ const BookingRoom = () => {
         'info', 
         'Please update the date and time for your new booking. All other details have been filled in for you.'
       );
+    }
+  };
+
+  // New function to fetch bookings for selected room with per-room data storage
+  const fetchRoomBookings = async (roomId) => {
+    if (!roomId) return;
+    
+    setLoadingBookings(true);
+    try {
+      const authToken = await fetchAuthToken();
+      if (!authToken) {
+        console.error("No auth token available");
+        return;
+      }
+
+      // Try different possible endpoint structures
+      let response;
+      let success = false;
+      
+      // List of possible endpoint formats to try
+      const possibleEndpoints = [
+        `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings/room/${roomId}`,
+        `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings/by-room/${roomId}`,
+        `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings?room_id=${roomId}`,
+        `https://j9d3hc82-3001.asse.devtunnels.ms/api/bookings/room/${roomId}`,
+      ];
+      
+      // Try each endpoint until one works
+      for (const endpoint of possibleEndpoints) {
+        try {
+          console.log(`Trying endpoint: ${endpoint}`);
+          response = await axios.get(endpoint, {
+            headers: { 'Authorization': `Bearer ${authToken}` },
+          });
+          
+          if (response.status >= 200 && response.status < 300) {
+            console.log(`Successful response from: ${endpoint}`);
+            success = true;
+            break;
+          }
+        } catch (endpointError) {
+          console.log(`Failed with endpoint ${endpoint}: ${endpointError.message}`);
+          // Continue to next endpoint
+        }
+      }
+      
+      // If all endpoints failed, create dummy data for development
+      if (!success) {
+        console.log("All endpoints failed, using mock data for development");
+        
+        // Create sample booking data for development - keep this minimal to avoid conflicts
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        const mockData = [
+          {
+            booking_id: roomId * 100 + 1, // Make unique per room
+            room_id: roomId,
+            booking_date: formatApiDate(today),
+            start_time: "09:00",
+            end_time: "10:30",
+            pic: `Mock User for Room ${roomId}`,
+            section: "Development"
+          },
+          {
+            booking_id: roomId * 100 + 2, // Make unique per room
+            room_id: roomId,
+            booking_date: formatApiDate(tomorrow),
+            start_time: "13:00",
+            end_time: "15:00",
+            pic: `Mock User for Room ${roomId}`,
+            section: "Marketing"
+          }
+        ];
+        
+        response = { data: mockData };
+        showAlert('info', `Using sample booking data for Room ${roomId}. API endpoint not available.`);
+      }
+
+      if (response.data) {
+        // Make sure we're dealing with an array
+        const bookingsData = Array.isArray(response.data) ? response.data : 
+                            (response.data.bookings ? response.data.bookings : []);
+        
+        // Filter to ensure we only have bookings for THIS room
+        const filteredBookings = bookingsData.filter(booking => 
+          booking.room_id === roomId || booking.roomId === roomId
+        );
+        
+        setBookings(filteredBookings);
+        
+        // Process bookings to create maps of booked dates and times
+        const dates = {};
+        const times = {};
+        
+        filteredBookings.forEach(booking => {
+          // Check if booking has the expected properties
+          if (!booking.booking_date || !booking.start_time || !booking.end_time) {
+            console.log("Skipping invalid booking data:", booking);
+            return;
+          }
+          
+          // Store by date
+          if (!dates[booking.booking_date]) {
+            dates[booking.booking_date] = [];
+          }
+          dates[booking.booking_date].push({
+            start: booking.start_time,
+            end: booking.end_time
+          });
+          
+          // Store by formatted date for easier lookup
+          const formattedDate = booking.booking_date;
+          if (!times[formattedDate]) {
+            times[formattedDate] = [];
+          }
+          times[formattedDate].push({
+            start: booking.start_time,
+            end: booking.end_time
+          });
+        });
+        
+        setBookedDates(dates);
+        setBookedTimes(times);
+        
+        console.log(`Loaded ${filteredBookings.length} bookings for room ${roomId}`);
+      }
+    } catch (error) {
+      console.error("Error fetching room bookings:", error);
+      showAlert('error', 'Failed to load booking information. Using default availability data.');
+      
+      // Set empty booking data for a graceful fallback
+      setBookings([]);
+      setBookedDates({});
+      setBookedTimes({});
+    } finally {
+      setLoadingBookings(false);
     }
   };
 
@@ -269,6 +422,51 @@ const BookingRoom = () => {
     
     // Remove the separate bookAgain useEffect since we're handling it in showSequentialAlerts
   }, []);
+
+  // Function to check if a date is already fully booked for the current room
+  const isDateFullyBooked = (date) => {
+    // If no room is selected, nothing can be booked
+    if (!form.room_id) return false;
+    
+    // For demo purposes, let's consider a date fully booked if it has 3+ bookings
+    const formattedDate = formatApiDate(date);
+    return bookedDates[formattedDate] && bookedDates[formattedDate].length >= 3;
+  };
+
+  // Function to check if a date has any bookings for the current room
+  const isDatePartiallyBooked = (date) => {
+    // If no room is selected, nothing can be booked
+    if (!form.room_id) return false;
+    
+    const formattedDate = formatApiDate(date);
+    return bookedDates[formattedDate] && bookedDates[formattedDate].length > 0;
+  };
+
+  // Function to check if a specific time slot is booked for the current room
+  const isTimeSlotBooked = (date, time) => {
+    // If no room is selected, nothing can be booked
+    if (!form.room_id) return false;
+    
+    const formattedDate = formatApiDate(date);
+    
+    // If no bookings exist for this date in the current room, it's available
+    if (!bookedTimes[formattedDate]) return false;
+    
+    const [hour, minute] = time.split(':').map(Number);
+    const timeValue = hour * 60 + minute;  // Convert to minutes for comparison
+    
+    // Check if this time falls within any booked slots for the current room
+    return bookedTimes[formattedDate].some(slot => {
+      const [startHour, startMinute] = slot.start.split(':').map(Number);
+      const [endHour, endMinute] = slot.end.split(':').map(Number);
+      
+      const slotStartValue = startHour * 60 + startMinute;
+      const slotEndValue = endHour * 60 + endMinute;
+      
+      // Check if the time is within this booked slot
+      return timeValue >= slotStartValue && timeValue < slotEndValue;
+    });
+  };
 
   const handleDateChange = (date) => {
     setForm({ ...form, booking_date: date });
@@ -309,6 +507,13 @@ const BookingRoom = () => {
       return;
     }
     
+    // Check if this time slot is already booked FOR THIS ROOM
+    if (form.room_id && isTimeSlotBooked(form.booking_date, time)) {
+      const roomName = rooms.find(r => r.room_id === form.room_id)?.room_name || `Room ${form.room_id}`;
+      showAlert('error', `This time slot is already booked for ${roomName}. Please select another time.`);
+      return;
+    }
+    
     setForm(prev => ({ ...prev, start_time: time }));
     
     // Clear any errors related to start time
@@ -332,6 +537,44 @@ const BookingRoom = () => {
     if (!isValidTimeRange(form.start_time, time)) {
       showAlert('error', 'End time must be after start time');
       return;
+    }
+    
+    // Check if any part of this time range overlaps with existing bookings FOR THIS ROOM
+    if (form.room_id) {
+      const formattedDate = formatApiDate(form.booking_date);
+      if (bookedTimes[formattedDate]) {
+        const [startHour, startMinute] = form.start_time.split(':').map(Number);
+        const [endHour, endMinute] = time.split(':').map(Number);
+        
+        const newStartValue = startHour * 60 + startMinute;
+        const newEndValue = endHour * 60 + endMinute;
+        
+        const hasOverlap = bookedTimes[formattedDate].some(slot => {
+          const [slotStartHour, slotStartMinute] = slot.start.split(':').map(Number);
+          const [slotEndHour, slotEndMinute] = slot.end.split(':').map(Number);
+          
+          const slotStartValue = slotStartHour * 60 + slotStartMinute;
+          const slotEndValue = slotEndHour * 60 + slotEndMinute;
+          
+          // Check for any overlap between the two time ranges
+          const overlap = (
+            (newStartValue >= slotStartValue && newStartValue < slotEndValue) || // Start time is within existing booking
+            (newEndValue > slotStartValue && newEndValue <= slotEndValue) || // End time is within existing booking
+            (newStartValue <= slotStartValue && newEndValue >= slotEndValue) // New booking completely contains existing booking
+          );
+          
+          if (overlap) {
+            console.log(`Time slot conflict: ${form.start_time}-${time} conflicts with ${slot.start}-${slot.end}`);
+          }
+          
+          return overlap;
+        });
+        
+        if (hasOverlap) {
+          showAlert('error', `This time range overlaps with an existing booking for Room ${rooms.find(r => r.room_id === form.room_id)?.room_name || form.room_id}. Please select a different time.`);
+          return;
+        }
+      }
     }
     
     setForm(prev => ({ ...prev, end_time: time }));
@@ -443,6 +686,25 @@ const BookingRoom = () => {
     return `${day} ${month} ${year}`;
   };
 
+  // Clear booking data when changing rooms
+  const handleRoomSelection = (roomId) => {
+    // First, clear any existing booking data from previous room
+    setBookings([]);
+    setBookedDates({});
+    setBookedTimes({});
+    
+    // Then update the form with new room ID
+    setForm(prev => ({ ...prev, room_id: roomId }));
+    
+    // Clear any room selection errors
+    if (errors.room_id) {
+      setErrors(prev => ({ ...prev, room_id: null }));
+    }
+    
+    // Fetch bookings for this room
+    fetchRoomBookings(roomId);
+  };
+
   const DatePickerModal = ({ visible, onClose, date, onDateChange }) => {
     const today = new Date();
     const [selectedYear, setSelectedYear] = useState(today.getFullYear());
@@ -501,7 +763,6 @@ const BookingRoom = () => {
       // Create an array for all the day cells, including empty ones for proper alignment
       const days = [];
       
-      // Add empty cells for days before the 1st of the month
       for (let i = 0; i < firstDayOfMonth; i++) {
         days.push(<View key={`empty-${i}`} className="w-10 h-10 m-1" />);
       }
@@ -512,205 +773,137 @@ const BookingRoom = () => {
         const currentDate = new Date(selectedYear, selectedMonth, i);
         const isPastDate = isDateInPast(currentDate);
         
+        // Check if date has bookings
+        const isFullyBooked = isDateFullyBooked(currentDate);
+        const isPartiallyBooked = isDatePartiallyBooked(currentDate);
+        
+        // Determine background color based on booking status
+        let bgColor = 'bg-gray-100';
+        let textColor = 'text-gray-800';
+        
+        if (selectedDay === i) {
+          bgColor = 'bg-orange-500';
+          textColor = 'text-white';
+        } else if (isPastDate) {
+          bgColor = 'bg-gray-200';
+          textColor = 'text-gray-400';
+        } else if (isFullyBooked) {
+          bgColor = 'bg-red-100';
+          textColor = 'text-red-800';
+        } else if (isPartiallyBooked) {
+          bgColor = 'bg-yellow-100';
+          textColor = 'text-yellow-800';
+        }
+        
         days.push(
           <TouchableOpacity 
             key={i}
-            className={`w-10 h-10 items-center justify-center rounded-full m-1 ${
-              selectedDay === i 
-                ? 'bg-orange-500' 
-                : isPastDate
-                  ? 'bg-gray-200'
-                  : 'bg-gray-100'
-            }`}
+            className={`w-10 h-10 items-center justify-center rounded-full m-1 ${bgColor}`}
             onPress={() => {
-              // Only allow selection of today or future dates
-              if (!isPastDate) {
+              // Only allow selection of today or future dates that aren't fully booked
+              if (!isPastDate && !isFullyBooked) {
                 setSelectedDay(i);
-              } else {
-                // Show a quick feedback for past dates
+              } else if (isPastDate) {
                 showAlert('error', 'Cannot select a past date');
+              } else if (isFullyBooked) {
+                showAlert('error', 'This date is fully booked. Please select another date.');
               }
             }}
-            disabled={isPastDate}
+            disabled={isPastDate || isFullyBooked}
           >
-            <Text className={`${
-              selectedDay === i 
-                ? 'text-white' 
-                : isPastDate
-                  ? 'text-gray-400'
-                  : 'text-gray-800'
-            } font-medium`}>{i}</Text>
+            <Text className={textColor}>{i}</Text>
+            
+            {/* Small indicator dot for partially booked dates */}
+            {isPartiallyBooked && !isFullyBooked && (
+              <View className="absolute bottom-0 w-1.5 h-1.5 bg-yellow-500 rounded-full" />
+            )}
           </TouchableOpacity>
         );
       }
       
       return days;
     };
-    
+
     return (
       <Modal
-        animationType="fade"
         transparent={true}
         visible={visible}
+        animationType="fade"
         onRequestClose={onClose}
       >
         <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
           <View className="bg-white w-11/12 rounded-2xl p-5 shadow-xl">
-            <View className="flex-row justify-between items-center mb-3">
+            <View className="flex-row justify-between items-center mb-4">
               <Text className="text-gray-800 font-bold text-lg">Select Date</Text>
               <TouchableOpacity onPress={onClose}>
                 <Ionicons name="close" size={24} color="#64748B" />
               </TouchableOpacity>
             </View>
             
-            {/* Current selected date display */}
-            <View className="bg-sky-50 p-3 rounded-xl mb-4">
-              <Text className="text-center text-sky-800 font-medium text-lg">
-                {months[selectedMonth]} {selectedDay}, {selectedYear}
+            {/* Month and Year Selector */}
+            <View className="flex-row justify-between items-center mb-4">
+              <TouchableOpacity
+                onPress={() => {
+                  if (selectedMonth === 0) {
+                    setSelectedMonth(11);
+                    setSelectedYear(selectedYear - 1);
+                  } else {
+                    setSelectedMonth(selectedMonth - 1);
+                  }
+                }}
+                className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
+              >
+                <Ionicons name="chevron-back" size={24} color="#64748B" />
+              </TouchableOpacity>
+              
+              <Text className="text-gray-800 font-medium text-lg">
+                {months[selectedMonth]} {selectedYear}
               </Text>
-            </View>
-            
-            {/* Navigation tabs */}
-            <View className="flex-row mb-4 border-b border-gray-200">
-              <TouchableOpacity 
-                className={`flex-1 py-2 ${activeTab === 'day' ? 'border-b-2 border-orange-500' : ''}`}
-                onPress={() => setActiveTab('day')}
+              
+              <TouchableOpacity
+                onPress={() => {
+                  if (selectedMonth === 11) {
+                    setSelectedMonth(0);
+                    setSelectedYear(selectedYear + 1);
+                  } else {
+                    setSelectedMonth(selectedMonth + 1);
+                  }
+                }}
+                className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
               >
-                <Text className={`text-center font-medium ${activeTab === 'day' ? 'text-orange-500' : 'text-gray-500'}`}>Day</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                className={`flex-1 py-2 ${activeTab === 'month' ? 'border-b-2 border-orange-500' : ''}`}
-                onPress={() => setActiveTab('month')}
-              >
-                <Text className={`text-center font-medium ${activeTab === 'month' ? 'text-orange-500' : 'text-gray-500'}`}>Month</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                className={`flex-1 py-2 ${activeTab === 'year' ? 'border-b-2 border-orange-500' : ''}`}
-                onPress={() => setActiveTab('year')}
-              >
-                <Text className={`text-center font-medium ${activeTab === 'year' ? 'text-orange-500' : 'text-gray-500'}`}>Year</Text>
+                <Ionicons name="chevron-forward" size={24} color="#64748B" />
               </TouchableOpacity>
             </View>
             
-            {/* Content based on active tab */}
-            {activeTab === 'day' && (
-              <View>
-                {/* Month/Year selector for day view */}
-                <View className="flex-row justify-between items-center mb-4">
-                  <TouchableOpacity 
-                    className="flex-row items-center bg-sky-50 py-1 px-3 rounded-full"
-                    onPress={() => setActiveTab('month')}
-                  >
-                    <Text className="text-sky-800 font-medium">{months[selectedMonth]}</Text>
-                    <MaterialIcons name="arrow-drop-down" size={20} color="#0EA5E9" />
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    className="flex-row items-center bg-sky-50 py-1 px-3 rounded-full"
-                    onPress={() => setActiveTab('year')}
-                  >
-                    <Text className="text-sky-800 font-medium">{selectedYear}</Text>
-                    <MaterialIcons name="arrow-drop-down" size={20} color="#0EA5E9" />
-                  </TouchableOpacity>
-                </View>
-                
-                {/* Weekday headers */}
-                <View className="flex-row justify-around mb-2">
-                  {weekDays.map(day => (
-                    <Text key={day} className="w-10 text-center text-gray-500 font-medium">{day}</Text>
-                  ))}
-                </View>
-                
-                {/* Calendar grid */}
-                <View className="flex-row flex-wrap justify-center mb-4">
-                  {renderCalendarGrid()}
-                </View>
-              </View>
-            )}
+            {/* Weekday headers */}
+            <View className="flex-row justify-around mb-2">
+              {weekDays.map(day => (
+                <Text key={day} className="w-10 text-center font-medium text-gray-500">
+                  {day}
+                </Text>
+              ))}
+            </View>
             
-            {activeTab === 'month' && (
-              <View className="flex-row flex-wrap justify-center mb-4">
-                {months.map((month, index) => {
-                  // Disable past months in current year
-                  const isPastMonth = 
-                    selectedYear === today.getFullYear() && 
-                    index < today.getMonth();
-                  
-                  return (
-                    <TouchableOpacity
-                      key={month}
-                      className={`w-24 h-12 items-center justify-center m-1 rounded-lg ${
-                        selectedMonth === index 
-                          ? 'bg-orange-500' 
-                          : isPastMonth
-                            ? 'bg-gray-200'
-                            : 'bg-gray-100'
-                      }`}
-                      onPress={() => {
-                        if (!isPastMonth) {
-                          setSelectedMonth(index);
-                          // If we're selecting the current month, make sure the day is not in the past
-                          if (index === today.getMonth() && selectedYear === today.getFullYear()) {
-                            if (selectedDay < today.getDate()) {
-                              setSelectedDay(today.getDate());
-                            }
-                          }
-                          setActiveTab('day');
-                        } else {
-                          showAlert('error', 'Cannot select a past month');
-                        }
-                      }}
-                      disabled={isPastMonth}
-                    >
-                      <Text className={`${
-                        selectedMonth === index 
-                          ? 'text-white' 
-                          : isPastMonth
-                            ? 'text-gray-400'
-                            : 'text-gray-800'
-                      } font-medium`}>{month.substring(0, 3)}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
+            {/* Calendar grid */}
+            <View className="flex-row flex-wrap justify-around">
+              {renderCalendarGrid()}
+            </View>
             
-            {activeTab === 'year' && (
-              <View className="flex-row flex-wrap justify-center mb-4">
-                {years.map((year) => (
-                  <TouchableOpacity
-                    key={year}
-                    className={`w-24 h-12 items-center justify-center m-1 rounded-lg ${
-                      selectedYear === year ? 'bg-orange-500' : 'bg-gray-100'
-                    }`}
-                    onPress={() => {
-                      setSelectedYear(year);
-                      // If we're selecting current year, adjust month/day if needed
-                      if (year === today.getFullYear()) {
-                        if (selectedMonth < today.getMonth()) {
-                          setSelectedMonth(today.getMonth());
-                        }
-                        if (selectedMonth === today.getMonth() && selectedDay < today.getDate()) {
-                          setSelectedDay(today.getDate());
-                        }
-                      }
-                      setActiveTab('day');
-                    }}
-                  >
-                    <Text className={`${
-                      selectedYear === year ? 'text-white' : 'text-gray-800'
-                    } font-medium`}>{year}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-            
-            <TouchableOpacity
-              onPress={handleConfirm}
-              className="mt-2 py-3 bg-orange-500 rounded-xl items-center"
-            >
-              <Text className="text-white font-semibold">Confirm Date</Text>
-            </TouchableOpacity>
+            <View className="mt-4 flex-row">
+              <TouchableOpacity
+                onPress={onClose}
+                className="flex-1 py-3 bg-gray-200 rounded-lg items-center mr-2"
+              >
+                <Text className="text-gray-800 font-medium">Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={handleConfirm}
+                className="flex-1 py-3 bg-orange-500 rounded-lg items-center ml-2"
+              >
+                <Text className="text-white font-medium">Confirm</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -914,7 +1107,22 @@ const BookingRoom = () => {
     </View>
   );
   
-
+  // Simplified BookingLegend component with only 2 statuses in Indonesian
+  const BookingLegend = () => (
+    <View className="mb-5 px-3 py-4 bg-gray-50 rounded-xl">
+      <Text className="text-gray-800 font-medium mb-3">Status Ketersediaan:</Text>
+      <View className="flex-row flex-wrap">
+        <View className="flex-row items-center mr-4 mb-2">
+          <View className="w-4 h-4 bg-yellow-500 rounded mr-1" />
+          <Text className="text-gray-700 text-xs">Booked</Text>
+        </View>
+        <View className="flex-row items-center mr-4 mb-2">
+          <View className="w-4 h-4 bg-gray-200 rounded mr-1" />
+          <Text className="text-gray-700 text-xs">Past Date</Text>
+        </View>
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -932,6 +1140,16 @@ const BookingRoom = () => {
           </View>
         </View>
       </View>
+
+      {/* Loading indicator when fetching bookings */}
+      {loadingBookings && (
+        <View className="absolute inset-0 bg-black bg-opacity-30 z-10 flex items-center justify-center">
+          <View className="bg-white p-5 rounded-xl shadow-lg items-center">
+            <ActivityIndicator size="large" color="#0EA5E9" />
+            <Text className="text-gray-700 mt-3 font-medium">Loading availability data...</Text>
+          </View>
+        </View>
+      )}
 
       <ScrollView className="flex-1 px-5">
         <View className="mt-6">
@@ -1021,12 +1239,7 @@ const BookingRoom = () => {
             {rooms.map((room) => (
               <TouchableOpacity
                 key={room.room_id}
-                onPress={() => {
-                  setForm(prev => ({ ...prev, room_id: room.room_id }));
-                  if (errors.room_id) {
-                    setErrors(prev => ({ ...prev, room_id: null }));
-                  }
-                }}
+                onPress={() => handleRoomSelection(room.room_id)}
                 className={`p-4 mb-4 rounded-xl border ${
                   room.room_id === form.room_id 
                     ? 'bg-sky-50 border-sky-500' 
@@ -1060,6 +1273,16 @@ const BookingRoom = () => {
           </View>
 
           <SectionHeader title="Date & Time" icon="calendar-outline" />
+          
+          {form.room_id ? (
+            <BookingLegend />
+          ) : (
+            <View className="mb-3 bg-yellow-50 p-3 rounded-xl">
+              <Text className="text-yellow-700 text-sm text-center">
+                Please select a room to view availability information
+              </Text>
+            </View>
+          )}
           
           <View className="mb-5">
             <Text className="text-gray-700 mb-2 font-medium">Booking Date *</Text>
@@ -1106,38 +1329,6 @@ const BookingRoom = () => {
             {errors.end_time && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.end_time}</Text>}
           </View>
 
-          {/* Alert Component */}
-          <CustomAlert
-            visible={alertVisible}
-            type={alertType}
-            message={alertMessage}
-            onClose={() => setAlertVisible(false)}
-          />
-
-          {/* Date and Time Pickers Modals */}
-          <DatePickerModal
-            visible={showDatePicker}
-            onClose={() => setShowDatePicker(false)}
-            date={form.booking_date}
-            onDateChange={handleDateChange}
-          />
-
-          <TimePickerModal
-            visible={showStartTimePicker}
-            onClose={() => setShowStartTimePicker(false)}
-            time={form.start_time}
-            onTimeChange={handleStartTimeChange}
-            title="Select Start Time"
-          />
-
-          <TimePickerModal
-            visible={showEndTimePicker}
-            onClose={() => setShowEndTimePicker(false)}
-            time={form.end_time}
-            onTimeChange={handleEndTimeChange}
-            title="Select End Time"
-          />
-          
           {/* Submit Button with loading state */}
           <TouchableOpacity
             onPress={handleSubmit}
@@ -1152,6 +1343,38 @@ const BookingRoom = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Alert Component */}
+      <CustomAlert
+        visible={alertVisible}
+        type={alertType}
+        message={alertMessage}
+        onClose={() => setAlertVisible(false)}
+      />
+
+      {/* Date and Time Pickers Modals */}
+      <DatePickerModal
+        visible={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        date={form.booking_date}
+        onDateChange={handleDateChange}
+      />
+
+      <TimePickerModal
+        visible={showStartTimePicker}
+        onClose={() => setShowStartTimePicker(false)}
+        time={form.start_time}
+        onTimeChange={handleStartTimeChange}
+        title="Select Start Time"
+      />
+
+      <TimePickerModal
+        visible={showEndTimePicker}
+        onClose={() => setShowEndTimePicker(false)}
+        time={form.end_time}
+        onTimeChange={handleEndTimeChange}
+        title="Select End Time"
+      />
     </SafeAreaView>
   );
 };

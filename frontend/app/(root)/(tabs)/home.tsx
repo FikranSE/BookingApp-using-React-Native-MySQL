@@ -690,7 +690,7 @@ const Home = () => {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white pb-20">
       {/* Header with gradient background */}
       <LinearGradient
         colors={['#0EA5E9', '#38BDF8']}
@@ -841,106 +841,10 @@ const Home = () => {
             message="You don't have any completed bookings yet" 
           />
         )}
-
-        {/* Quick Actions Section */}
-        <View className="mb-8 px-4">
-          <Text className="text-lg font-bold text-gray-800 mb-4">Quick Actions</Text>
-          <View className="flex-row justify-between">
-            <TouchableOpacity
-              className="bg-white rounded-xl p-3 items-center justify-center w-[30%] shadow-sm border border-gray-100"
-              onPress={() => router.push('/booking-room')}
-              style={{
-                shadowColor: "#000",
-                shadowOffset: {width: 0, height: 2},
-                shadowOpacity: 0.05,
-                shadowRadius: 5,
-                elevation: 2
-              }}
-            >
-              <View className="w-12 h-12 bg-sky-100 rounded-full items-center justify-center mb-2">
-                <Ionicons name="business" size={24} color="#0EA5E9" />
-              </View>
-              <Text className="text-gray-800 text-xs font-medium text-center">Book Room</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              className="bg-white rounded-xl p-3 items-center justify-center w-[30%] shadow-sm border border-gray-100"
-              onPress={() => router.push('/booking-transport')}
-              style={{
-                shadowColor: "#000",
-                shadowOffset: {width: 0, height: 2},
-                shadowOpacity: 0.05,
-                shadowRadius: 5,
-                elevation: 2
-              }}
-            >
-              <View className="w-12 h-12 bg-sky-100 rounded-full items-center justify-center mb-2">
-                <Ionicons name="car" size={24} color="#0EA5E9" />
-              </View>
-              <Text className="text-gray-800 text-xs font-medium text-center">Book Transport</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              className="bg-white rounded-xl p-3 items-center justify-center w-[30%] shadow-sm border border-gray-100"
-              onPress={() => router.push('/(root)/(tabs)/my-booking')}
-              style={{
-                shadowColor: "#000",
-                shadowOffset: {width: 0, height: 2},
-                shadowOpacity: 0.05,
-                shadowRadius: 5,
-                elevation: 2
-              }}
-            >
-              <View className="w-12 h-12 bg-sky-100 rounded-full items-center justify-center mb-2">
-                <Ionicons name="calendar" size={24} color="#0EA5E9" />
-              </View>
-              <Text className="text-gray-800 text-xs font-medium text-center">My Bookings</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+ 
+    
       </ScrollView>
-      
-      {/* Floating Action Button for quick booking */}
-      <TouchableOpacity
-        style={{
-          position: 'absolute',
-          right: 20,
-          bottom: 20,
-          width: 60,
-          height: 60,
-          borderRadius: 30,
-          backgroundColor: '#0EA5E9',
-          justifyContent: 'center',
-          alignItems: 'center',
-          shadowColor: "#000",
-          shadowOffset: {width: 0, height: 4},
-          shadowOpacity: 0.3,
-          shadowRadius: 6,
-          elevation: 8
-        }}
-        onPress={() => {
-          Alert.alert(
-            "Quick Book",
-            "What would you like to book?",
-            [
-              {
-                text: "Room",
-                onPress: () => router.push('/booking-room')
-              },
-              {
-                text: "Transport",
-                onPress: () => router.push('/booking-transport')
-              },
-              {
-                text: "Cancel",
-                style: "cancel"
-              }
-            ]
-          );
-        }}
-      >
-        <Ionicons name="add" size={30} color="white" />
-      </TouchableOpacity>
+
     </SafeAreaView>
   );
 };

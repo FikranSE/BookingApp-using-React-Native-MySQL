@@ -17,7 +17,7 @@ import axios from 'axios';
 import { tokenCache } from "@/lib/auth";
 import { AUTH_TOKEN_KEY } from "@/lib/constants";
 
-// Custom Alert Component
+// ----- ALERT KOMPONEN SAMA SEPERTI SEBELUMNYA -----
 const CustomAlert = ({ 
   visible, 
   type = 'success',
@@ -29,7 +29,6 @@ const CustomAlert = ({
 }) => {
   const [isVisible, setIsVisible] = useState(visible);
 
-  // Default colors
   const SUCCESS_COLORS = {
     bg: 'bg-green-500',
     bgLight: 'bg-green-50',
@@ -46,7 +45,6 @@ const CustomAlert = ({
     icon: 'close-circle'
   };
   
-  // Info colors
   const INFO_COLORS = {
     bg: 'bg-sky-500',
     bgLight: 'bg-sky-50',
@@ -55,28 +53,22 @@ const CustomAlert = ({
     icon: 'information-circle'
   };
   
-  // Select the color scheme based on alert type
   const colors = type === 'success' 
     ? SUCCESS_COLORS 
     : type === 'error' 
       ? ERROR_COLORS 
       : INFO_COLORS;
 
-  // Effect to handle auto-close
   useEffect(() => {
     setIsVisible(visible);
-    
-    // Auto close timer
     if (visible && autoClose) {
       const timer = setTimeout(() => {
         onClose();
       }, duration);
-      
       return () => clearTimeout(timer);
     }
   }, [visible, autoClose, duration, onClose]);
 
-  // Don't render anything if not visible
   if (!isVisible) return null;
 
   return (
@@ -88,7 +80,6 @@ const CustomAlert = ({
     >
       <View className="flex-1 justify-center items-center bg-black bg-opacity-20">
         <View className={`w-11/12 rounded-xl p-5 ${colors.bgLight} ${colors.border} border shadow-lg`}>
-          {/* Header */}
           <View className="flex-row justify-between items-center mb-3">
             <View className="flex-row items-center">
               <View className={`w-8 h-8 ${colors.bg} rounded-full items-center justify-center mr-3`}>
@@ -103,10 +94,8 @@ const CustomAlert = ({
             </TouchableOpacity>
           </View>
           
-          {/* Message */}
           <Text className="text-gray-700 mb-4 pl-11">{message}</Text>
           
-          {/* Action Button */}
           <TouchableOpacity
             onPress={onClose}
             className={`py-3 ${colors.bg} rounded-lg items-center mt-2`}
@@ -121,14 +110,12 @@ const CustomAlert = ({
   );
 };
 
-// Fetch auth token function with logging for debugging
+// ---- FUNGSI UNTUK MENGAMBIL TOKEN AUTH ----
 const fetchAuthToken = async () => {
-  const token = await tokenCache.getToken(AUTH_TOKEN_KEY);
-  console.log('Fetched token:', token);  // Log token for debugging
-  return token;
+  return await tokenCache.getToken(AUTH_TOKEN_KEY);
 };
 
-const Bookingtransport = () => {
+const BookingTransport = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { 
@@ -141,7 +128,7 @@ const Bookingtransport = () => {
     bookAgain 
   } = params;
   
-  const [loading, setLoading] = useState(false);
+  // STATE FORM
   const [form, setForm] = useState({
     transport_id: selectedTransportId ? Number(selectedTransportId) : null,
     booking_date: new Date(),
@@ -152,51 +139,240 @@ const Bookingtransport = () => {
     description: description || '',
     destination: destination || '',
   });
+
   const [transports, setTransports] = useState([]);
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  // STATE UNTUK MENYIMPAN BOOKING YANG SUDAH ADA (VALIDASI KONFLIK)
+  const [bookings, setBookings] = useState([]);
+  const [bookedDates, setBookedDates] = useState({});
+  const [bookedTimes, setBookedTimes] = useState({});
+  const [loadingBookings, setLoadingBookings] = useState(false);
   
-  // Modal visibility states
+  // STATE & HANDLER MODAL
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   
-  // Alert states
+  // STATE ALERT
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertType, setAlertType] = useState('success');
   const [alertMessage, setAlertMessage] = useState('');
 
-  // Function to show custom alert
   const showAlert = (type, message) => {
     setAlertType(type);
     setAlertMessage(message);
     setAlertVisible(true);
   };
 
-  const showSequentialAlerts = () => {
-    // First check if there's a pre-selected transport to show that alert first
-    if (selectedTransportId) {
-      showAlert('info', `Transport "${selectedTransportName}" has been pre-selected for your booking.`);
+  // ---------------------------
+  // 1) LOGIKA VALIDASI WAKTU
+  // ---------------------------
+  const isDateInPast = (date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date < today;
+  };
+
+  const isTimeInPast = (date, timeString) => {
+    const now = new Date();
+    const selectedDate = new Date(date);
+    
+    // Jika booking date lebih besar dari hari ini, tidak dianggap "past"
+    if (selectedDate.getDate() > now.getDate() ||
+        selectedDate.getMonth() > now.getMonth() ||
+        selectedDate.getFullYear() > now.getFullYear()) {
+      return false;
+    }
+    // Kalau booking date = hari ini, cek jam
+    if (
+      selectedDate.getDate() === now.getDate() &&
+      selectedDate.getMonth() === now.getMonth() &&
+      selectedDate.getFullYear() === now.getFullYear()
+    ) {
+      const [hours, minutes] = timeString.split(':').map(Number);
+      const selectedTime = new Date();
+      selectedTime.setHours(hours, minutes, 0, 0);
       
-      // If this is also a "book again" action, show that alert after a delay
-      if (bookAgain === 'true') {
-        setTimeout(() => {
-          showAlert(
-            'info', 
-            'Please update the date and time for your new booking. All other details have been filled in for you.'
-          );
-        }, 3000); // 3 second delay before showing the second alert
+      return selectedTime < now;
+    }
+    return false;
+  };
+
+  const isValidTimeRange = (start, end) => {
+    const [startHour, startMinute] = start.split(':').map(Number);
+    const [endHour, endMinute] = end.split(':').map(Number);
+    if (startHour > endHour) return false;
+    if (startHour === endHour && startMinute >= endMinute) return false;
+    return true;
+  };
+
+  // -------------------------------------------------
+  // 2) LOGIKA PENGAMBILAN DATA BOOKING TRANSPORT (fetchTransportBookings)
+  // -------------------------------------------------
+  const fetchTransportBookings = async (transportId) => {
+    if (!transportId) return;
+    setLoadingBookings(true);
+
+    try {
+      const authToken = await fetchAuthToken();
+      if (!authToken) {
+        console.error("No auth token available");
+        return;
       }
-    } 
-    // If no transport is pre-selected but it's a "book again" action
-    else if (bookAgain === 'true') {
-      showAlert(
-        'info', 
-        'Please update the date and time for your new booking. All other details have been filled in for you.'
-      );
+
+      // Daftar endpoint transport booking (cari yang sesuai di backend)
+      // Contoh saja, silakan disesuaikan:
+      const possibleEndpoints = [
+        `https://j9d3hc82-3001.asse.devtunnels.ms/api/transport-bookings/transport/${transportId}`,
+        `https://j9d3hc82-3001.asse.devtunnels.ms/api/transport-bookings/by-transport/${transportId}`,
+        `https://j9d3hc82-3001.asse.devtunnels.ms/api/transport-bookings?transport_id=${transportId}`,
+      ];
+      
+      let response;
+      let success = false;
+
+      for (const endpoint of possibleEndpoints) {
+        try {
+          response = await axios.get(endpoint, {
+            headers: { 'Authorization': `Bearer ${authToken}` },
+          });
+          if (response.status >= 200 && response.status < 300) {
+            success = true;
+            break;
+          }
+        } catch (err) {
+          console.log(`Gagal ambil data booking di endpoint: ${endpoint}`, err.message);
+        }
+      }
+
+      if (!success) {
+        console.log("Semua endpoint gagal, gunakan mock data");
+        // Buat data booking contoh
+        const today = new Date();
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const mockData = [
+          {
+            booking_id: transportId * 100 + 1,
+            transport_id: transportId,
+            booking_date: formatApiDate(today),
+            start_time: "08:00",
+            end_time: "10:00",
+            pic: `Mock for Transport ${transportId}`,
+            section: "Mock-Section",
+            destination: "Mock Destination"
+          },
+          {
+            booking_id: transportId * 100 + 2,
+            transport_id: transportId,
+            booking_date: formatApiDate(tomorrow),
+            start_time: "13:00",
+            end_time: "15:00",
+            pic: `Mock for Transport ${transportId}`,
+            section: "Mock-Section2",
+            destination: "Mock Destination2"
+          }
+        ];
+
+        response = { data: mockData };
+        showAlert('info', `Menggunakan data booking palsu untuk Transport ${transportId}`);
+      }
+
+      if (response && response.data) {
+        const bookingsData = Array.isArray(response.data) 
+          ? response.data 
+          : (response.data.bookings ? response.data.bookings : []);
+        
+        // Filter booking yang memang milik transport ini
+        const filteredBookings = bookingsData.filter(booking => 
+          booking.transport_id === transportId
+        );
+        setBookings(filteredBookings);
+
+        // Buat peta date & time
+        const dates = {};
+        const times = {};
+
+        filteredBookings.forEach(booking => {
+          if (!booking.booking_date || !booking.start_time || !booking.end_time) {
+            console.log("Data booking invalid:", booking);
+            return;
+          }
+          if (!dates[booking.booking_date]) {
+            dates[booking.booking_date] = [];
+          }
+          dates[booking.booking_date].push({
+            start: booking.start_time,
+            end: booking.end_time
+          });
+
+          const formattedDate = booking.booking_date;
+          if (!times[formattedDate]) {
+            times[formattedDate] = [];
+          }
+          times[formattedDate].push({
+            start: booking.start_time,
+            end: booking.end_time
+          });
+        });
+
+        setBookedDates(dates);
+        setBookedTimes(times);
+
+        console.log(`Loaded ${filteredBookings.length} bookings for transport ${transportId}`);
+      }
+    } catch (error) {
+      console.error("Error fetching transport bookings:", error);
+      showAlert('error', 'Gagal memuat data booking transport');
+      setBookings([]);
+      setBookedDates({});
+      setBookedTimes({});
+    } finally {
+      setLoadingBookings(false);
     }
   };
-  
-  // Replace the separate useEffects with a combined approach
+
+  // -------------------------------------------------
+  // 3) FUNGSI CEK TANGGAL/WAKTU PENUH ATAU KONFLIK
+  // -------------------------------------------------
+  const isDateFullyBooked = (date) => {
+    if (!form.transport_id) return false;
+    const formattedDate = formatApiDate(date);
+    // Misal: kita anggap date "penuh" kalau >= 3 booking
+    return bookedDates[formattedDate] && bookedDates[formattedDate].length >= 3;
+  };
+
+  const isDatePartiallyBooked = (date) => {
+    if (!form.transport_id) return false;
+    const formattedDate = formatApiDate(date);
+    return bookedDates[formattedDate] && bookedDates[formattedDate].length > 0;
+  };
+
+  const isTimeSlotBooked = (date, time) => {
+    if (!form.transport_id) return false;
+    const formattedDate = formatApiDate(date);
+    if (!bookedTimes[formattedDate]) return false; // tidak ada booking di date tsb
+
+    const [hour, minute] = time.split(':').map(Number);
+    const timeValue = hour * 60 + minute;
+
+    return bookedTimes[formattedDate].some(slot => {
+      const [sh, sm] = slot.start.split(':').map(Number);
+      const [eh, em] = slot.end.split(':').map(Number);
+      const slotStart = sh * 60 + sm;
+      const slotEnd   = eh * 60 + em;
+
+      // Apakah timeValue berada di dalam range slot?
+      return timeValue >= slotStart && timeValue < slotEnd;
+    });
+  };
+
+  // -------------------------------------------------
+  // 4) USEEFFECT MEMUAT DATA TRANSPORT + ALERT
+  // -------------------------------------------------
   useEffect(() => {
     const fetchTransports = async () => {
       try {
@@ -206,15 +382,13 @@ const Bookingtransport = () => {
           router.push('/(auth)/sign-in');
           return;
         }
-  
         const response = await axios.get('https://j9d3hc82-3001.asse.devtunnels.ms/api/transports', {
           headers: { 'Authorization': `Bearer ${authToken}` },
         });
-  
+
         if (response.data && Array.isArray(response.data)) {
           setTransports(response.data);
-          
-          // After transports are loaded, show the sequential alerts
+          // Tampilkan sequential alert kalau ada param preselected
           showSequentialAlerts();
         } else {
           showAlert('error', 'Invalid transport data received.');
@@ -224,136 +398,229 @@ const Bookingtransport = () => {
         showAlert('error', 'Failed to load transports. Please try again.');
       }
     };
-    
     fetchTransports();
-    
-    // Remove the separate bookAgain useEffect since we're handling it in showSequentialAlerts
   }, []);
 
-  useEffect(() => {
-    console.log('Selected Transport ID from params:', selectedTransportId);
-    console.log('Form transport_id:', form.transport_id);
-    
-    if (transports.length > 0) {
-      console.log('Available transport IDs:', transports.map(t => t.transport_id));
+  // ---------------------------
+  // 5) SEQUENTIAL ALERT
+  // ---------------------------
+  const showSequentialAlerts = () => {
+    // Jika ada transport terpilih
+    if (selectedTransportId) {
+      showAlert('info', `Transport "${selectedTransportName}" sudah dipilih.`);
+      // Jika bookAgain pun bernilai true
+      if (bookAgain === 'true') {
+        setTimeout(() => {
+          showAlert(
+            'info', 
+            'Silakan ubah tanggal dan waktu booking. Detail lain sudah terisi.'
+          );
+        }, 3000);
+      }
     }
-  }, [selectedTransportId, form.transport_id, transports]);
-  
+    else if (bookAgain === 'true') {
+      showAlert('info', 'Silakan ubah tanggal dan waktu booking. Detail lain sudah terisi.');
+    }
+  };
 
+  // ---------------------------
+  // 6) HANDLE PILIH TRANSPORT
+  // ---------------------------
+  const handleTransportSelection = (transportId) => {
+    // Reset data booking lama
+    setBookings([]);
+    setBookedDates({});
+    setBookedTimes({});
+    
+    // Update form
+    setForm(prev => ({ ...prev, transport_id: transportId }));
+    
+    // Clear error
+    if (errors.transport_id) {
+      setErrors(prev => ({ ...prev, transport_id: null }));
+    }
+
+    // Fetch booking khusus transport ini
+    fetchTransportBookings(transportId);
+  };
+
+  // ---------------------------
+  // 7) HANDLE DATE & TIME CHANGE
+  // ---------------------------
+  const handleDateChange = (date) => {
+    setForm({ ...form, booking_date: date });
+    if (errors.booking_date) {
+      setErrors(prev => ({ ...prev, booking_date: null }));
+    }
+
+    if (isDateInPast(date)) {
+      showAlert('error', 'Tidak bisa booking untuk tanggal yang sudah lewat');
+      return;
+    }
+
+    // Jika user ganti date => pastikan start_time & end_time valid
+    const today = new Date();
+    const isToday = 
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear();
+
+    // Jika masih set jam untuk hari ini tapi sudah lewat, reset jam
+    if (isToday && form.start_time) {
+      if (isTimeInPast(date, form.start_time)) {
+        setForm(prev => ({ ...prev, start_time: '', end_time: '' }));
+        showAlert('info', 'Start time & end time direset karena sudah lewat');
+      } else if (
+        form.end_time && 
+        !isValidTimeRange(form.start_time, form.end_time)
+      ) {
+        setForm(prev => ({ ...prev, end_time: '' }));
+      }
+    }
+  };
+
+  const handleStartTimeChange = (time) => {
+    // Cek time di hari ini
+    if (isTimeInPast(form.booking_date, time)) {
+      showAlert('error', 'Tidak bisa memilih jam yang sudah lewat');
+      return;
+    }
+    // Cek konflik slot
+    if (form.transport_id && isTimeSlotBooked(form.booking_date, time)) {
+      const transportName = transports.find(t => t.transport_id === form.transport_id)?.vehicle_name || `Transport ${form.transport_id}`;
+      showAlert('error', `This time slot is already booked for  ${transportName}. Please select another time.`);
+      return;
+    }
+
+    setForm(prev => ({ ...prev, start_time: time }));
+    if (errors.start_time) {
+      setErrors(prev => ({ ...prev, start_time: null }));
+    }
+
+    // Kalau end_time sudah ada tetapi invalid, reset
+    if (form.end_time && !isValidTimeRange(time, form.end_time)) {
+      setForm(prev => ({ ...prev, end_time: '' }));
+      showAlert('info', 'End time has been cleared as it must be after the new start time');
+    }
+  };
+
+  const handleEndTimeChange = (time) => {
+    if (!form.start_time) {
+      showAlert('error', 'Please select a start time first');
+      return;
+    }
+    if (!isValidTimeRange(form.start_time, time)) {
+      showAlert('error', 'End time must be after start time');
+      return;
+    }
+
+    // Pastikan tidak overlap
+    if (form.transport_id) {
+      const formattedDate = formatApiDate(form.booking_date);
+      if (bookedTimes[formattedDate]) {
+        const [sh, sm] = form.start_time.split(':').map(Number);
+        const [eh, em] = time.split(':').map(Number);
+        const newStartVal = sh * 60 + sm;
+        const newEndVal   = eh * 60 + em;
+
+        const hasOverlap = bookedTimes[formattedDate].some(slot => {
+          const [slotSh, slotSm] = slot.start.split(':').map(Number);
+          const [slotEh, slotEm] = slot.end.split(':').map(Number);
+          const slotStartVal = slotSh * 60 + slotSm;
+          const slotEndVal   = slotEh * 60 + slotEm;
+          
+          // Cek overlap
+          const overlap = (
+            (newStartVal >= slotStartVal && newStartVal < slotEndVal) ||
+            (newEndVal > slotStartVal && newEndVal <= slotEndVal) ||
+            (newStartVal <= slotStartVal && newEndVal >= slotEndVal)
+          );
+          return overlap;
+        });
+
+        if (hasOverlap) {
+          showAlert('error', 'Waktu yang dipilih bentrok dengan jadwal booking lain. Pilih slot lain.');
+          return;
+        }
+      }
+    }
+
+    setForm(prev => ({ ...prev, end_time: time }));
+    if (errors.end_time) {
+      setErrors(prev => ({ ...prev, end_time: null }));
+    }
+  };
+
+  // ---------------------------
+  // 8) VALIDASI FORM
+  // ---------------------------
   const validateForm = () => {
     const newErrors = {};
     
     if (!form.pic.trim()) {
       newErrors.pic = 'PIC name is required';
     }
-    
     if (!form.section.trim()) {
       newErrors.section = 'Section is required';
     }
-  
     if (!form.destination.trim()) {
       newErrors.destination = 'Destination is required';
     }
-    
-    // Date validation
+
     if (isDateInPast(form.booking_date)) {
-      newErrors.booking_date = 'Cannot book for a past date';
+      newErrors.booking_date = 'Cannot book for a time that has already passed';
     }
-    
     if (!form.start_time) {
       newErrors.start_time = 'Start time is required';
     } else if (isTimeInPast(form.booking_date, form.start_time)) {
-      newErrors.start_time = 'Cannot book for a time that has already passed';
+      newErrors.start_time = 'End time must be after start time';
     }
-    
     if (!form.end_time) {
       newErrors.end_time = 'End time is required';
-    } else if (form.start_time && !isValidTimeRange(form.start_time, form.end_time)) {
+    } else if (
+      form.start_time && 
+      !isValidTimeRange(form.start_time, form.end_time)
+    ) {
       newErrors.end_time = 'End time must be after start time';
     }
-  
     if (form.transport_id === null) {
       newErrors.transport_id = 'Please select a transport';
     }
-  
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const isDateInPast = (date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to beginning of day for date comparison only
-    return date < today;
-  };
-
-  const isTimeInPast = (date, timeString) => {
-    const now = new Date();
-    const selectedDate = new Date(date);
-    
-    // If date is in future, time is not in past
-    if (selectedDate.getDate() > now.getDate() || 
-        selectedDate.getMonth() > now.getMonth() || 
-        selectedDate.getFullYear() > now.getFullYear()) {
-      return false;
-    }
-    
-    // If date is today, check if time is in past
-    if (selectedDate.getDate() === now.getDate() && 
-        selectedDate.getMonth() === now.getMonth() && 
-        selectedDate.getFullYear() === now.getFullYear()) {
-      
-      const [hours, minutes] = timeString.split(':').map(Number);
-      const selectedTime = new Date();
-      selectedTime.setHours(hours, minutes, 0, 0);
-      
-      return selectedTime < now;
-    }
-    
-    return false;
-  };
-  
-
-  const SectionHeader = ({ title, icon }) => (
-    <View className="flex-row items-center mb-4 mt-4">
-      <View className="w-8 h-8 bg-orange-500 rounded-full items-center justify-center">
-        <Ionicons name={icon} size={18} color="white" />
-      </View>
-      <Text className="text-gray-800 font-bold text-lg ml-3">{title}</Text>
-    </View>
-  );
-
+  // ---------------------------
+  // 9) HANDLE SUBMIT
+  // ---------------------------
   const handleSubmit = async () => {
     if (!validateForm()) {
+      // Ambil salah satu error untuk alert
       const firstError = Object.values(errors)[0];
-      showAlert('error', firstError);
+      if (firstError) showAlert('error', firstError);
       return;
     }
 
     setLoading(true);
-
     try {
       const authToken = await fetchAuthToken();
       if (!authToken) {
         showAlert('error', 'Not authenticated');
         return;
       }
-
-      // Format the date to the expected format for the API
-      const formattedDate = formatDateForAPI(form.booking_date);
+      const formattedDate = formatApiDate(form.booking_date);
       
-      const bookingData = {
-        ...form,
-        booking_date: formattedDate
-      };
-
-      const response = await axios.post('https://j9d3hc82-3001.asse.devtunnels.ms/api/transport-bookings', bookingData, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
-      });
+      const bookingData = { ...form, booking_date: formattedDate };
+      // Panggil API pembuatan booking transport
+      const response = await axios.post(
+        'https://j9d3hc82-3001.asse.devtunnels.ms/api/transport-bookings', 
+        bookingData, 
+        { headers: { 'Authorization': `Bearer ${authToken}` } }
+      );
 
       if (response.status === 201) {
-        showAlert('success', 'Booking submitted successfully');
+        showAlert('success', 'Booking berhasil disubmit');
         setTimeout(() => {
           router.replace('/(root)/(tabs)/my-booking');
         }, 2000);
@@ -363,31 +630,47 @@ const Bookingtransport = () => {
     } catch (error) {
       console.error('Booking error:', error);
       if (error.response) {
-        showAlert('error', error.response.data.message || 'Failed to submit booking. Please try again.');
+        showAlert('error', error.response.data.message || 'Gagal submit booking. Coba lagi.');
       } else {
-        showAlert('error', 'Failed to submit booking. Please try again.');
+        showAlert('error', 'Gagal submit booking. Coba lagi.');
       }
     } finally {
       setLoading(false);
     }
   };
 
+  // ---------------------------
+  // 10) FORMAT TANGGAL
+  // ---------------------------
+  const formatApiDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
-  
+  const formatDateDisplay = (date) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
 
+  // -------------------------------------------------
+  // 11) KOMPONEN DATEPICKER DAN TIMEPICKER
+  // -------------------------------------------------
   const DatePickerModal = ({ visible, onClose, date, onDateChange }) => {
     const today = new Date();
     const [selectedYear, setSelectedYear] = useState(today.getFullYear());
     const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
     const [selectedDay, setSelectedDay] = useState(today.getDate());
-    const [activeTab, setActiveTab] = useState('day'); // 'day', 'month', or 'year'
-    
+
     useEffect(() => {
       if (date) {
         try {
           const dateObj = new Date(date);
           if (!isNaN(dateObj.getTime())) {
-            // If date is in the past, use today's date
             if (isDateInPast(dateObj)) {
               setSelectedYear(today.getFullYear());
               setSelectedMonth(today.getMonth());
@@ -398,264 +681,176 @@ const Bookingtransport = () => {
               setSelectedDay(dateObj.getDate());
             }
           }
-        } catch (error) {
-          console.error("Error parsing date:", error);
-        }
+        } catch {}
       }
     }, [date, visible]);
-    
+
     const months = [
       'January', 'February', 'March', 'April', 'May', 'June', 
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
-    
-    // Generate 5 years starting from current year
-    const years = Array.from({ length: 5 }, (_, i) => today.getFullYear() + i);
-    
+
     const getDaysInMonth = (year, month) => {
       return new Date(year, month + 1, 0).getDate();
     };
-    
+
     const handleConfirm = () => {
       const selectedDate = new Date(selectedYear, selectedMonth, selectedDay);
       onDateChange(selectedDate);
       onClose();
     };
-    
-    // Calculate days of week header (Sun, Mon, Tue, etc.)
+
     const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-    
-    // Function to render the calendar grid with proper week alignment
     const renderCalendarGrid = () => {
       const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
       const firstDayOfMonth = new Date(selectedYear, selectedMonth, 1).getDay();
       
-      // Create an array for all the day cells, including empty ones for proper alignment
       const days = [];
-      
-      // Add empty cells for days before the 1st of the month
       for (let i = 0; i < firstDayOfMonth; i++) {
         days.push(<View key={`empty-${i}`} className="w-10 h-10 m-1" />);
       }
-      
-      // Add cells for actual days
       for (let i = 1; i <= daysInMonth; i++) {
-        // Check if this date would be in the past
         const currentDate = new Date(selectedYear, selectedMonth, i);
         const isPastDate = isDateInPast(currentDate);
-        
+
+        // Cek fully booked / partially booked
+        const fullyBooked = isDateFullyBooked(currentDate);
+        const partiallyBooked = isDatePartiallyBooked(currentDate);
+
+        let bgColor = 'bg-gray-100';
+        let textColor = 'text-gray-800';
+
+        if (selectedDay === i) {
+          bgColor = 'bg-orange-500';
+          textColor = 'text-white';
+        } else if (isPastDate) {
+          bgColor = 'bg-gray-200';
+          textColor = 'text-gray-400';
+        } else if (fullyBooked) {
+          bgColor = 'bg-red-100';
+          textColor = 'text-red-800';
+        } else if (partiallyBooked) {
+          bgColor = 'bg-yellow-100';
+          textColor = 'text-yellow-800';
+        }
+
         days.push(
           <TouchableOpacity 
             key={i}
-            className={`w-10 h-10 items-center justify-center rounded-full m-1 ${
-              selectedDay === i 
-                ? 'bg-orange-500' 
-                : isPastDate
-                  ? 'bg-gray-200'
-                  : 'bg-gray-100'
-            }`}
+            className={`w-10 h-10 items-center justify-center rounded-full m-1 ${bgColor}`}
             onPress={() => {
-              // Only allow selection of today or future dates
-              if (!isPastDate) {
+              if (!isPastDate && !fullyBooked) {
                 setSelectedDay(i);
-              } else {
-                // Show a quick feedback for past dates
-                showAlert('error', 'Cannot select a past date');
+              } else if (isPastDate) {
+                showAlert('error', 'Tidak dapat memilih tanggal yang sudah lewat');
+              } else if (fullyBooked) {
+                showAlert('error', 'Tanggal ini sudah penuh ter-booking');
               }
             }}
-            disabled={isPastDate}
+            disabled={isPastDate || fullyBooked}
           >
-            <Text className={`${
-              selectedDay === i 
-                ? 'text-white' 
-                : isPastDate
-                  ? 'text-gray-400'
-                  : 'text-gray-800'
-            } font-medium`}>{i}</Text>
+            <Text className={textColor}>{i}</Text>
+            {partiallyBooked && !fullyBooked && (
+              <View className="absolute bottom-0 w-1.5 h-1.5 bg-yellow-500 rounded-full" />
+            )}
           </TouchableOpacity>
         );
       }
-      
       return days;
     };
-    
+
     return (
       <Modal
-        animationType="fade"
         transparent={true}
         visible={visible}
+        animationType="fade"
         onRequestClose={onClose}
       >
         <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
           <View className="bg-white w-11/12 rounded-2xl p-5 shadow-xl">
-            <View className="flex-row justify-between items-center mb-3">
+            <View className="flex-row justify-between items-center mb-4">
               <Text className="text-gray-800 font-bold text-lg">Select Date</Text>
               <TouchableOpacity onPress={onClose}>
                 <Ionicons name="close" size={24} color="#64748B" />
               </TouchableOpacity>
             </View>
-            
-            {/* Current selected date display */}
-            <View className="bg-sky-50 p-3 rounded-xl mb-4">
-              <Text className="text-center text-sky-800 font-medium text-lg">
-                {months[selectedMonth]} {selectedDay}, {selectedYear}
+
+            {/* Bulan dan Tahun */}
+            <View className="flex-row justify-between items-center mb-4">
+              <TouchableOpacity
+                onPress={() => {
+                  if (selectedMonth === 0) {
+                    setSelectedMonth(11);
+                    setSelectedYear(selectedYear - 1);
+                  } else {
+                    setSelectedMonth(selectedMonth - 1);
+                  }
+                }}
+                className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
+              >
+                <Ionicons name="chevron-back" size={24} color="#64748B" />
+              </TouchableOpacity>
+              
+              <Text className="text-gray-800 font-medium text-lg">
+                {months[selectedMonth]} {selectedYear}
               </Text>
-            </View>
-            
-            {/* Navigation tabs */}
-            <View className="flex-row mb-4 border-b border-gray-200">
-              <TouchableOpacity 
-                className={`flex-1 py-2 ${activeTab === 'day' ? 'border-b-2 border-orange-500' : ''}`}
-                onPress={() => setActiveTab('day')}
+              
+              <TouchableOpacity
+                onPress={() => {
+                  if (selectedMonth === 11) {
+                    setSelectedMonth(0);
+                    setSelectedYear(selectedYear + 1);
+                  } else {
+                    setSelectedMonth(selectedMonth + 1);
+                  }
+                }}
+                className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
               >
-                <Text className={`text-center font-medium ${activeTab === 'day' ? 'text-orange-500' : 'text-gray-500'}`}>Day</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                className={`flex-1 py-2 ${activeTab === 'month' ? 'border-b-2 border-orange-500' : ''}`}
-                onPress={() => setActiveTab('month')}
-              >
-                <Text className={`text-center font-medium ${activeTab === 'month' ? 'text-orange-500' : 'text-gray-500'}`}>Month</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                className={`flex-1 py-2 ${activeTab === 'year' ? 'border-b-2 border-orange-500' : ''}`}
-                onPress={() => setActiveTab('year')}
-              >
-                <Text className={`text-center font-medium ${activeTab === 'year' ? 'text-orange-500' : 'text-gray-500'}`}>Year</Text>
+                <Ionicons name="chevron-forward" size={24} color="#64748B" />
               </TouchableOpacity>
             </View>
+
+            {/* Header hari */}
+            <View className="flex-row justify-around mb-2">
+              {weekDays.map(day => (
+                <Text key={day} className="w-10 text-center font-medium text-gray-500">
+                  {day}
+                </Text>
+              ))}
+            </View>
             
-            {/* Content based on active tab */}
-            {activeTab === 'day' && (
-              <View>
-                {/* Month/Year selector for day view */}
-                <View className="flex-row justify-between items-center mb-4">
-                  <TouchableOpacity 
-                    className="flex-row items-center bg-sky-50 py-1 px-3 rounded-full"
-                    onPress={() => setActiveTab('month')}
-                  >
-                    <Text className="text-sky-800 font-medium">{months[selectedMonth]}</Text>
-                    <MaterialIcons name="arrow-drop-down" size={20} color="#0EA5E9" />
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    className="flex-row items-center bg-sky-50 py-1 px-3 rounded-full"
-                    onPress={() => setActiveTab('year')}
-                  >
-                    <Text className="text-sky-800 font-medium">{selectedYear}</Text>
-                    <MaterialIcons name="arrow-drop-down" size={20} color="#0EA5E9" />
-                  </TouchableOpacity>
-                </View>
-                
-                {/* Weekday headers */}
-                <View className="flex-row justify-around mb-2">
-                  {weekDays.map(day => (
-                    <Text key={day} className="w-10 text-center text-gray-500 font-medium">{day}</Text>
-                  ))}
-                </View>
-                
-                {/* Calendar grid */}
-                <View className="flex-row flex-wrap justify-center mb-4">
-                  {renderCalendarGrid()}
-                </View>
-              </View>
-            )}
-            
-            {activeTab === 'month' && (
-              <View className="flex-row flex-wrap justify-center mb-4">
-                {months.map((month, index) => {
-                  // Disable past months in current year
-                  const isPastMonth = 
-                    selectedYear === today.getFullYear() && 
-                    index < today.getMonth();
-                  
-                  return (
-                    <TouchableOpacity
-                      key={month}
-                      className={`w-24 h-12 items-center justify-center m-1 rounded-lg ${
-                        selectedMonth === index 
-                          ? 'bg-orange-500' 
-                          : isPastMonth
-                            ? 'bg-gray-200'
-                            : 'bg-gray-100'
-                      }`}
-                      onPress={() => {
-                        if (!isPastMonth) {
-                          setSelectedMonth(index);
-                          // If we're selecting the current month, make sure the day is not in the past
-                          if (index === today.getMonth() && selectedYear === today.getFullYear()) {
-                            if (selectedDay < today.getDate()) {
-                              setSelectedDay(today.getDate());
-                            }
-                          }
-                          setActiveTab('day');
-                        } else {
-                          showAlert('error', 'Cannot select a past month');
-                        }
-                      }}
-                      disabled={isPastMonth}
-                    >
-                      <Text className={`${
-                        selectedMonth === index 
-                          ? 'text-white' 
-                          : isPastMonth
-                            ? 'text-gray-400'
-                            : 'text-gray-800'
-                      } font-medium`}>{month.substring(0, 3)}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-            
-            {activeTab === 'year' && (
-              <View className="flex-row flex-wrap justify-center mb-4">
-                {years.map((year) => (
-                  <TouchableOpacity
-                    key={year}
-                    className={`w-24 h-12 items-center justify-center m-1 rounded-lg ${
-                      selectedYear === year ? 'bg-orange-500' : 'bg-gray-100'
-                    }`}
-                    onPress={() => {
-                      setSelectedYear(year);
-                      // If we're selecting current year, adjust month/day if needed
-                      if (year === today.getFullYear()) {
-                        if (selectedMonth < today.getMonth()) {
-                          setSelectedMonth(today.getMonth());
-                        }
-                        if (selectedMonth === today.getMonth() && selectedDay < today.getDate()) {
-                          setSelectedDay(today.getDate());
-                        }
-                      }
-                      setActiveTab('day');
-                    }}
-                  >
-                    <Text className={`${
-                      selectedYear === year ? 'text-white' : 'text-gray-800'
-                    } font-medium`}>{year}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-            
-            <TouchableOpacity
-              onPress={handleConfirm}
-              className="mt-2 py-3 bg-orange-500 rounded-xl items-center"
-            >
-              <Text className="text-white font-semibold">Confirm Date</Text>
-            </TouchableOpacity>
+            {/* Grid kalender */}
+            <View className="flex-row flex-wrap justify-around">
+              {renderCalendarGrid()}
+            </View>
+
+            <View className="mt-4 flex-row">
+              <TouchableOpacity
+                onPress={onClose}
+                className="flex-1 py-3 bg-gray-200 rounded-lg items-center mr-2"
+              >
+                <Text className="text-gray-800 font-medium">Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={handleConfirm}
+                className="flex-1 py-3 bg-orange-500 rounded-lg items-center ml-2"
+              >
+                <Text className="text-white font-medium">Confirm</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
     );
   };
-  
+
   const TimePickerModal = ({ visible, onClose, time, onTimeChange, title }) => {
     const now = new Date();
     const [hours, setHours] = useState('09');
     const [minutes, setMinutes] = useState('00');
-    const [showHours, setShowHours] = useState(true); // Toggle between hours and minutes view
-    
-    // Check if booking date is today
+    const [showHours, setShowHours] = useState(true);
+
     const isToday = () => {
       const today = new Date();
       const bookingDate = form.booking_date;
@@ -665,55 +860,48 @@ const Bookingtransport = () => {
         today.getFullYear() === bookingDate.getFullYear()
       );
     };
-    
+
     useEffect(() => {
       if (time) {
         const [h, m] = time.split(':');
         setHours(h || '09');
         setMinutes(m || '00');
       } else {
-        // Default to current time + 1 hour, rounded to nearest hour
         const defaultHour = (now.getHours() + 1).toString().padStart(2, '0');
         setHours(defaultHour);
         setMinutes('00');
       }
     }, [time, visible]);
-    
+
     const handleConfirm = () => {
       const newTime = `${hours}:${minutes}`;
-      
-      // If booking for today, verify the time is not in the past
       if (isToday()) {
         const selectedTime = new Date();
         selectedTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-        
         if (selectedTime < now) {
-          showAlert('error', 'Cannot select a time that has already passed');
+          showAlert('error', 'Tidak bisa pilih waktu yang sudah lewat');
           return;
         }
       }
-      
       onTimeChange(newTime);
       onClose();
     };
-    
+
     const renderTimeGrid = (isHours) => {
       const currentHour = now.getHours();
       const currentMinute = now.getMinutes();
-      
-      const items = isHours 
+      const items = isHours
         ? Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'))
         : Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
-      
+
       const selectedValue = isHours ? hours : minutes;
-      
+
       return (
         <FlatList
           data={items}
           numColumns={6}
           keyExtractor={(item) => item}
           renderItem={({ item }) => {
-            // Check if this time is in the past (for today's bookings only)
             const isPastTime = isToday() && (
               (isHours && parseInt(item) < currentHour) || 
               (isHours && parseInt(item) === currentHour && !showHours && parseInt(minutes) < currentMinute) ||
@@ -733,16 +921,15 @@ const Bookingtransport = () => {
                   if (!isPastTime) {
                     if (isHours) {
                       setHours(item);
-                      // If selecting current hour on today, ensure minutes are not in past
                       if (isToday() && parseInt(item) === currentHour) {
-                        const newMinutes = Math.max(currentMinute, parseInt(minutes)).toString().padStart(2, '0');
-                        setMinutes(newMinutes);
+                        const newMins = Math.max(currentMinute, parseInt(minutes)).toString().padStart(2, '0');
+                        setMinutes(newMins);
                       }
                     } else {
                       setMinutes(item);
                     }
                   } else {
-                    showAlert('error', 'Cannot select a time that has already passed');
+                    showAlert('error', 'Tidak bisa memilih waktu yang sudah lewat');
                   }
                 }}
                 disabled={isPastTime}
@@ -761,7 +948,7 @@ const Bookingtransport = () => {
         />
       );
     };
-    
+
     return (
       <Modal
         animationType="fade"
@@ -777,15 +964,15 @@ const Bookingtransport = () => {
                 <Ionicons name="close" size={24} color="#64748B" />
               </TouchableOpacity>
             </View>
-            
+
             {isToday() && (
               <View className="mb-2 bg-sky-50 p-2 rounded-lg">
                 <Text className="text-sky-700 text-sm text-center">
-                  Booking for today - times in the past are disabled
+                  Booking hari ini - waktu yang sudah lewat nonaktif
                 </Text>
               </View>
             )}
-            
+
             <View className="flex-row justify-center items-center py-3 mb-2">
               <TouchableOpacity
                 onPress={() => setShowHours(true)}
@@ -801,7 +988,7 @@ const Bookingtransport = () => {
                 <Text className={!showHours ? 'text-white font-medium' : 'text-gray-700'}>Minutes</Text>
               </TouchableOpacity>
             </View>
-            
+
             <View className="flex-row justify-center items-center mb-3">
               <TouchableOpacity
                 onPress={() => setShowHours(true)}
@@ -809,9 +996,7 @@ const Bookingtransport = () => {
               >
                 <Text className={`text-2xl font-medium ${showHours ? 'text-sky-500' : 'text-gray-800'}`}>{hours}</Text>
               </TouchableOpacity>
-              
               <Text className="text-2xl font-bold text-gray-800 mx-2">:</Text>
-              
               <TouchableOpacity
                 onPress={() => setShowHours(false)}
                 className="items-center"
@@ -819,11 +1004,11 @@ const Bookingtransport = () => {
                 <Text className={`text-2xl font-medium ${!showHours ? 'text-sky-500' : 'text-gray-800'}`}>{minutes}</Text>
               </TouchableOpacity>
             </View>
-            
+
             <View className="border border-gray-200 rounded-lg p-2 bg-white max-h-56">
               {renderTimeGrid(showHours)}
             </View>
-            
+
             <TouchableOpacity
               onPress={handleConfirm}
               className="mt-4 py-3 bg-orange-500 rounded-xl items-center"
@@ -836,32 +1021,37 @@ const Bookingtransport = () => {
     );
   };
 
-  const formatDateForAPI = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
+  // -------------------------------------------------
+  // 12) UI BAGIAN ATAS
+  // -------------------------------------------------
+  const SectionHeader = ({ title, icon }) => (
+    <View className="flex-row items-center mb-4 mt-4">
+      <View className="w-8 h-8 bg-orange-500 rounded-full items-center justify-center">
+        <Ionicons name={icon} size={18} color="white" />
+      </View>
+      <Text className="text-gray-800 font-bold text-lg ml-3">{title}</Text>
+    </View>
+  );
 
-  const formatDateDisplay = (date) => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const day = date.getDate();
-    const month = months[date.getMonth()];
-    const year = date.getFullYear();
-    return `${day} ${month} ${year}`;
-  };
-
-  const isValidTimeRange = (start, end) => {
-    const [startHour, startMinute] = start.split(':').map(Number);
-    const [endHour, endMinute] = end.split(':').map(Number);
-
-    if (startHour > endHour) return false;
-    if (startHour === endHour && startMinute >= endMinute) return false;
-    return true;
-  };
+  const BookingLegend = () => (
+    <View className="mb-5 px-3 py-4 bg-gray-50 rounded-xl">
+      <Text className="text-gray-800 font-medium mb-3">Status Ketersediaan:</Text>
+      <View className="flex-row flex-wrap">
+        <View className="flex-row items-center mr-4 mb-2">
+          <View className="w-4 h-4 bg-yellow-500 rounded mr-1" />
+          <Text className="text-gray-700 text-xs">Booked</Text>
+        </View>
+        <View className="flex-row items-center mr-4 mb-2">
+          <View className="w-4 h-4 bg-gray-200 rounded mr-1" />
+          <Text className="text-gray-700 text-xs">Past Date</Text>
+        </View>
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-white">
+      {/* HEADER */}
       <View className="bg-sky-500 shadow-md rounded-b-3xl">
         <View className="flex-row items-center space-x-3 px-6 pt-6 pb-8">
           <TouchableOpacity 
@@ -872,180 +1062,174 @@ const Bookingtransport = () => {
           </TouchableOpacity>
           <View>
             <Text className="text-white text-2xl font-bold">Book a Transport</Text>
-            <Text className="text-white text-opacity-90 mt-1">Reserve a transportation</Text>
+            <Text className="text-white text-opacity-90 mt-1">Reserve your transportation</Text>
           </View>
         </View>
       </View>
 
+      {/* LOADING UNTUK FETCH BOOKINGS */}
+      {loadingBookings && (
+        <View className="absolute inset-0 bg-black bg-opacity-30 z-10 flex items-center justify-center">
+          <View className="bg-white p-5 rounded-xl shadow-lg items-center">
+            <ActivityIndicator size="large" color="#0EA5E9" />
+            <Text className="text-gray-700 mt-3 font-medium">Loading availability data...</Text>
+          </View>
+        </View>
+      )}
+
       <ScrollView className="flex-1 px-5">
         <View className="mt-6">
           <SectionHeader title="Basic Information" icon="person-outline" />
-          
-       {/* Person in charge input */}
-<View className="mb-4">
-  <View className={`flex-row items-center bg-white border ${errors.pic ? 'border-red-500' : 'border-gray-200'} 
-    rounded-xl py-0 px-3 shadow-sm`}>
-    <MaterialIcons name="person" size={22} color="#94A3B8" />
-    <TextInput
-      className="flex-1 ml-3 text-gray-700 h-12 text-base"
-      placeholder="Enter person in charge"
-      placeholderTextColor="#94A3B8"
-      defaultValue={form.pic}
-      onChangeText={(text) => {
-        setForm(prev => ({ ...prev, pic: text }));
-        if (errors.pic) {
-          setErrors(prev => ({ ...prev, pic: null }));
-        }
-      }}
-      editable={true}
-      autoCapitalize="none"
-      autoCorrect={false}
-      blurOnSubmit={false}
-      style={{ height: 48 }}
-    />
-    {errors.pic && (
-      <Ionicons name="alert-circle" size={22} color="#EF4444" />
-    )}
-  </View>
-  {errors.pic && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.pic}</Text>}
-</View>
-
-{/* Section name input */}
-<View className="mb-4">
-  <View className={`flex-row items-center bg-white border ${errors.section ? 'border-red-500' : 'border-gray-200'} 
-    rounded-xl py-0 px-3 shadow-sm`}>
-    <MaterialIcons name="business" size={22} color="#94A3B8" />
-    <TextInput
-      className="flex-1 ml-3 text-gray-700 h-12 text-base"
-      placeholder="Enter section name"
-      placeholderTextColor="#94A3B8"
-      defaultValue={form.section}
-      onChangeText={(text) => {
-        setForm(prev => ({ ...prev, section: text }));
-        if (errors.section) {
-          setErrors(prev => ({ ...prev, section: null }));
-        }
-      }}
-      editable={true}
-      autoCapitalize="none"
-      autoCorrect={false}
-      blurOnSubmit={false}
-      returnKeyType="next"
-      style={{ height: 48 }}
-    />
-    {errors.section && (
-      <Ionicons name="alert-circle" size={22} color="#EF4444" />
-    )}
-  </View>
-  {errors.section && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.section}</Text>}
-</View>
-
-{/* Destination input */}
-<View className="mb-4">
-  <View className={`flex-row items-center bg-white border ${errors.destination ? 'border-red-500' : 'border-gray-200'} 
-    rounded-xl py-0 px-3 shadow-sm`}>
-    <MaterialIcons name="place" size={22} color="#94A3B8" />
-    <TextInput
-      className="flex-1 ml-3 text-gray-700 h-12 text-base"
-      placeholder="Enter destination"
-      placeholderTextColor="#94A3B8"
-      defaultValue={form.destination}
-      onChangeText={(text) => {
-        setForm(prev => ({ ...prev, destination: text }));
-        if (errors.destination) {
-          setErrors(prev => ({ ...prev, destination: null }));
-        }
-      }}
-      editable={true}
-      autoCapitalize="none"
-      autoCorrect={false}
-      blurOnSubmit={false}
-      returnKeyType="next"
-      style={{ height: 48 }}
-    />
-    {errors.destination && (
-      <Ionicons name="alert-circle" size={22} color="#EF4444" />
-    )}
-  </View>
-  {errors.destination && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.destination}</Text>}
-</View>
-
-{/* Description input - multiline */}
-<View className="mb-4">
-  <View className={`flex-row items-start bg-white border border-gray-200 
-    rounded-xl py-3 px-3 shadow-sm`}>
-    <MaterialIcons name="description" size={22} color="#94A3B8" style={{ marginTop: 8 }} />
-    <TextInput
-      className="flex-1 ml-3 text-gray-700 text-base py-1"
-      placeholder="Enter meeting description (optional)"
-      placeholderTextColor="#94A3B8"
-      defaultValue={form.description}
-      onChangeText={(text) => {
-        setForm(prev => ({ ...prev, description: text }));
-      }}
-      editable={true}
-      autoCapitalize="sentences"
-      autoCorrect={false}
-      multiline={true}
-      blurOnSubmit={false}
-      returnKeyType="default"
-      style={{ minHeight: 80, textAlignVertical: 'top' }}
-    />
-  </View>
-</View>
-
-          <SectionHeader title="Transport Selection" icon="car" />
-          
-          {errors.transport_id && <Text className="text-red-500 text-xs mb-2">{errors.transport_id}</Text>}
-          <View className="mb-6">
-          {transports.map((transport) => (
-            <TouchableOpacity
-              key={transport.transport_id}
-              onPress={() => {
-                setForm(prev => ({ ...prev, transport_id: transport.transport_id }));
-                if (errors.transport_id) {
-                  setErrors(prev => ({ ...prev, transport_id: null }));
-                }
-              }}
-              className={`p-4 mb-4 rounded-xl border ${
-                // Use Number() to ensure both are compared as numbers
-                Number(transport.transport_id) === Number(form.transport_id) 
-                  ? 'bg-sky-50 border-sky-500' 
-                  : 'bg-white border-gray-200'
-              } shadow-sm`}
-            >
-              <View className="flex-row items-center">
-                <Image
-                  source={{ uri: transport.image }}
-                  style={{ width: 60, height: 60, borderRadius: 10 }}
-                  className="mr-4"
-                />
-                <View className="flex-1">
-                  <Text className={`text-base ${
-                    Number(transport.transport_id) === Number(form.transport_id) 
-                      ? 'text-sky-900 font-medium' 
-                      : 'text-gray-700'
-                  }`}>
-                    {transport.vehicle_name}
-                  </Text>
-                  <Text className={`text-sm ${
-                    Number(transport.transport_id) === Number(form.transport_id) 
-                      ? 'text-sky-700' 
-                      : 'text-gray-500'
-                  }`}>
-                    Capacity: {transport.capacity}
-                  </Text>
-                </View>
-                {Number(transport.transport_id) === Number(form.transport_id) && (
-                  <Ionicons name="checkmark-circle" size={24} color="#0EA5E9" />
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
+          {/* PIC */}
+          <View className="mb-4">
+            <View className={`flex-row items-center bg-white border ${errors.pic ? 'border-red-500' : 'border-gray-200'} 
+              rounded-xl py-0 px-3 shadow-sm`}>
+              <MaterialIcons name="person" size={22} color="#94A3B8" />
+              <TextInput
+                className="flex-1 ml-3 text-gray-700 h-12 text-base"
+                placeholder="Enter person in charge"
+                placeholderTextColor="#94A3B8"
+                defaultValue={form.pic}
+                onChangeText={(text) => {
+                  setForm(prev => ({ ...prev, pic: text }));
+                  if (errors.pic) setErrors(prev => ({ ...prev, pic: null }));
+                }}
+                editable={true}
+                autoCapitalize="none"
+                autoCorrect={false}
+                blurOnSubmit={false}
+                style={{ height: 48 }}
+              />
+              {errors.pic && (
+                <Ionicons name="alert-circle" size={22} color="#EF4444" />
+              )}
+            </View>
+            {errors.pic && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.pic}</Text>}
           </View>
 
+          {/* SECTION */}
+          <View className="mb-4">
+            <View className={`flex-row items-center bg-white border ${errors.section ? 'border-red-500' : 'border-gray-200'} 
+              rounded-xl py-0 px-3 shadow-sm`}>
+              <MaterialIcons name="business" size={22} color="#94A3B8" />
+              <TextInput
+                className="flex-1 ml-3 text-gray-700 h-12 text-base"
+                placeholder="Enter section name"
+                placeholderTextColor="#94A3B8"
+                defaultValue={form.section}
+                onChangeText={(text) => {
+                  setForm(prev => ({ ...prev, section: text }));
+                  if (errors.section) setErrors(prev => ({ ...prev, section: null }));
+                }}
+                editable={true}
+                autoCapitalize="none"
+                autoCorrect={false}
+                blurOnSubmit={false}
+                style={{ height: 48 }}
+              />
+              {errors.section && (
+                <Ionicons name="alert-circle" size={22} color="#EF4444" />
+              )}
+            </View>
+            {errors.section && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.section}</Text>}
+          </View>
+
+          {/* DESTINATION */}
+          <View className="mb-4">
+            <View className={`flex-row items-center bg-white border ${errors.destination ? 'border-red-500' : 'border-gray-200'} 
+              rounded-xl py-0 px-3 shadow-sm`}>
+              <MaterialIcons name="place" size={22} color="#94A3B8" />
+              <TextInput
+                className="flex-1 ml-3 text-gray-700 h-12 text-base"
+                placeholder="Enter destination"
+                placeholderTextColor="#94A3B8"
+                defaultValue={form.destination}
+                onChangeText={(text) => {
+                  setForm(prev => ({ ...prev, destination: text }));
+                  if (errors.destination) setErrors(prev => ({ ...prev, destination: null }));
+                }}
+                editable={true}
+                autoCapitalize="none"
+                autoCorrect={false}
+                blurOnSubmit={false}
+                style={{ height: 48 }}
+              />
+              {errors.destination && (
+                <Ionicons name="alert-circle" size={22} color="#EF4444" />
+              )}
+            </View>
+            {errors.destination && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.destination}</Text>}
+          </View>
+
+          {/* DESCRIPTION (OPSIONAL) */}
+          <View className="mb-4">
+            <View className="flex-row items-start bg-white border border-gray-200 rounded-xl py-3 px-3 shadow-sm">
+              <MaterialIcons name="description" size={22} color="#94A3B8" style={{ marginTop: 8 }} />
+              <TextInput
+                className="flex-1 ml-3 text-gray-700 text-base py-1"
+                placeholder="Enter description (optional)"
+                placeholderTextColor="#94A3B8"
+                defaultValue={form.description}
+                onChangeText={(text) => setForm(prev => ({ ...prev, description: text }))}
+                editable={true}
+                autoCapitalize="sentences"
+                autoCorrect={false}
+                multiline={true}
+                blurOnSubmit={false}
+                style={{ minHeight: 80, textAlignVertical: 'top' }}
+              />
+            </View>
+          </View>
+
+          {/* TRANSPORT SELECTION */}
+          <SectionHeader title="Transport Selection" icon="car" />
+          {errors.transport_id && <Text className="text-red-500 text-xs mb-2">{errors.transport_id}</Text>}
+          <View className="mb-6">
+            {transports.map((transport) => {
+              const isSelected = Number(transport.transport_id) === Number(form.transport_id);
+              return (
+                <TouchableOpacity
+                  key={transport.transport_id}
+                  onPress={() => handleTransportSelection(transport.transport_id)}
+                  className={`p-4 mb-4 rounded-xl border ${
+                    isSelected ? 'bg-sky-50 border-sky-500' : 'bg-white border-gray-200'
+                  } shadow-sm`}
+                >
+                  <View className="flex-row items-center">
+                    <Image
+                      source={{ uri: transport.image }}
+                      style={{ width: 60, height: 60, borderRadius: 10 }}
+                      className="mr-4"
+                    />
+                    <View className="flex-1">
+                      <Text className={`text-base ${isSelected ? 'text-sky-900 font-medium' : 'text-gray-700'}`}>
+                        {transport.vehicle_name}
+                      </Text>
+                      <Text className={`text-sm ${isSelected ? 'text-sky-700' : 'text-gray-500'}`}>
+                        Capacity: {transport.capacity}
+                      </Text>
+                    </View>
+                    {isSelected && <Ionicons name="checkmark-circle" size={24} color="#0EA5E9" />}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* DATE & TIME */}
           <SectionHeader title="Date & Time" icon="calendar-outline" />
-          
+
+          {form.transport_id ? (
+            <BookingLegend />
+          ) : (
+            <View className="mb-3 bg-yellow-50 p-3 rounded-xl">
+              <Text className="text-yellow-700 text-sm text-center">
+                Pilih transport untuk melihat ketersediaan
+              </Text>
+            </View>
+          )}
+
+          {/* DATE */}
           <View className="mb-5">
             <Text className="text-gray-700 mb-2 font-medium">Booking Date *</Text>
             <TouchableOpacity
@@ -1058,6 +1242,7 @@ const Bookingtransport = () => {
             {errors.booking_date && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.booking_date}</Text>}
           </View>
 
+          {/* START TIME */}
           <View className="mb-5">
             <Text className="text-gray-700 mb-2 font-medium">Start Time *</Text>
             <TouchableOpacity
@@ -1070,6 +1255,7 @@ const Bookingtransport = () => {
             {errors.start_time && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.start_time}</Text>}
           </View>
 
+          {/* END TIME */}
           <View className="mb-5">
             <Text className="text-gray-700 mb-2 font-medium">End Time *</Text>
             <TouchableOpacity
@@ -1082,39 +1268,7 @@ const Bookingtransport = () => {
             {errors.end_time && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.end_time}</Text>}
           </View>
 
-          {/* Alert Component */}
-          <CustomAlert
-            visible={alertVisible}
-            type={alertType}
-            message={alertMessage}
-            onClose={() => setAlertVisible(false)}
-          />
-
-          {/* Date and Time Pickers Modals */}
-          <DatePickerModal
-            visible={showDatePicker}
-            onClose={() => setShowDatePicker(false)}
-            date={form.booking_date}
-            onDateChange={(date) => setForm({ ...form, booking_date: date })}
-          />
-
-          <TimePickerModal
-            visible={showStartTimePicker}
-            onClose={() => setShowStartTimePicker(false)}
-            time={form.start_time}
-            onTimeChange={(time) => setForm({ ...form, start_time: time })}
-            title="Select Start Time"
-          />
-
-          <TimePickerModal
-            visible={showEndTimePicker}
-            onClose={() => setShowEndTimePicker(false)}
-            time={form.end_time}
-            onTimeChange={(time) => setForm({ ...form, end_time: time })}
-            title="Select End Time"
-          />
-          
-          {/* Submit Button with loading state */}
+          {/* SUBMIT BUTTON */}
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={loading}
@@ -1128,8 +1282,40 @@ const Bookingtransport = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* ALERT COMPONENT */}
+      <CustomAlert
+        visible={alertVisible}
+        type={alertType}
+        message={alertMessage}
+        onClose={() => setAlertVisible(false)}
+      />
+
+      {/* DATE & TIME PICKERS MODALS */}
+      <DatePickerModal
+        visible={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        date={form.booking_date}
+        onDateChange={handleDateChange}
+      />
+
+      <TimePickerModal
+        visible={showStartTimePicker}
+        onClose={() => setShowStartTimePicker(false)}
+        time={form.start_time}
+        onTimeChange={handleStartTimeChange}
+        title="Select Start Time"
+      />
+
+      <TimePickerModal
+        visible={showEndTimePicker}
+        onClose={() => setShowEndTimePicker(false)}
+        time={form.end_time}
+        onTimeChange={handleEndTimeChange}
+        title="Select End Time"
+      />
     </SafeAreaView>
   );
 };
 
-export default Bookingtransport;
+export default BookingTransport;
