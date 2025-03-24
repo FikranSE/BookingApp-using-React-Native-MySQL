@@ -214,14 +214,14 @@ const BookingTransport = () => {
   const fetchTransportBookings = async (transportId) => {
     if (!transportId) return;
     setLoadingBookings(true);
-
+  
     try {
       const authToken = await fetchAuthToken();
       if (!authToken) {
         console.error("No auth token available");
         return;
       }
-
+  
       // Daftar endpoint transport booking (cari yang sesuai di backend)
       // Contoh saja, silakan disesuaikan:
       const possibleEndpoints = [
@@ -229,10 +229,10 @@ const BookingTransport = () => {
         `https://j9d3hc82-3001.asse.devtunnels.ms/api/transport-bookings/by-transport/${transportId}`,
         `https://j9d3hc82-3001.asse.devtunnels.ms/api/transport-bookings?transport_id=${transportId}`,
       ];
-      
+  
       let response;
       let success = false;
-
+  
       for (const endpoint of possibleEndpoints) {
         try {
           response = await axios.get(endpoint, {
@@ -246,56 +246,28 @@ const BookingTransport = () => {
           console.log(`Gagal ambil data booking di endpoint: ${endpoint}`, err.message);
         }
       }
-
+  
       if (!success) {
-        console.log("Semua endpoint gagal, gunakan mock data");
-        // Buat data booking contoh
-        const today = new Date();
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        const mockData = [
-          {
-            booking_id: transportId * 100 + 1,
-            transport_id: transportId,
-            booking_date: formatApiDate(today),
-            start_time: "08:00",
-            end_time: "10:00",
-            pic: `Mock for Transport ${transportId}`,
-            section: "Mock-Section",
-            destination: "Mock Destination"
-          },
-          {
-            booking_id: transportId * 100 + 2,
-            transport_id: transportId,
-            booking_date: formatApiDate(tomorrow),
-            start_time: "13:00",
-            end_time: "15:00",
-            pic: `Mock for Transport ${transportId}`,
-            section: "Mock-Section2",
-            destination: "Mock Destination2"
-          }
-        ];
-
-        response = { data: mockData };
-        showAlert('info', `Menggunakan data booking palsu untuk Transport ${transportId}`);
+        console.log("Semua endpoint gagal");
+        showAlert('error', 'Gagal mengambil data booking transport');
+        return;
       }
-
+  
       if (response && response.data) {
         const bookingsData = Array.isArray(response.data) 
           ? response.data 
           : (response.data.bookings ? response.data.bookings : []);
-        
+          
         // Filter booking yang memang milik transport ini
         const filteredBookings = bookingsData.filter(booking => 
           booking.transport_id === transportId
         );
         setBookings(filteredBookings);
-
+  
         // Buat peta date & time
         const dates = {};
         const times = {};
-
+  
         filteredBookings.forEach(booking => {
           if (!booking.booking_date || !booking.start_time || !booking.end_time) {
             console.log("Data booking invalid:", booking);
@@ -308,7 +280,7 @@ const BookingTransport = () => {
             start: booking.start_time,
             end: booking.end_time
           });
-
+  
           const formattedDate = booking.booking_date;
           if (!times[formattedDate]) {
             times[formattedDate] = [];
@@ -318,10 +290,10 @@ const BookingTransport = () => {
             end: booking.end_time
           });
         });
-
+  
         setBookedDates(dates);
         setBookedTimes(times);
-
+  
         console.log(`Loaded ${filteredBookings.length} bookings for transport ${transportId}`);
       }
     } catch (error) {
@@ -334,6 +306,7 @@ const BookingTransport = () => {
       setLoadingBookings(false);
     }
   };
+  
 
   // -------------------------------------------------
   // 3) FUNGSI CEK TANGGAL/WAKTU PENUH ATAU KONFLIK
@@ -341,7 +314,6 @@ const BookingTransport = () => {
   const isDateFullyBooked = (date) => {
     if (!form.transport_id) return false;
     const formattedDate = formatApiDate(date);
-    // Misal: kita anggap date "penuh" kalau >= 3 booking
     return bookedDates[formattedDate] && bookedDates[formattedDate].length >= 3;
   };
 
@@ -1039,11 +1011,19 @@ const BookingTransport = () => {
       <View className="flex-row flex-wrap">
         <View className="flex-row items-center mr-4 mb-2">
           <View className="w-4 h-4 bg-yellow-500 rounded mr-1" />
-          <Text className="text-gray-700 text-xs">Booked</Text>
+          <Text className="text-gray-700 text-xs">Partially Booked</Text>
+        </View>
+        <View className="flex-row items-center mr-4 mb-2">
+          <View className="w-4 h-4 bg-red-100 rounded mr-1" />
+          <Text className="text-gray-700 text-xs">Fully Booked</Text>
         </View>
         <View className="flex-row items-center mr-4 mb-2">
           <View className="w-4 h-4 bg-gray-200 rounded mr-1" />
           <Text className="text-gray-700 text-xs">Past Date</Text>
+        </View>
+        <View className="flex-row items-center mr-4 mb-2">
+          <View className="w-4 h-4 bg-orange-500 rounded mr-1" />
+          <Text className="text-gray-700 text-xs">Selected Date</Text>
         </View>
       </View>
     </View>

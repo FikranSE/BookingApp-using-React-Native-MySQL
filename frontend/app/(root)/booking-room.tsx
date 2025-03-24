@@ -17,7 +17,9 @@ import axios from 'axios';
 import { tokenCache } from "@/lib/auth";
 import { AUTH_TOKEN_KEY } from "@/lib/constants";
 
+// ==================
 // Custom Alert Component
+// ==================
 const CustomAlert = ({ 
   visible, 
   type = 'success',
@@ -29,7 +31,6 @@ const CustomAlert = ({
 }) => {
   const [isVisible, setIsVisible] = useState(visible);
 
-  // Default colors
   const SUCCESS_COLORS = {
     bg: 'bg-green-500',
     bgLight: 'bg-green-50',
@@ -46,7 +47,6 @@ const CustomAlert = ({
     icon: 'close-circle'
   };
   
-  // Info colors
   const INFO_COLORS = {
     bg: 'bg-sky-500',
     bgLight: 'bg-sky-50',
@@ -55,40 +55,31 @@ const CustomAlert = ({
     icon: 'information-circle'
   };
   
-  // Select the color scheme based on alert type
   const colors = type === 'success' 
     ? SUCCESS_COLORS 
     : type === 'error' 
       ? ERROR_COLORS 
       : INFO_COLORS;
 
-  // Effect to handle auto-close
   useEffect(() => {
     setIsVisible(visible);
-    
-    // Auto close timer
     if (visible && autoClose) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, duration);
-      
+      const timer = setTimeout(() => onClose(), duration);
       return () => clearTimeout(timer);
     }
   }, [visible, autoClose, duration, onClose]);
 
-  // Don't render anything if not visible
   if (!isVisible) return null;
 
   return (
     <Modal
-      transparent={true}
+      transparent
       visible={isVisible}
       animationType="fade"
       onRequestClose={onClose}
     >
       <View className="flex-1 justify-center items-center bg-black bg-opacity-20">
         <View className={`w-11/12 rounded-xl p-5 ${colors.bgLight} ${colors.border} border shadow-lg`}>
-          {/* Header */}
           <View className="flex-row justify-between items-center mb-3">
             <View className="flex-row items-center">
               <View className={`w-8 h-8 ${colors.bg} rounded-full items-center justify-center mr-3`}>
@@ -102,11 +93,7 @@ const CustomAlert = ({
               <Ionicons name="close" size={24} color="#64748B" />
             </TouchableOpacity>
           </View>
-          
-          {/* Message */}
           <Text className="text-gray-700 mb-4 pl-11">{message}</Text>
-          
-          {/* Action Button */}
           <TouchableOpacity
             onPress={onClose}
             className={`py-3 ${colors.bg} rounded-lg items-center mt-2`}
@@ -121,53 +108,109 @@ const CustomAlert = ({
   );
 };
 
+// ==================
+// Helper Functions
+// ==================
+const timeToMinutes = (timeString) => {
+  if (!timeString) return 0;
+  const [hours, minutes] = timeString.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
+const formatApiDate = (date) => {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatDateDisplay = (date) => {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const day = date.getDate();
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day} ${month} ${year}`;
+};
+
+const isDateInPast = (date) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date < today;
+};
+
+const isTimeInPast = (date, timeString) => {
+  const now = new Date();
+  const selectedDate = new Date(date);
+  if (
+    selectedDate.getDate() > now.getDate() ||
+    selectedDate.getMonth() > now.getMonth() ||
+    selectedDate.getFullYear() > now.getFullYear()
+  ) {
+    return false;
+  }
+  if (
+    selectedDate.getDate() === now.getDate() &&
+    selectedDate.getMonth() === now.getMonth() &&
+    selectedDate.getFullYear() === now.getFullYear()
+  ) {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const selectedTime = new Date();
+    selectedTime.setHours(hours, minutes, 0, 0);
+    return selectedTime < now;
+  }
+  return false;
+};
+
+const isValidTimeRange = (start, end) => {
+  const [startHour, startMinute] = start.split(':').map(Number);
+  const [endHour, endMinute] = end.split(':').map(Number);
+  if (startHour > endHour) return false;
+  if (startHour === endHour && startMinute >= endMinute) return false;
+  return true;
+};
+
+// Untuk transport atau room, cek apakah tanggal sudah penuh
+const isDateFullyBooked = (date, formRoomOrTransportId, bookedDates) => {
+  if (!formRoomOrTransportId) return false;
+  const formattedDate = formatApiDate(date);
+  return bookedDates[formattedDate] && bookedDates[formattedDate].length >= 3;
+};
+
+// Cek apakah tanggal sudah ter-booking sebagian
+const isDatePartiallyBooked = (date, formRoomOrTransportId, bookedDates) => {
+  if (!formRoomOrTransportId) return false;
+  const formattedDate = formatApiDate(date);
+  return bookedDates[formattedDate] && bookedDates[formattedDate].length > 0;
+};
+
+// Cek apakah slot waktu sudah ter-booking
+const isTimeSlotBooked = (date, time, formRoomOrTransportId, bookedTimes) => {
+  if (!formRoomOrTransportId) return false;
+  const formattedDate = formatApiDate(date);
+  if (!bookedTimes[formattedDate]) return false;
+  const [hour, minute] = time.split(':').map(Number);
+  const timeValue = hour * 60 + minute;
+  return bookedTimes[formattedDate].some(slot => {
+    const [slotStartHour, slotStartMinute] = slot.start.split(':').map(Number);
+    const [slotEndHour, slotEndMinute] = slot.end.split(':').map(Number);
+    const slotStartValue = slotStartHour * 60 + slotStartMinute;
+    const slotEndValue = slotEndHour * 60 + slotEndMinute;
+    return timeValue >= slotStartValue && timeValue < slotEndValue;
+  });
+};
+
+// ----- Fetch Auth Token -----
+const fetchAuthToken = async () => {
+  return await tokenCache.getToken(AUTH_TOKEN_KEY);
+};
+
+// ==================
+// Main Component: BookingRoom
+// ==================
 const BookingRoom = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
-  
-  // IMPORTANT: Define validation helper functions first before they're used
-  // Check if a date is in the past (before today)
-  const isDateInPast = (date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to beginning of day for date comparison only
-    return date < today;
-  };
-
-  // Check if a time is in the past for the selected date
-  const isTimeInPast = (date, timeString) => {
-    const now = new Date();
-    const selectedDate = new Date(date);
-    
-    // If date is in future, time is not in past
-    if (selectedDate.getDate() > now.getDate() || 
-        selectedDate.getMonth() > now.getMonth() || 
-        selectedDate.getFullYear() > now.getFullYear()) {
-      return false;
-    }
-    
-    // If date is today, check if time is in past
-    if (selectedDate.getDate() === now.getDate() && 
-        selectedDate.getMonth() === now.getMonth() && 
-        selectedDate.getFullYear() === now.getFullYear()) {
-      
-      const [hours, minutes] = timeString.split(':').map(Number);
-      const selectedTime = new Date();
-      selectedTime.setHours(hours, minutes, 0, 0);
-      
-      return selectedTime < now;
-    }
-    
-    return false;
-  };
-
-  const isValidTimeRange = (start, end) => {
-    const [startHour, startMinute] = start.split(':').map(Number);
-    const [endHour, endMinute] = end.split(':').map(Number);
-  
-    if (startHour > endHour) return false;
-    if (startHour === endHour && startMinute >= endMinute) return false;
-    return true;
-  };
   
   const { 
     selectedRoomId, 
@@ -175,7 +218,8 @@ const BookingRoom = () => {
     pic, 
     section, 
     description, 
-    bookAgain  } = params;
+    bookAgain  
+  } = params;
   
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -199,15 +243,13 @@ const BookingRoom = () => {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertType, setAlertType] = useState('success');
   const [alertMessage, setAlertMessage] = useState('');
-
-  // New state for booking data
+  
+  // Data untuk booking room
   const [bookings, setBookings] = useState([]);
   const [bookedDates, setBookedDates] = useState({});
   const [bookedTimes, setBookedTimes] = useState({});
   const [loadingBookings, setLoadingBookings] = useState(false);
-
-
-  // Function to show custom alert
+  
   const showAlert = (type, message) => {
     setAlertType(type);
     setAlertMessage(message);
@@ -218,140 +260,98 @@ const BookingRoom = () => {
     return await tokenCache.getToken(AUTH_TOKEN_KEY);
   };
 
-  // Function to format API date to YYYY-MM-DD
-  const formatApiDate = (date) => {
+  const formatDateForAPI = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
 
-  // Create a function to handle sequential alerts
+  const formatDateDisplay = (date) => {
+    const monthsArr = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = date.getDate();
+    const month = monthsArr[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
+
   const showSequentialAlerts = () => {
-    // First check if there's a pre-selected room to show that alert first
     if (selectedRoomId) {
-      showAlert('info', `Room "${selectedRoomName}" has been pre-selected for your booking.`);
-      
-      // If this is also a "book again" action, show that alert after a delay
+      showAlert('info', `Room "${selectedRoomName}" telah dipilih untuk booking Anda.`);
       if (bookAgain === 'true') {
         setTimeout(() => {
           showAlert(
             'info', 
-            'Please update the date and time for your new booking. All other details have been filled in for you.'
+            'Silakan perbarui tanggal dan waktu untuk booking baru Anda. Detail lainnya telah terisi.'
           );
-        }, 3000); // 3 second delay before showing the second alert
+        }, 3000);
       }
-    } 
-    // If no room is pre-selected but it's a "book again" action
-    else if (bookAgain === 'true') {
-      showAlert(
-        'info', 
-        'Please update the date and time for your new booking. All other details have been filled in for you.'
-      );
+    } else if (bookAgain === 'true') {
+      showAlert('info', 'Silakan perbarui tanggal dan waktu untuk booking baru Anda. Detail lainnya telah terisi.');
     }
   };
 
-  // New function to fetch bookings for selected room with per-room data storage
   const fetchRoomBookings = async (roomId) => {
     if (!roomId) return;
-    
     setLoadingBookings(true);
+  
     try {
       const authToken = await fetchAuthToken();
       if (!authToken) {
         console.error("No auth token available");
         return;
       }
-
-      // Try different possible endpoint structures
-      let response;
-      let success = false;
-      
-      // List of possible endpoint formats to try
+  
+      // Daftar endpoint booking room (cari yang sesuai di backend)
       const possibleEndpoints = [
         `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings/room/${roomId}`,
         `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings/by-room/${roomId}`,
         `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings?room_id=${roomId}`,
-        `https://j9d3hc82-3001.asse.devtunnels.ms/api/bookings/room/${roomId}`,
       ];
-      
-      // Try each endpoint until one works
+  
+      let response;
+      let success = false;
+  
       for (const endpoint of possibleEndpoints) {
         try {
-          console.log(`Trying endpoint: ${endpoint}`);
           response = await axios.get(endpoint, {
             headers: { 'Authorization': `Bearer ${authToken}` },
           });
-          
           if (response.status >= 200 && response.status < 300) {
-            console.log(`Successful response from: ${endpoint}`);
             success = true;
-            break;
+            break; 
           }
-        } catch (endpointError) {
-          console.log(`Failed with endpoint ${endpoint}: ${endpointError.message}`);
-          // Continue to next endpoint
+        } catch (err) {
+          console.log(`Failed to fetch booking data at endpoint: ${endpoint}`, err.message);
         }
       }
-      
-      // If all endpoints failed, create dummy data for development
+  
       if (!success) {
-        console.log("All endpoints failed, using mock data for development");
-        
-        // Create sample booking data for development - keep this minimal to avoid conflicts
-        const today = new Date();
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        
-        const mockData = [
-          {
-            booking_id: roomId * 100 + 1, // Make unique per room
-            room_id: roomId,
-            booking_date: formatApiDate(today),
-            start_time: "09:00",
-            end_time: "10:30",
-            pic: `Mock User for Room ${roomId}`,
-            section: "Development"
-          },
-          {
-            booking_id: roomId * 100 + 2, // Make unique per room
-            room_id: roomId,
-            booking_date: formatApiDate(tomorrow),
-            start_time: "13:00",
-            end_time: "15:00",
-            pic: `Mock User for Room ${roomId}`,
-            section: "Marketing"
-          }
-        ];
-        
-        response = { data: mockData };
-        showAlert('info', `Using sample booking data for Room ${roomId}. API endpoint not available.`);
+        console.log("All endpoints failed");
+        showAlert('error', 'Failed to retrieve room booking data');
+        return;
       }
-
-      if (response.data) {
-        // Make sure we're dealing with an array
-        const bookingsData = Array.isArray(response.data) ? response.data : 
-                            (response.data.bookings ? response.data.bookings : []);
-        
-        // Filter to ensure we only have bookings for THIS room
-        const filteredBookings = bookingsData.filter(booking => 
-          booking.room_id === roomId || booking.roomId === roomId
+  
+      if (response && response.data) {
+        const bookingsData = Array.isArray(response.data)
+          ? response.data
+          : (response.data.bookings ? response.data.bookings : []);
+  
+        // Filter bookings that are relevant to the selected room
+        const filteredBookings = bookingsData.filter(booking =>
+          booking.room_id === roomId
         );
-        
         setBookings(filteredBookings);
-        
-        // Process bookings to create maps of booked dates and times
+  
+        // Create date and time mapping
         const dates = {};
         const times = {};
-        
+  
         filteredBookings.forEach(booking => {
-          // Check if booking has the expected properties
           if (!booking.booking_date || !booking.start_time || !booking.end_time) {
-            console.log("Skipping invalid booking data:", booking);
+            console.log("Invalid booking data:", booking);
             return;
           }
-          
-          // Store by date
           if (!dates[booking.booking_date]) {
             dates[booking.booking_date] = [];
           }
@@ -359,8 +359,7 @@ const BookingRoom = () => {
             start: booking.start_time,
             end: booking.end_time
           });
-          
-          // Store by formatted date for easier lookup
+  
           const formattedDate = booking.booking_date;
           if (!times[formattedDate]) {
             times[formattedDate] = [];
@@ -370,17 +369,15 @@ const BookingRoom = () => {
             end: booking.end_time
           });
         });
-        
+  
         setBookedDates(dates);
         setBookedTimes(times);
-        
+  
         console.log(`Loaded ${filteredBookings.length} bookings for room ${roomId}`);
       }
     } catch (error) {
       console.error("Error fetching room bookings:", error);
-      showAlert('error', 'Failed to load booking information. Using default availability data.');
-      
-      // Set empty booking data for a graceful fallback
+      showAlert('error', 'Failed to load room booking data');
       setBookings([]);
       setBookedDates({});
       setBookedTimes({});
@@ -388,8 +385,8 @@ const BookingRoom = () => {
       setLoadingBookings(false);
     }
   };
+  
 
-  // Replace the separate useEffects with a combined approach
   useEffect(() => {
     const fetchRooms = async () => {
       try {
@@ -399,187 +396,88 @@ const BookingRoom = () => {
           router.push('/(auth)/sign-in');
           return;
         }
-
         const response = await axios.get('https://j9d3hc82-3001.asse.devtunnels.ms/api/rooms', {
           headers: { 'Authorization': `Bearer ${authToken}` },
         });
-
         if (response.data && Array.isArray(response.data)) {
           setRooms(response.data);
-          
-          // After rooms are loaded, show the sequential alerts
           showSequentialAlerts();
         } else {
           showAlert('error', 'Invalid room data received.');
         }
       } catch (error) {
         console.error('Error fetching rooms:', error);
-        showAlert('error', 'Failed to load rooms. Please try again.');
+        showAlert('error', 'Gagal mengambil data room. Silakan coba lagi.');
       }
     };
-    
     fetchRooms();
-    
-    // Remove the separate bookAgain useEffect since we're handling it in showSequentialAlerts
   }, []);
-
-  // Function to check if a date is already fully booked for the current room
-  const isDateFullyBooked = (date) => {
-    // If no room is selected, nothing can be booked
-    if (!form.room_id) return false;
-    
-    // For demo purposes, let's consider a date fully booked if it has 3+ bookings
-    const formattedDate = formatApiDate(date);
-    return bookedDates[formattedDate] && bookedDates[formattedDate].length >= 3;
-  };
-
-  // Function to check if a date has any bookings for the current room
-  const isDatePartiallyBooked = (date) => {
-    // If no room is selected, nothing can be booked
-    if (!form.room_id) return false;
-    
-    const formattedDate = formatApiDate(date);
-    return bookedDates[formattedDate] && bookedDates[formattedDate].length > 0;
-  };
-
-  // Function to check if a specific time slot is booked for the current room
-  const isTimeSlotBooked = (date, time) => {
-    // If no room is selected, nothing can be booked
-    if (!form.room_id) return false;
-    
-    const formattedDate = formatApiDate(date);
-    
-    // If no bookings exist for this date in the current room, it's available
-    if (!bookedTimes[formattedDate]) return false;
-    
-    const [hour, minute] = time.split(':').map(Number);
-    const timeValue = hour * 60 + minute;  // Convert to minutes for comparison
-    
-    // Check if this time falls within any booked slots for the current room
-    return bookedTimes[formattedDate].some(slot => {
-      const [startHour, startMinute] = slot.start.split(':').map(Number);
-      const [endHour, endMinute] = slot.end.split(':').map(Number);
-      
-      const slotStartValue = startHour * 60 + startMinute;
-      const slotEndValue = endHour * 60 + endMinute;
-      
-      // Check if the time is within this booked slot
-      return timeValue >= slotStartValue && timeValue < slotEndValue;
-    });
-  };
 
   const handleDateChange = (date) => {
     setForm({ ...form, booking_date: date });
-    
-    // Clear any existing date errors
     if (errors.booking_date) {
       setErrors(prev => ({ ...prev, booking_date: null }));
     }
-    
-    // If the date changes, we should check if the times need to be updated
     if (isDateInPast(date)) {
-      showAlert('error', 'Cannot book for a past date');
+      showAlert('error', 'Tidak dapat memilih tanggal yang sudah lewat');
       return;
-    }
-    
-    // If we're changing to today's date, check if the times are valid
-    const today = new Date();
-    const isToday = 
-      date.getDate() === today.getDate() && 
-      date.getMonth() === today.getMonth() && 
-      date.getFullYear() === today.getFullYear();
-    
-    if (isToday && form.start_time) {
-      if (isTimeInPast(date, form.start_time)) {
-        // Start time is now in the past, clear it
-        setForm(prev => ({ ...prev, start_time: '', end_time: '' }));
-        showAlert('info', 'Time has been cleared as previous selection is now in the past');
-      } else if (form.end_time && !isValidTimeRange(form.start_time, form.end_time)) {
-        // End time is before start time, clear it
-        setForm(prev => ({ ...prev, end_time: '' }));
-      }
     }
   };
 
   const handleStartTimeChange = (time) => {
     if (isTimeInPast(form.booking_date, time)) {
-      showAlert('error', 'Cannot select a time that has already passed');
+      showAlert('error', 'Tidak dapat memilih waktu yang sudah lewat');
       return;
     }
-    
-    // Check if this time slot is already booked FOR THIS ROOM
-    if (form.room_id && isTimeSlotBooked(form.booking_date, time)) {
+    if (form.room_id && isTimeSlotBooked(form.booking_date, time, form.room_id, bookedTimes)) {
       const roomName = rooms.find(r => r.room_id === form.room_id)?.room_name || `Room ${form.room_id}`;
-      showAlert('error', `This time slot is already booked for ${roomName}. Please select another time.`);
+      showAlert('error', `Slot waktu ini sudah dibooking untuk ${roomName}. Silakan pilih waktu lain.`);
       return;
     }
-    
     setForm(prev => ({ ...prev, start_time: time }));
-    
-    // Clear any errors related to start time
     if (errors.start_time) {
       setErrors(prev => ({ ...prev, start_time: null }));
     }
-    
-    // If end time exists but is now invalid, clear it
     if (form.end_time && !isValidTimeRange(time, form.end_time)) {
       setForm(prev => ({ ...prev, end_time: '' }));
-      showAlert('info', 'End time has been cleared as it must be after the new start time');
+      showAlert('info', 'End time dikosongkan karena harus setelah start time baru');
     }
   };
 
   const handleEndTimeChange = (time) => {
     if (!form.start_time) {
-      showAlert('error', 'Please select a start time first');
+      showAlert('error', 'Pilih start time terlebih dahulu');
       return;
     }
-    
     if (!isValidTimeRange(form.start_time, time)) {
-      showAlert('error', 'End time must be after start time');
+      showAlert('error', 'End time harus setelah start time');
       return;
     }
-    
-    // Check if any part of this time range overlaps with existing bookings FOR THIS ROOM
     if (form.room_id) {
       const formattedDate = formatApiDate(form.booking_date);
       if (bookedTimes[formattedDate]) {
-        const [startHour, startMinute] = form.start_time.split(':').map(Number);
-        const [endHour, endMinute] = time.split(':').map(Number);
-        
-        const newStartValue = startHour * 60 + startMinute;
-        const newEndValue = endHour * 60 + endMinute;
-        
+        const [sh, sm] = form.start_time.split(':').map(Number);
+        const [eh, em] = time.split(':').map(Number);
+        const newStartValue = sh * 60 + sm;
+        const newEndValue = eh * 60 + em;
         const hasOverlap = bookedTimes[formattedDate].some(slot => {
-          const [slotStartHour, slotStartMinute] = slot.start.split(':').map(Number);
-          const [slotEndHour, slotEndMinute] = slot.end.split(':').map(Number);
-          
-          const slotStartValue = slotStartHour * 60 + slotStartMinute;
-          const slotEndValue = slotEndHour * 60 + slotEndMinute;
-          
-          // Check for any overlap between the two time ranges
-          const overlap = (
-            (newStartValue >= slotStartValue && newStartValue < slotEndValue) || // Start time is within existing booking
-            (newEndValue > slotStartValue && newEndValue <= slotEndValue) || // End time is within existing booking
-            (newStartValue <= slotStartValue && newEndValue >= slotEndValue) // New booking completely contains existing booking
+          const [slotSh, slotSm] = slot.start.split(':').map(Number);
+          const [slotEh, slotEm] = slot.end.split(':').map(Number);
+          const slotStartValue = slotSh * 60 + slotSm;
+          const slotEndValue = slotEh * 60 + slotEm;
+          return (
+            (newStartValue >= slotStartValue && newStartValue < slotEndValue) ||
+            (newEndValue > slotStartValue && newEndValue <= slotEndValue) ||
+            (newStartValue <= slotStartValue && newEndValue >= slotEndValue)
           );
-          
-          if (overlap) {
-            console.log(`Time slot conflict: ${form.start_time}-${time} conflicts with ${slot.start}-${slot.end}`);
-          }
-          
-          return overlap;
         });
-        
         if (hasOverlap) {
-          showAlert('error', `This time range overlaps with an existing booking for Room ${rooms.find(r => r.room_id === form.room_id)?.room_name || form.room_id}. Please select a different time.`);
+          showAlert('error', 'Rentang waktu ini tumpang tindih dengan booking yang sudah ada. Pilih slot lain.');
           return;
         }
       }
     }
-    
     setForm(prev => ({ ...prev, end_time: time }));
-    
-    // Clear any errors related to end time
     if (errors.end_time) {
       setErrors(prev => ({ ...prev, end_time: null }));
     }
@@ -587,36 +485,28 @@ const BookingRoom = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    
     if (!form.pic.trim()) {
       newErrors.pic = 'PIC name is required';
     }
-    
     if (!form.section.trim()) {
       newErrors.section = 'Section is required';
     }
-    
-    // Date validation
     if (isDateInPast(form.booking_date)) {
       newErrors.booking_date = 'Cannot book for a past date';
     }
-    
     if (!form.start_time) {
       newErrors.start_time = 'Start time is required';
     } else if (isTimeInPast(form.booking_date, form.start_time)) {
       newErrors.start_time = 'Cannot book for a time that has already passed';
     }
-    
     if (!form.end_time) {
       newErrors.end_time = 'End time is required';
     } else if (form.start_time && !isValidTimeRange(form.start_time, form.end_time)) {
       newErrors.end_time = 'End time must be after start time';
     }
-
     if (form.room_id === null) {
       newErrors.room_id = 'Please select a room';
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -624,33 +514,21 @@ const BookingRoom = () => {
   const handleSubmit = async () => {
     if (!validateForm()) {
       const firstError = Object.values(errors)[0];
-      showAlert('error', firstError);
+      if (firstError) showAlert('error', firstError);
       return;
     }
-
     setLoading(true);
-
     try {
       const authToken = await fetchAuthToken();
       if (!authToken) {
         showAlert('error', 'Not authenticated');
         return;
       }
-
-      // Format the date to the expected format for the API
-      const formattedDate = formatDateForAPI(form.booking_date);
-      
-      const bookingData = {
-        ...form,
-        booking_date: formattedDate
-      };
-
+      const formattedDate = formatApiDate(form.booking_date);
+      const bookingData = { ...form, booking_date: formattedDate };
       const response = await axios.post('https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings', bookingData, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
+        headers: { 'Authorization': `Bearer ${authToken}` },
       });
-
       if (response.status === 201) {
         showAlert('success', 'Booking submitted successfully');
         setTimeout(() => {
@@ -671,53 +549,29 @@ const BookingRoom = () => {
     }
   };
 
-  const formatDateForAPI = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const formatDateDisplay = (date) => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const day = date.getDate();
-    const month = months[date.getMonth()];
-    const year = date.getFullYear();
-    return `${day} ${month} ${year}`;
-  };
-
-  // Clear booking data when changing rooms
   const handleRoomSelection = (roomId) => {
-    // First, clear any existing booking data from previous room
     setBookings([]);
     setBookedDates({});
     setBookedTimes({});
-    
-    // Then update the form with new room ID
     setForm(prev => ({ ...prev, room_id: roomId }));
-    
-    // Clear any room selection errors
     if (errors.room_id) {
       setErrors(prev => ({ ...prev, room_id: null }));
     }
-    
-    // Fetch bookings for this room
     fetchRoomBookings(roomId);
   };
 
-  const DatePickerModal = ({ visible, onClose, date, onDateChange }) => {
+  // ----- DatePicker Modal Component dengan Legend -----
+  const DatePickerModalComponent = ({ visible, onClose, date, onDateChange }) => {
     const today = new Date();
     const [selectedYear, setSelectedYear] = useState(today.getFullYear());
     const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
     const [selectedDay, setSelectedDay] = useState(today.getDate());
-    const [activeTab, setActiveTab] = useState('day'); // 'day', 'month', or 'year'
-    
+
     useEffect(() => {
       if (date) {
         try {
           const dateObj = new Date(date);
           if (!isNaN(dateObj.getTime())) {
-            // If date is in the past, use today's date
             if (isDateInPast(dateObj)) {
               setSelectedYear(today.getFullYear());
               setSelectedMonth(today.getMonth());
@@ -733,100 +587,77 @@ const BookingRoom = () => {
         }
       }
     }, [date, visible]);
-    
-    const months = [
+
+    const monthsArr = [
       'January', 'February', 'March', 'April', 'May', 'June', 
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
-    
-    // Generate 5 years starting from current year
-    const years = Array.from({ length: 5 }, (_, i) => today.getFullYear() + i);
-    
-    const getDaysInMonth = (year, month) => {
-      return new Date(year, month + 1, 0).getDate();
-    };
-    
+
+    const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+
     const handleConfirm = () => {
       const selectedDate = new Date(selectedYear, selectedMonth, selectedDay);
       onDateChange(selectedDate);
       onClose();
     };
-    
-    // Calculate days of week header (Sun, Mon, Tue, etc.)
+
     const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-    
-    // Function to render the calendar grid with proper week alignment
+
     const renderCalendarGrid = () => {
       const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
       const firstDayOfMonth = new Date(selectedYear, selectedMonth, 1).getDay();
-      
-      // Create an array for all the day cells, including empty ones for proper alignment
       const days = [];
-      
       for (let i = 0; i < firstDayOfMonth; i++) {
         days.push(<View key={`empty-${i}`} className="w-10 h-10 m-1" />);
       }
-      
-      // Add cells for actual days
       for (let i = 1; i <= daysInMonth; i++) {
-        // Check if this date would be in the past
         const currentDate = new Date(selectedYear, selectedMonth, i);
         const isPastDate = isDateInPast(currentDate);
-        
-        // Check if date has bookings
-        const isFullyBooked = isDateFullyBooked(currentDate);
-        const isPartiallyBooked = isDatePartiallyBooked(currentDate);
-        
-        // Determine background color based on booking status
+        const fullyBooked = isDateFullyBooked(currentDate, form.room_id, bookedDates);
+        const partiallyBooked = isDatePartiallyBooked(currentDate, form.room_id, bookedDates);
         let bgColor = 'bg-gray-100';
         let textColor = 'text-gray-800';
-        
         if (selectedDay === i) {
           bgColor = 'bg-orange-500';
           textColor = 'text-white';
         } else if (isPastDate) {
           bgColor = 'bg-gray-200';
           textColor = 'text-gray-400';
-        } else if (isFullyBooked) {
+        } else if (fullyBooked) {
           bgColor = 'bg-red-100';
           textColor = 'text-red-800';
-        } else if (isPartiallyBooked) {
+        } else if (partiallyBooked) {
           bgColor = 'bg-yellow-100';
           textColor = 'text-yellow-800';
         }
-        
         days.push(
           <TouchableOpacity 
             key={i}
             className={`w-10 h-10 items-center justify-center rounded-full m-1 ${bgColor}`}
             onPress={() => {
-              // Only allow selection of today or future dates that aren't fully booked
-              if (!isPastDate && !isFullyBooked) {
+              if (!isPastDate && !fullyBooked) {
                 setSelectedDay(i);
               } else if (isPastDate) {
-                showAlert('error', 'Cannot select a past date');
-              } else if (isFullyBooked) {
-                showAlert('error', 'This date is fully booked. Please select another date.');
+                showAlert('error', 'Tidak dapat memilih tanggal yang sudah lewat');
+              } else if (fullyBooked) {
+                showAlert('error', 'Tanggal ini sudah penuh ter-booking');
               }
             }}
-            disabled={isPastDate || isFullyBooked}
+            disabled={isPastDate || fullyBooked}
           >
             <Text className={textColor}>{i}</Text>
-            
-            {/* Small indicator dot for partially booked dates */}
-            {isPartiallyBooked && !isFullyBooked && (
+            {partiallyBooked && !fullyBooked && (
               <View className="absolute bottom-0 w-1.5 h-1.5 bg-yellow-500 rounded-full" />
             )}
           </TouchableOpacity>
         );
       }
-      
       return days;
     };
 
     return (
       <Modal
-        transparent={true}
+        transparent
         visible={visible}
         animationType="fade"
         onRequestClose={onClose}
@@ -839,8 +670,21 @@ const BookingRoom = () => {
                 <Ionicons name="close" size={24} color="#64748B" />
               </TouchableOpacity>
             </View>
-            
-            {/* Month and Year Selector */}
+            {/* Legend: Sinkronisasi dengan warna pada modal select date */}
+            <View className="flex-row justify-center items-center mb-4 bg-gray-50 p-2 rounded-lg">
+              <View className="flex-row items-center mr-4">
+                <View className="w-3 h-3 bg-red-100 rounded-full mr-2" />
+                <Text className="text-gray-600 text-xs">Fully Booked</Text>
+              </View>
+              <View className="flex-row items-center mr-4">
+                <View className="w-3 h-3 bg-yellow-100 rounded-full mr-2" />
+                <Text className="text-gray-600 text-xs">Partially Booked</Text>
+              </View>
+              <View className="flex-row items-center">
+                <View className="w-3 h-3 bg-orange-500 rounded-full mr-2" />
+                <Text className="text-gray-600 text-xs">Selected Date</Text>
+              </View>
+            </View>
             <View className="flex-row justify-between items-center mb-4">
               <TouchableOpacity
                 onPress={() => {
@@ -855,11 +699,9 @@ const BookingRoom = () => {
               >
                 <Ionicons name="chevron-back" size={24} color="#64748B" />
               </TouchableOpacity>
-              
               <Text className="text-gray-800 font-medium text-lg">
-                {months[selectedMonth]} {selectedYear}
+                {monthsArr[selectedMonth]} {selectedYear}
               </Text>
-              
               <TouchableOpacity
                 onPress={() => {
                   if (selectedMonth === 11) {
@@ -874,8 +716,6 @@ const BookingRoom = () => {
                 <Ionicons name="chevron-forward" size={24} color="#64748B" />
               </TouchableOpacity>
             </View>
-            
-            {/* Weekday headers */}
             <View className="flex-row justify-around mb-2">
               {weekDays.map(day => (
                 <Text key={day} className="w-10 text-center font-medium text-gray-500">
@@ -883,12 +723,9 @@ const BookingRoom = () => {
                 </Text>
               ))}
             </View>
-            
-            {/* Calendar grid */}
             <View className="flex-row flex-wrap justify-around">
               {renderCalendarGrid()}
             </View>
-            
             <View className="mt-4 flex-row">
               <TouchableOpacity
                 onPress={onClose}
@@ -896,7 +733,6 @@ const BookingRoom = () => {
               >
                 <Text className="text-gray-800 font-medium">Cancel</Text>
               </TouchableOpacity>
-              
               <TouchableOpacity
                 onPress={handleConfirm}
                 className="flex-1 py-3 bg-orange-500 rounded-lg items-center ml-2"
@@ -909,15 +745,14 @@ const BookingRoom = () => {
       </Modal>
     );
   };
-  
-  // Improved time picker with grid-based selection
-  const TimePickerModal = ({ visible, onClose, time, onTimeChange, title }) => {
+
+  // ----- TimePicker Modal Component -----
+  const TimePickerModalComponent = ({ visible, onClose, time, onTimeChange, title }) => {
     const now = new Date();
     const [hours, setHours] = useState('09');
     const [minutes, setMinutes] = useState('00');
-    const [showHours, setShowHours] = useState(true); // Toggle between hours and minutes view
+    const [showHours, setShowHours] = useState(true);
     
-    // Check if booking date is today
     const isToday = () => {
       const today = new Date();
       const bookingDate = form.booking_date;
@@ -934,7 +769,6 @@ const BookingRoom = () => {
         setHours(h || '09');
         setMinutes(m || '00');
       } else {
-        // Default to current time + 1 hour, rounded to nearest hour
         const defaultHour = (now.getHours() + 1).toString().padStart(2, '0');
         setHours(defaultHour);
         setMinutes('00');
@@ -943,18 +777,14 @@ const BookingRoom = () => {
     
     const handleConfirm = () => {
       const newTime = `${hours}:${minutes}`;
-      
-      // If booking for today, verify the time is not in the past
       if (isToday()) {
         const selectedTime = new Date();
         selectedTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-        
         if (selectedTime < now) {
           showAlert('error', 'Cannot select a time that has already passed');
           return;
         }
       }
-      
       onTimeChange(newTime);
       onClose();
     };
@@ -962,11 +792,9 @@ const BookingRoom = () => {
     const renderTimeGrid = (isHours) => {
       const currentHour = now.getHours();
       const currentMinute = now.getMinutes();
-      
       const items = isHours 
         ? Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'))
         : Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
-      
       const selectedValue = isHours ? hours : minutes;
       
       return (
@@ -975,30 +803,36 @@ const BookingRoom = () => {
           numColumns={6}
           keyExtractor={(item) => item}
           renderItem={({ item }) => {
-            // Check if this time is in the past (for today's bookings only)
+            let isBooked = false;
+            if (isHours && form.booking_date) {
+              isBooked = isTimeSlotBooked(form.booking_date, `${item}:00`, form.room_id, bookedTimes);
+            }
             const isPastTime = isToday() && (
               (isHours && parseInt(item) < currentHour) || 
-              (isHours && parseInt(item) === currentHour && !showHours && parseInt(minutes) < currentMinute) ||
               (!isHours && parseInt(hours) === currentHour && parseInt(item) < currentMinute)
             );
-            
+            let bgColor = 'bg-gray-100';
+            let textColor = 'text-gray-800';
+            if (selectedValue === item) {
+              bgColor = 'bg-orange-500';
+              textColor = 'text-white';
+            } else if (isPastTime) {
+              bgColor = 'bg-gray-200';
+              textColor = 'text-gray-400';
+            } else if (isBooked) {
+              bgColor = 'bg-red-100';
+              textColor = 'text-red-800';
+            }
             return (
               <TouchableOpacity
-                className={`w-10 h-10 items-center justify-center m-1 rounded-lg ${
-                  selectedValue === item 
-                    ? 'bg-orange-500' 
-                    : isPastTime
-                      ? 'bg-gray-200'
-                      : 'bg-gray-100'
-                }`}
+                className={`w-10 h-10 items-center justify-center m-1 rounded-lg ${bgColor}`}
                 onPress={() => {
                   if (!isPastTime) {
                     if (isHours) {
                       setHours(item);
-                      // If selecting current hour on today, ensure minutes are not in past
                       if (isToday() && parseInt(item) === currentHour) {
-                        const newMinutes = Math.max(currentMinute, parseInt(minutes)).toString().padStart(2, '0');
-                        setMinutes(newMinutes);
+                        const newMins = Math.max(currentMinute, parseInt(minutes)).toString().padStart(2, '0');
+                        setMinutes(newMins);
                       }
                     } else {
                       setMinutes(item);
@@ -1009,13 +843,7 @@ const BookingRoom = () => {
                 }}
                 disabled={isPastTime}
               >
-                <Text className={`${
-                  selectedValue === item 
-                    ? 'text-white' 
-                    : isPastTime
-                      ? 'text-gray-400'
-                      : 'text-gray-800'
-                } font-medium text-lg`}>{item}</Text>
+                <Text className={`${textColor} font-medium text-lg`}>{item}</Text>
               </TouchableOpacity>
             );
           }}
@@ -1027,7 +855,7 @@ const BookingRoom = () => {
     return (
       <Modal
         animationType="fade"
-        transparent={true}
+        transparent
         visible={visible}
         onRequestClose={onClose}
       >
@@ -1039,15 +867,13 @@ const BookingRoom = () => {
                 <Ionicons name="close" size={24} color="#64748B" />
               </TouchableOpacity>
             </View>
-            
             {isToday() && (
               <View className="mb-2 bg-sky-50 p-2 rounded-lg">
                 <Text className="text-sky-700 text-sm text-center">
-                  Booking for today - times in the past are disabled
+                  Booking hari ini - waktu yang sudah lewat nonaktif
                 </Text>
               </View>
             )}
-            
             <View className="flex-row justify-center items-center py-3 mb-2">
               <TouchableOpacity
                 onPress={() => setShowHours(true)}
@@ -1055,7 +881,6 @@ const BookingRoom = () => {
               >
                 <Text className={showHours ? 'text-white font-medium' : 'text-gray-700'}>Hours</Text>
               </TouchableOpacity>
-              
               <TouchableOpacity
                 onPress={() => setShowHours(false)}
                 className={`px-5 py-2 rounded-lg ml-2 ${!showHours ? 'bg-sky-500' : 'bg-gray-200'}`}
@@ -1063,29 +888,18 @@ const BookingRoom = () => {
                 <Text className={!showHours ? 'text-white font-medium' : 'text-gray-700'}>Minutes</Text>
               </TouchableOpacity>
             </View>
-            
             <View className="flex-row justify-center items-center mb-3">
-              <TouchableOpacity
-                onPress={() => setShowHours(true)}
-                className="items-center"
-              >
+              <TouchableOpacity onPress={() => setShowHours(true)} className="items-center">
                 <Text className={`text-2xl font-medium ${showHours ? 'text-sky-500' : 'text-gray-800'}`}>{hours}</Text>
               </TouchableOpacity>
-              
               <Text className="text-2xl font-bold text-gray-800 mx-2">:</Text>
-              
-              <TouchableOpacity
-                onPress={() => setShowHours(false)}
-                className="items-center"
-              >
+              <TouchableOpacity onPress={() => setShowHours(false)} className="items-center">
                 <Text className={`text-2xl font-medium ${!showHours ? 'text-sky-500' : 'text-gray-800'}`}>{minutes}</Text>
               </TouchableOpacity>
             </View>
-            
             <View className="border border-gray-200 rounded-lg p-2 bg-white max-h-56">
               {renderTimeGrid(showHours)}
             </View>
-            
             <TouchableOpacity
               onPress={handleConfirm}
               className="mt-4 py-3 bg-orange-500 rounded-xl items-center"
@@ -1097,7 +911,7 @@ const BookingRoom = () => {
       </Modal>
     );
   };
-  
+
   const SectionHeader = ({ title, icon }) => (
     <View className="flex-row items-center mb-4 mt-4">
       <View className="w-8 h-8 bg-orange-500 rounded-full items-center justify-center">
@@ -1106,18 +920,26 @@ const BookingRoom = () => {
       <Text className="text-gray-800 font-bold text-lg ml-3">{title}</Text>
     </View>
   );
-  
-  // Simplified BookingLegend component with only 2 statuses in Indonesian
+
+  // ----- BookingLegend: Legend disinkronkan dengan warna di modal select date & time -----
   const BookingLegend = () => (
     <View className="mb-5 px-3 py-4 bg-gray-50 rounded-xl">
       <Text className="text-gray-800 font-medium mb-3">Status Ketersediaan:</Text>
       <View className="flex-row flex-wrap">
         <View className="flex-row items-center mr-4 mb-2">
-          <View className="w-4 h-4 bg-yellow-500 rounded mr-1" />
-          <Text className="text-gray-700 text-xs">Booked</Text>
+          <View className="w-4 h-4 bg-orange-500 rounded-full mr-1" />
+          <Text className="text-gray-700 text-xs">Selected Date</Text>
         </View>
         <View className="flex-row items-center mr-4 mb-2">
-          <View className="w-4 h-4 bg-gray-200 rounded mr-1" />
+          <View className="w-4 h-4 bg-red-100 rounded-full mr-1" />
+          <Text className="text-gray-700 text-xs">Fully Booked</Text>
+        </View>
+        <View className="flex-row items-center mr-4 mb-2">
+          <View className="w-4 h-4 bg-yellow-100 rounded-full mr-1" />
+          <Text className="text-gray-700 text-xs">Partially Booked</Text>
+        </View>
+        <View className="flex-row items-center mr-4 mb-2">
+          <View className="w-4 h-4 bg-gray-200 rounded-full mr-1" />
           <Text className="text-gray-700 text-xs">Past Date</Text>
         </View>
       </View>
@@ -1141,7 +963,6 @@ const BookingRoom = () => {
         </View>
       </View>
 
-      {/* Loading indicator when fetching bookings */}
       {loadingBookings && (
         <View className="absolute inset-0 bg-black bg-opacity-30 z-10 flex items-center justify-center">
           <View className="bg-white p-5 rounded-xl shadow-lg items-center">
@@ -1154,10 +975,8 @@ const BookingRoom = () => {
       <ScrollView className="flex-1 px-5">
         <View className="mt-6">
           <SectionHeader title="Basic Information" icon="person-outline" />
-          
           <View className="mb-4">
-            <View className={`flex-row items-center bg-white border ${errors.pic ? 'border-red-500' : 'border-gray-200'} 
-              rounded-xl py-0 px-3 shadow-sm`}>
+            <View className={`flex-row items-center bg-white border ${errors.pic ? 'border-red-500' : 'border-gray-200'} rounded-xl py-0 px-3 shadow-sm`}>
               <MaterialIcons name="person" size={22} color="#94A3B8" />
               <TextInput
                 className="flex-1 ml-3 text-gray-700 h-12 text-base"
@@ -1165,14 +984,9 @@ const BookingRoom = () => {
                 placeholderTextColor="#94A3B8"
                 defaultValue={pic || ''}
                 onChangeText={(text) => {
-                  console.log('PIC changed:', text);
                   setForm(prev => ({ ...prev, pic: text }));
                   if (errors.pic) setErrors(prev => ({ ...prev, pic: null }));
                 }}
-                editable={true}
-                autoCapitalize="none"
-                autoCorrect={false}
-                blurOnSubmit={false}
                 style={{ height: 48 }}
               />
               {errors.pic && (
@@ -1183,8 +997,7 @@ const BookingRoom = () => {
           </View>
 
           <View className="mb-4">
-            <View className={`flex-row items-center bg-white border ${errors.section ? 'border-red-500' : 'border-gray-200'} 
-              rounded-xl py-0 px-3 shadow-sm`}>
+            <View className={`flex-row items-center bg-white border ${errors.section ? 'border-red-500' : 'border-gray-200'} rounded-xl py-0 px-3 shadow-sm`}>
               <MaterialIcons name="business" size={22} color="#94A3B8" />
               <TextInput
                 className="flex-1 ml-3 text-gray-700 h-12 text-base"
@@ -1192,14 +1005,9 @@ const BookingRoom = () => {
                 placeholderTextColor="#94A3B8"
                 defaultValue={section || ''}
                 onChangeText={(text) => {
-                  console.log('Section changed:', text);
                   setForm(prev => ({ ...prev, section: text }));
                   if (errors.section) setErrors(prev => ({ ...prev, section: null }));
                 }}
-                editable={true}
-                autoCapitalize="none"
-                autoCorrect={false}
-                blurOnSubmit={false}
                 style={{ height: 48 }}
               />
               {errors.section && (
@@ -1210,30 +1018,27 @@ const BookingRoom = () => {
           </View>
 
           <View className="mb-4">
-            <View className={`flex-row items-center bg-white border border-gray-200 
-              rounded-xl py-3 px-3 shadow-sm`}>
-              <MaterialIcons name="description" size={22} color="#94A3B8" />
+            <View className={`flex-row items-center bg-white border ${errors.destination ? 'border-red-500' : 'border-gray-200'} rounded-xl py-0 px-3 shadow-sm`}>
+              <MaterialIcons name="place" size={22} color="#94A3B8" />
               <TextInput
-                className="flex-1 ml-3 text-gray-700 min-h-[80px] text-base py-1"
-                placeholder="Enter meeting description (optional)"
+                className="flex-1 ml-3 text-gray-700 h-12 text-base"
+                placeholder="Enter destination"
                 placeholderTextColor="#94A3B8"
-                defaultValue={description || ''}
+                defaultValue={form.destination}
                 onChangeText={(text) => {
-                  console.log('Description changed:', text);
-                  setForm(prev => ({ ...prev, description: text }));
+                  setForm(prev => ({ ...prev, destination: text }));
+                  if (errors.destination) setErrors(prev => ({ ...prev, destination: null }));
                 }}
-                editable={true}
-                autoCapitalize="none"
-                autoCorrect={false}
-                multiline={true}
-                blurOnSubmit={false}
-                style={{ minHeight: 80, textAlignVertical: 'top' }}
+                style={{ height: 48 }}
               />
+              {errors.destination && (
+                <Ionicons name="alert-circle" size={22} color="#EF4444" />
+              )}
             </View>
+            {errors.destination && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.destination}</Text>}
           </View>
 
           <SectionHeader title="Room Selection" icon="business-outline" />
-          
           {errors.room_id && <Text className="text-red-500 text-xs mb-2">{errors.room_id}</Text>}
           <View className="mb-6">
             {rooms.map((room) => (
@@ -1253,14 +1058,10 @@ const BookingRoom = () => {
                     className="mr-4"
                   />
                   <View className="flex-1">
-                    <Text className={`text-base ${
-                      room.room_id === form.room_id ? 'text-sky-900 font-medium' : 'text-gray-700'
-                    }`}>
+                    <Text className={`text-base ${room.room_id === form.room_id ? 'text-sky-900 font-medium' : 'text-gray-700'}`}>
                       {room.room_name}
                     </Text>
-                    <Text className={`text-sm ${
-                      room.room_id === form.room_id ? 'text-sky-700' : 'text-gray-500'
-                    }`}>
+                    <Text className={`text-sm ${room.room_id === form.room_id ? 'text-sky-700' : 'text-gray-500'}`}>
                       Type: {room.room_type} | Capacity: {room.capacity}
                     </Text>
                   </View>
@@ -1273,7 +1074,7 @@ const BookingRoom = () => {
           </View>
 
           <SectionHeader title="Date & Time" icon="calendar-outline" />
-          
+
           {form.room_id ? (
             <BookingLegend />
           ) : (
@@ -1307,7 +1108,7 @@ const BookingRoom = () => {
             >
               <MaterialIcons name="access-time" size={22} color="#0EA5E9" />
               <Text className="ml-3 text-gray-700 font-medium">{form.start_time || 'Select start time'}</Text>
-               <View className="ml-auto">
+              <View className="ml-auto">
                 <MaterialIcons name="arrow-drop-down" size={24} color="#0EA5E9" />
               </View>
             </TouchableOpacity>
@@ -1329,7 +1130,6 @@ const BookingRoom = () => {
             {errors.end_time && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.end_time}</Text>}
           </View>
 
-          {/* Submit Button with loading state */}
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={loading}
@@ -1344,7 +1144,6 @@ const BookingRoom = () => {
         </View>
       </ScrollView>
 
-      {/* Alert Component */}
       <CustomAlert
         visible={alertVisible}
         type={alertType}
@@ -1352,15 +1151,14 @@ const BookingRoom = () => {
         onClose={() => setAlertVisible(false)}
       />
 
-      {/* Date and Time Pickers Modals */}
-      <DatePickerModal
+      <DatePickerModalComponent
         visible={showDatePicker}
         onClose={() => setShowDatePicker(false)}
         date={form.booking_date}
         onDateChange={handleDateChange}
       />
 
-      <TimePickerModal
+      <TimePickerModalComponent
         visible={showStartTimePicker}
         onClose={() => setShowStartTimePicker(false)}
         time={form.start_time}
@@ -1368,7 +1166,7 @@ const BookingRoom = () => {
         title="Select Start Time"
       />
 
-      <TimePickerModal
+      <TimePickerModalComponent
         visible={showEndTimePicker}
         onClose={() => setShowEndTimePicker(false)}
         time={form.end_time}
@@ -1378,5 +1176,29 @@ const BookingRoom = () => {
     </SafeAreaView>
   );
 };
+
+const BookingLegend = () => (
+  <View className="mb-5 px-3 py-4 bg-gray-50 rounded-xl">
+    <Text className="text-gray-800 font-medium mb-3">Status Ketersediaan:</Text>
+    <View className="flex-row flex-wrap">
+      <View className="flex-row items-center mr-4 mb-2">
+        <View className="w-4 h-4 bg-orange-500 rounded-full mr-1" />
+        <Text className="text-gray-700 text-xs">Selected Date</Text>
+      </View>
+      <View className="flex-row items-center mr-4 mb-2">
+        <View className="w-4 h-4 bg-red-100 rounded-full mr-1" />
+        <Text className="text-gray-700 text-xs">Fully Booked</Text>
+      </View>
+      <View className="flex-row items-center mr-4 mb-2">
+        <View className="w-4 h-4 bg-yellow-100 rounded-full mr-1" />
+        <Text className="text-gray-700 text-xs">Partially Booked</Text>
+      </View>
+      <View className="flex-row items-center mr-4 mb-2">
+        <View className="w-4 h-4 bg-gray-200 rounded-full mr-1" />
+        <Text className="text-gray-700 text-xs">Past Date</Text>
+      </View>
+    </View>
+  </View>
+);
 
 export default BookingRoom;
