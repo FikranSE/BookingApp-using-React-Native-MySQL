@@ -625,7 +625,8 @@ const TimePickerModal = ({
   title, 
   dateString,
   existingBookings = [],
-  currentBookingId = null
+  currentBookingId = null,
+  onAlert = () => {} // Add a prop for alert function with default empty function
 }) => {
   const now = new Date();
   const [hours, setHours] = useState("09");
@@ -697,14 +698,14 @@ const TimePickerModal = ({
       const selectedTime = new Date();
       selectedTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
       if (selectedTime < now) {
-        showAlert("error", "Cannot select a time that has already passed");
+        onAlert("error", "Cannot select a time that has already passed");
         return;
       }
     }
     
     // Warn user if selecting a potentially conflicting time slot
     if (conflictingSlots[hours]) {
-      showAlert("warning", "This hour may have existing bookings. Please check if your exact time slot is available.");
+      onAlert("warning", "This hour may have existing bookings. Please check if your exact time slot is available.");
     }
     
     onTimeChange(newTime);
@@ -1496,7 +1497,7 @@ const RescheduleBooking = () => {
                 <View>
                   <Text className="text-gray-500 text-xs">Destination</Text>
                   <Text className="text-gray-800 font-medium text-base">
-                    {bookingDetails.destination || "N/A"}
+                    {bookingDetails.destination}
                   </Text>
                 </View>
               </View>
@@ -1639,6 +1640,7 @@ const RescheduleBooking = () => {
           dateString={newDate}
           existingBookings={existingBookings}
           currentBookingId={id}
+          onAlert={showAlert}
         />
       )}
       {showEndTimePicker && (
@@ -1651,6 +1653,7 @@ const RescheduleBooking = () => {
           dateString={newDate}
           existingBookings={existingBookings}
           currentBookingId={id}
+          onAlert={showAlert}
         />
       )}
 
