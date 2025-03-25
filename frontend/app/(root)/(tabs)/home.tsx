@@ -24,7 +24,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
-// Interfaces
 interface IRoom {
   room_id: number;
   room_name: string;
@@ -70,6 +69,10 @@ const Home = () => {
   const [recentBookings, setRecentBookings] = useState<IBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [pastApprovedBookings, setPastApprovedBookings] = useState<IBooking[]>([]);
+  
+  // 1) State untuk search:
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
   const router = useRouter();
 
   // Helper functions
@@ -86,7 +89,6 @@ const Home = () => {
     return initials;
   };
 
-  // Data fetching functions
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -124,9 +126,9 @@ const Home = () => {
         router.push('/(auth)/sign-in');
         return;
       }
-  
+
       const headers = { 'Authorization': `Bearer ${authToken}` };
-  
+
       // Get current user ID from profile
       let currentUserId = null;
       if (user && user.id) {
@@ -140,7 +142,7 @@ const Home = () => {
           console.error('Error fetching user profile:', error);
         }
       }
-  
+
       // Fetch room data
       try {
         const roomsRes = await axios.get(`${BASE_URL}/rooms`, { headers });
@@ -149,7 +151,7 @@ const Home = () => {
         console.error('Error fetching rooms:', error);
         handleError(error);
       }
-  
+
       // Fetch transport data
       try {
         const transportsRes = await axios.get(`${BASE_URL}/transports`, { headers });
@@ -158,26 +160,25 @@ const Home = () => {
         console.error('Error fetching transports:', error);
         handleError(error);
       }
-  
+
       // Fetch bookings
       try {
         const [roomBookingsRes, transportBookingsRes] = await Promise.all([
           axios.get(`${BASE_URL}/room-bookings`, { headers }),
           axios.get(`${BASE_URL}/transport-bookings`, { headers })
         ]);
-        
-        // Filter bookings to only include those for the current user
-        const filteredRoomBookings = roomBookingsRes.data.filter(booking => 
+
+        // Filter bookings untuk user saat ini
+        const filteredRoomBookings = roomBookingsRes.data.filter(booking =>
           booking.user_id === currentUserId
         );
-        
-        const filteredTransportBookings = transportBookingsRes.data.filter(booking => 
+        const filteredTransportBookings = transportBookingsRes.data.filter(booking =>
           booking.user_id === currentUserId
         );
-        
+
         const allBookings = [
           ...filteredRoomBookings.map((booking: any) => ({
-            ...booking, 
+            ...booking,
             type: 'ROOM' as const,
             itemName: rooms.find((room) => room.room_id === booking.room_id)?.room_name
           })),
@@ -187,20 +188,19 @@ const Home = () => {
             itemName: transports.find((transport) => transport.transport_id === booking.transport_id)?.vehicle_name
           }))
         ].sort((a, b) => new Date(b.booking_date).getTime() - new Date(a.booking_date).getTime());
-  
-        // Set recent bookings (could be past or upcoming)
+
         setRecentBookings(allBookings.slice(0, 5));
-  
-        // Filter to get past approved bookings
+
+        // Past Approved
         const currentDate = new Date();
         const pastApproved = allBookings.filter(booking => {
           const bookingDate = new Date(booking.booking_date);
           return (
-            booking.status.toLowerCase() === 'approved' && 
+            booking.status.toLowerCase() === 'approved' &&
             bookingDate < currentDate
           );
         });
-  
+
         setPastApprovedBookings(pastApproved);
       } catch (error) {
         console.error('Error fetching bookings:', error);
@@ -208,7 +208,7 @@ const Home = () => {
         setRecentBookings([]);
         setPastApprovedBookings([]);
       }
-  
+
     } catch (error) {
       console.error('Error in fetchData:', error);
       handleError(error);
@@ -221,8 +221,25 @@ const Home = () => {
     fetchData();
   }, [user]);
 
-  // Modern redesigned components
-  
+  // 2) Buat data terfilter berdasarkan searchQuery
+  const filteredRooms = rooms.filter((room) => {
+    const lowerQuery = searchQuery.toLowerCase();
+    // Anda bisa menambahkan field filtering lain sesuai kebutuhan
+    return (
+      room.room_name.toLowerCase().includes(lowerQuery) ||
+      room.room_type.toLowerCase().includes(lowerQuery) ||
+      room.facilities.toLowerCase().includes(lowerQuery)
+    );
+  });
+
+  const filteredTransports = transports.filter((transport) => {
+    const lowerQuery = searchQuery.toLowerCase();
+    return (
+      transport.vehicle_name.toLowerCase().includes(lowerQuery) ||
+      transport.driver_name.toLowerCase().includes(lowerQuery)
+    );
+  });
+
   // Modern Booking Card
   const RecentBookingCard = ({ booking }: { booking: IBooking }) => {
     const handlePress = () => {
@@ -232,8 +249,8 @@ const Home = () => {
         router.push(`/detail-bookingTransport?id=${booking.booking_id}`);
       }
     };
-  
-    const getStatusStyle = (status) => {
+
+    const getStatusStyle = (status: string) => {
       switch (status.toLowerCase()) {
         case 'approved':
           return {
@@ -261,15 +278,15 @@ const Home = () => {
           };
       }
     };
-  
+
     const statusStyle = getStatusStyle(booking.status);
-  
+
     return (
-      <View 
+      <View
         className="mx-4 mb-3 overflow-hidden rounded-xl"
         style={{
           shadowColor: "#000",
-          shadowOffset: {width: 0, height: 4},
+          shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.1,
           shadowRadius: 8,
           elevation: 4
@@ -281,22 +298,21 @@ const Home = () => {
         >
           <View className="p-4">
             <View className="flex-row items-center">
-              {/* Icon with glass effect background */}
               <BlurView intensity={60} tint="light" className="w-12 h-12 rounded-full overflow-hidden">
                 <View className="w-full h-full bg-gray-100/80 items-center justify-center">
-                  <Ionicons 
-                    name={booking.type === 'ROOM' ? 'business' : 'car'} 
-                    size={20} 
-                    color="#0EA5E9" 
+                  <Ionicons
+                    name={booking.type === 'ROOM' ? 'business' : 'car'}
+                    size={20}
+                    color="#0EA5E9"
                   />
                 </View>
               </BlurView>
-              
-              {/* Main Info with improved layout */}
+
               <View className="flex-1 ml-3">
-                <Text className="text-base font-medium text-gray-700">{booking.itemName || 'Unnamed Item'}</Text>
-                
-                {/* PIC and Section */}
+                <Text className="text-base font-medium text-gray-700">
+                  {booking.itemName || 'Unnamed Item'}
+                </Text>
+
                 <View className="flex-row flex-wrap mt-1">
                   <Text className="text-xs text-gray-500 mr-2">
                     <Text className="font-medium text-gray-600">PIC:</Text> {booking.pic || 'Not specified'}
@@ -305,8 +321,7 @@ const Home = () => {
                     <Text className="font-medium text-gray-600">Section:</Text> {booking.section || 'Not specified'}
                   </Text>
                 </View>
-                
-                {/* Date and Time with icons */}
+
                 <View className="flex-row items-center mt-2">
                   <View className="flex-row items-center mr-2 bg-gray-50 px-2 py-0.5 rounded-full">
                     <Ionicons name="calendar-outline" size={12} color="#0EA5E9" />
@@ -318,7 +333,7 @@ const Home = () => {
                       })}
                     </Text>
                   </View>
-                  
+
                   <View className="flex-row items-center bg-gray-50 px-2 py-0.5 rounded-full">
                     <Ionicons name="time-outline" size={12} color="#0EA5E9" />
                     <Text className="text-xs text-gray-500 ml-1">
@@ -327,8 +342,7 @@ const Home = () => {
                   </View>
                 </View>
               </View>
-            
-              {/* Status Badge */}
+
               <View className={`rounded-full px-2.5 py-1 ${statusStyle.bg}`}>
                 <View className="flex-row items-center">
                   <Text className={`text-xs font-medium ${statusStyle.text}`}>
@@ -337,20 +351,19 @@ const Home = () => {
                 </View>
               </View>
             </View>
-            
-            {/* Actions Row with improved styling */}
+
             <View className="flex-row justify-between mt-3 pt-3 border-t border-gray-100">
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={handlePress}
                 className="flex-row items-center bg-sky-50 px-3 py-1.5 rounded-full"
               >
                 <Ionicons name="eye-outline" size={16} color="#0EA5E9" />
                 <Text className="text-sky-500 text-xs font-medium ml-1">View Details</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 onPress={() => {
-                  // Logic to cancel the booking could go here
+                  // Logic cancel booking
                 }}
                 className="flex-row items-center bg-red-50 px-3 py-1.5 rounded-full"
               >
@@ -366,12 +379,12 @@ const Home = () => {
 
   // Modern Past Booking Card
   const PastBookingCard = ({ booking }: { booking: IBooking }) => (
-    <View 
+    <View
       key={`past-${booking.type}-${booking.booking_id}`}
       className="mx-4 mb-3 overflow-hidden rounded-xl"
       style={{
         shadowColor: "#000",
-        shadowOffset: {width: 0, height: 4},
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 4
@@ -383,22 +396,21 @@ const Home = () => {
       >
         <View className="p-4">
           <View className="flex-row items-center">
-            {/* Icon with glass effect background */}
             <BlurView intensity={60} tint="light" className="w-12 h-12 rounded-full overflow-hidden">
               <View className="w-full h-full bg-gray-100/80 items-center justify-center">
-                <Ionicons 
-                  name={booking.type === 'ROOM' ? 'business' : 'car'} 
-                  size={20} 
-                  color="#0EA5E9" 
+                <Ionicons
+                  name={booking.type === 'ROOM' ? 'business' : 'car'}
+                  size={20}
+                  color="#0EA5E9"
                 />
               </View>
             </BlurView>
-            
-            {/* Main Info with improved layout */}
+
             <View className="flex-1 ml-3">
-              <Text className="text-base font-medium text-gray-700">{booking.itemName || 'Unnamed Item'}</Text>
-              
-              {/* PIC and Section */}
+              <Text className="text-base font-medium text-gray-700">
+                {booking.itemName || 'Unnamed Item'}
+              </Text>
+
               <View className="flex-row flex-wrap mt-1">
                 <Text className="text-xs text-gray-500 mr-2">
                   <Text className="font-medium text-gray-600">PIC:</Text> {booking.pic || 'Not specified'}
@@ -407,8 +419,7 @@ const Home = () => {
                   <Text className="font-medium text-gray-600">Section:</Text> {booking.section || 'Not specified'}
                 </Text>
               </View>
-              
-              {/* Date and Time with icons */}
+
               <View className="flex-row items-center mt-2">
                 <View className="flex-row items-center mr-2 bg-gray-50 px-2 py-0.5 rounded-full">
                   <Ionicons name="calendar-outline" size={12} color="#0EA5E9" />
@@ -420,7 +431,7 @@ const Home = () => {
                     })}
                   </Text>
                 </View>
-                
+
                 <View className="flex-row items-center bg-gray-50 px-2 py-0.5 rounded-full">
                   <Ionicons name="time-outline" size={12} color="#0EA5E9" />
                   <Text className="text-xs text-gray-500 ml-1">
@@ -429,18 +440,16 @@ const Home = () => {
                 </View>
               </View>
             </View>
-          
-            {/* Completed Badge */}
+
             <View className="rounded-full px-2.5 py-1 bg-green-50 border border-green-100">
               <Text className="text-xs font-medium text-green-600">
                 Completed
               </Text>
             </View>
           </View>
-          
-          {/* Actions Row with improved styling */}
+
           <View className="flex-row justify-between mt-3 pt-3 border-t border-gray-100">
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => {
                 if (booking.type.toUpperCase() === "ROOM") {
                   router.push(`/detail-bookingRoom?id=${booking.booking_id}`);
@@ -453,10 +462,10 @@ const Home = () => {
               <Ionicons name="eye-outline" size={16} color="#0EA5E9" />
               <Text className="text-sky-500 text-xs font-medium ml-1">View Details</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               onPress={() => {
-                // Navigate to booking creation page with pre-filled info
+                // Navigate booking creation (Book Again)
                 if (booking.type.toUpperCase() === "ROOM") {
                   router.push({
                     pathname: '/booking-room',
@@ -496,40 +505,38 @@ const Home = () => {
 
   // Modern Room Card
   const RoomCard = ({ room }: { room: IRoom }) => {
-    // Split facilities string into array
+    // Split facilities string
     const facilitiesList = room.facilities.split(',').map(item => item.trim());
 
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={() => router.push(`/detail?id=${room.room_id}&type=room`)}
         className="mb-4 mx-2 rounded-2xl overflow-hidden"
-        style={{ 
+        style={{
           width: width * 0.75,
           shadowColor: "#000",
-          shadowOffset: {width: 0, height: 6},
+          shadowOffset: { width: 0, height: 6 },
           shadowOpacity: 0.15,
           shadowRadius: 12,
           elevation: 8
         }}
       >
         <View className="relative">
-          <Image 
-            source={images.profile1} 
+          <Image
+            source={images.profile1}
             className="w-full h-40"
             resizeMode="cover"
           />
-          
-          {/* Gradient overlay instead of a light blue filter */}
+
           <LinearGradient
             colors={['rgba(14, 165, 233, 0.15)', 'rgba(14, 165, 233, 0.05)']}
             className="absolute top-0 left-0 right-0 bottom-0"
           />
-          
-          {/* Capacity badge with nicer styling */}
+
           <View className="absolute top-3 right-3">
             <BlurView intensity={80} tint="light" className="rounded-full overflow-hidden">
               <View className="px-3 py-1.5 flex-row items-center">
-                <Ionicons name="people" size={14} color="#0EA5E9" className="mr-1" />
+                <Ionicons name="people" size={14} color="#0EA5E9" />
                 <Text className="text-sky-600 font-medium text-xs">
                   {room.capacity} people
                 </Text>
@@ -544,13 +551,13 @@ const Home = () => {
               <Text className="text-lg text-gray-800 font-bold">{room.room_name}</Text>
               <Text className="text-gray-500 text-sm">{room.room_type}</Text>
             </View>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               className="px-4 py-2 rounded-xl bg-orange-400"
               onPress={() => router.push(`/detail?id=${room.room_id}&type=room`)}
               style={{
                 shadowColor: "#f97316",
-                shadowOffset: {width: 0, height: 2},
+                shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.3,
                 shadowRadius: 4,
                 elevation: 3
@@ -560,11 +567,10 @@ const Home = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Facilities with improved layout */}
           <View className="flex-row flex-wrap gap-2 mt-1">
             {facilitiesList.slice(0, 3).map((facility, index) => (
-              <View 
-                key={index} 
+              <View
+                key={index}
                 className="bg-sky-50 px-3 py-1 rounded-full border border-sky-100"
               >
                 <Text className="text-sky-600 text-xs">
@@ -585,36 +591,34 @@ const Home = () => {
 
   // Modern Transport Card
   const TransportCard = ({ transport }: { transport: ITransport }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       onPress={() => router.push(`/detail?id=${transport.transport_id}&type=transport`)}
       className="mb-4 mx-2 rounded-2xl overflow-hidden"
-      style={{ 
+      style={{
         width: width * 0.75,
         shadowColor: "#000",
-        shadowOffset: {width: 0, height: 6},
+        shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.15,
         shadowRadius: 12,
         elevation: 8
       }}
     >
       <View className="relative">
-        <Image 
-          source={images.profile1} 
+        <Image
+          source={images.profile1}
           className="w-full h-40"
           resizeMode="cover"
         />
-        
-        {/* Gradient overlay instead of a light blue filter */}
+
         <LinearGradient
           colors={['rgba(14, 165, 233, 0.15)', 'rgba(14, 165, 233, 0.05)']}
           className="absolute top-0 left-0 right-0 bottom-0"
         />
-        
-        {/* Capacity badge with nicer styling */}
+
         <View className="absolute top-3 right-3">
           <BlurView intensity={80} tint="light" className="rounded-full overflow-hidden">
             <View className="px-3 py-1.5 flex-row items-center">
-              <Ionicons name="people" size={14} color="#0EA5E9" className="mr-1" />
+              <Ionicons name="people" size={14} color="#0EA5E9" />
               <Text className="text-sky-600 font-medium text-xs">
                 {transport.capacity} seats
               </Text>
@@ -628,17 +632,20 @@ const Home = () => {
           <View>
             <Text className="text-lg text-gray-800 font-bold">{transport.vehicle_name}</Text>
             <View className="flex-row items-center mt-1">
-              <Ionicons name="person" size={12} color="#718096" className="mr-1" />
-              <Text className="text-gray-500 text-sm">Driver: {transport.driver_name}</Text>
+              <Ionicons name="person" size={12} color="#718096" />
+              <Text className="text-gray-500 text-sm ml-1">
+                Driver: {transport.driver_name}
+              </Text>
             </View>
           </View>
-          
-          <TouchableOpacity 
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-400"
+
+          <TouchableOpacity
+            className="px-4 py-2 rounded-xl"
             onPress={() => router.push(`/detail?id=${transport.transport_id}&type=transport`)}
             style={{
+              backgroundColor: '#f97316',
               shadowColor: "#f97316",
-              shadowOffset: {width: 0, height: 2},
+              shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.3,
               shadowRadius: 4,
               elevation: 3
@@ -651,16 +658,14 @@ const Home = () => {
     </TouchableOpacity>
   );
 
-  
-
-  // Section Title component for consistent styling
+  // Section Title
   const SectionTitle = ({ title, actionText = "See All", onActionPress }) => (
     <View className="px-4 flex-row justify-between items-center mb-4 mt-6">
       <View className="flex-row items-center">
         <View className="w-1 h-5 bg-sky-500 rounded-full mr-2" />
         <Text className="text-lg font-bold text-gray-800">{title}</Text>
       </View>
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={onActionPress}
         className="flex-row items-center"
       >
@@ -670,7 +675,7 @@ const Home = () => {
     </View>
   );
 
-  // Empty State component for no bookings
+  // Empty State component
   const EmptyState = ({ icon, title, message }) => (
     <View className="mx-4 mb-8 bg-white p-5 rounded-xl border border-gray-100 items-center shadow-sm">
       <View className="bg-sky-50 w-16 h-16 rounded-full items-center justify-center mb-2">
@@ -691,13 +696,12 @@ const Home = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-white pb-20">
-      {/* Header with gradient background */}
       <LinearGradient
         colors={['#0EA5E9', '#38BDF8']}
         className="pt-4 pb-6 px-4 rounded-b-3xl"
         style={{
           shadowColor: "#000",
-          shadowOffset: {width: 0, height: 6},
+          shadowOffset: { width: 0, height: 6 },
           shadowOpacity: 0.2,
           shadowRadius: 12,
           elevation: 10
@@ -707,7 +711,9 @@ const Home = () => {
           <View className="flex-row items-center">
             <BlurView intensity={20} tint="light" className="w-10 h-10 rounded-full overflow-hidden">
               <View className="w-full h-full items-center justify-center bg-white/30">
-                <Text className="text-white font-bold">{user?.email ? getInitials(user.email) : 'U'}</Text>
+                <Text className="text-white font-bold">
+                  {user?.email ? getInitials(user.email) : 'U'}
+                </Text>
               </View>
             </BlurView>
             <View className="ml-3">
@@ -715,8 +721,8 @@ const Home = () => {
               <Text className="text-white text-base font-medium">{user?.name || 'User'}</Text>
             </View>
           </View>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             onPress={() => router.push('/(root)/notifikasi')}
             className="relative"
           >
@@ -727,31 +733,35 @@ const Home = () => {
             </BlurView>
             {notifications > 0 && (
               <View className="absolute -top-1 -right-1 bg-orange-500 w-5 h-5 rounded-full items-center justify-center border-2 border-white">
-                <Text className="text-white text-xs font-bold">{notifications}</Text>
+                <Text className="text-white text-xs font-bold">
+                  {notifications}
+                </Text>
               </View>
             )}
           </TouchableOpacity>
         </View>
 
-        {/* Modern Search Bar */}
+        {/* Search Bar di-header */}
         <View className="flex-row bg-white/20 rounded-xl px-3 py-2.5 items-center backdrop-blur-md">
           <Ionicons name="search-outline" size={18} color="white" />
           <TextInput
             placeholder="Search rooms or vehicles..."
             className="flex-1 pl-2 text-white"
             placeholderTextColor="rgba(255, 255, 255, 0.7)"
+            // 3) Update searchQuery saat teks berubah
+            onChangeText={(text) => setSearchQuery(text)}
+            value={searchQuery}
           />
         </View>
       </LinearGradient>
 
       <ScrollView className="flex-1">
-        {/* Floating Tabs */}
         <View className="px-4 mt-6 mb-6 z-10">
-          <View 
+          <View
             className="flex-row bg-white rounded-2xl border border-sky-50"
             style={{
               shadowColor: "#000",
-              shadowOffset: {width: 0, height: 4},
+              shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.1,
               shadowRadius: 12,
               elevation: 6
@@ -761,17 +771,21 @@ const Home = () => {
               <TouchableOpacity
                 key={tab}
                 onPress={() => setActiveTab(tab as "Rooms" | "Transport")}
-                className={`flex-1 py-3 ${activeTab === tab ? 'bg-sky-500' : 'bg-transparent'} 
-                  ${tab === 'Rooms' ? 'rounded-l-2xl' : 'rounded-r-2xl'}`}
+                className={`flex-1 py-3 ${
+                  activeTab === tab ? 'bg-sky-500' : 'bg-transparent'
+                } ${tab === 'Rooms' ? 'rounded-l-2xl' : 'rounded-r-2xl'}`}
               >
                 <View className="flex-row items-center justify-center">
-                  <Ionicons 
-                    name={tab === 'Rooms' ? 'business' : 'car'} size={16} 
-                    color={activeTab === tab ? 'white' : '#94A3B8'} 
-                    style={{marginRight: 4}}
+                  <Ionicons
+                    name={tab === 'Rooms' ? 'business' : 'car'}
+                    size={16}
+                    color={activeTab === tab ? 'white' : '#94A3B8'}
+                    style={{ marginRight: 4 }}
                   />
                   <Text
-                    className={`text-center font-medium ${activeTab === tab ? 'text-white' : 'text-gray-500'}`}
+                    className={`text-center font-medium ${
+                      activeTab === tab ? 'text-white' : 'text-gray-500'
+                    }`}
                   >
                     {tab}
                   </Text>
@@ -781,70 +795,76 @@ const Home = () => {
           </View>
         </View>
 
-        {/* Featured Items */}
         <View className="px-4 mb-4">
-          <Text className="text-lg font-bold text-gray-800 mb-2">Featured {activeTab}</Text>
-          <Text className="text-gray-500 mb-4">Find and book the best {activeTab.toLowerCase()} for your needs</Text>
+          <Text className="text-lg font-bold text-gray-800 mb-2">
+            Featured {activeTab}
+          </Text>
+          <Text className="text-gray-500 mb-4">
+            Find and book the best {activeTab.toLowerCase()} for your needs
+          </Text>
         </View>
 
-        {/* Listings with Cards */}
-        <ScrollView 
-          horizontal 
+        {/* 4) Menampilkan data terfilter */}
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
           className="mb-6"
         >
           {activeTab === "Rooms"
-            ? rooms.map((room) => <RoomCard key={room.room_id} room={room} />)
-            : transports.map((transport) => <TransportCard key={transport.transport_id} transport={transport} />)
+            ? filteredRooms.map((room) => (
+                <RoomCard key={room.room_id} room={room} />
+              ))
+            : filteredTransports.map((transport) => (
+                <TransportCard key={transport.transport_id} transport={transport} />
+              ))
           }
         </ScrollView>
 
-        {/* Recent Bookings Section */}
-        <SectionTitle 
-          title="Recent Bookings" 
-          onActionPress={() => router.push('/(root)/(tabs)/my-booking')} 
+        <SectionTitle
+          title="Recent Bookings"
+          onActionPress={() => router.push('/(root)/(tabs)/my-booking')}
         />
 
-        {/* Recent Bookings (filtered by current user) */}
         {recentBookings.length > 0 ? (
           <View className="mb-6">
             {recentBookings.slice(0, 3).map((booking) => (
-              <RecentBookingCard key={`${booking.type}-${booking.booking_id}`} booking={booking} />
+              <RecentBookingCard
+                key={`${booking.type}-${booking.booking_id}`}
+                booking={booking}
+              />
             ))}
           </View>
         ) : (
-          <EmptyState 
-            icon="calendar-outline" 
-            title="No Recent Bookings" 
-            message="You haven't made any bookings yet. Book a room or transport to get started." 
+          <EmptyState
+            icon="calendar-outline"
+            title="No Recent Bookings"
+            message="You haven't made any bookings yet. Book a room or transport to get started."
           />
         )}
 
-        {/* Past Approved Bookings Section */}
-        <SectionTitle 
-          title="Past Approved Bookings" 
-          onActionPress={() => router.push('/(root)/(tabs)/my-booking')} 
+        <SectionTitle
+          title="Past Approved Bookings"
+          onActionPress={() => router.push('/(root)/(tabs)/my-booking')}
         />
 
-        {/* Display Past Approved Bookings */}
         {pastApprovedBookings.length > 0 ? (
           <View className="mb-8">
             {pastApprovedBookings.slice(0, 3).map((booking) => (
-              <PastBookingCard key={`past-${booking.type}-${booking.booking_id}`} booking={booking} />
+              <PastBookingCard
+                key={`past-${booking.type}-${booking.booking_id}`}
+                booking={booking}
+              />
             ))}
           </View>
         ) : (
-          <EmptyState 
-            icon="checkmark-circle-outline" 
-            title="No Past Bookings" 
-            message="You don't have any completed bookings yet" 
+          <EmptyState
+            icon="checkmark-circle-outline"
+            title="No Past Bookings"
+            message="You don't have any completed bookings yet"
           />
         )}
- 
-    
       </ScrollView>
-
     </SafeAreaView>
   );
 };
