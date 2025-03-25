@@ -395,11 +395,11 @@ const DatePickerModal = ({
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState(today.getDate());
-  const [bookedDates, setBookedDates] = useState<Record<string, boolean>>({});
+  const [bookedDates, setBookedDates] = useState({});
 
   // Set up selected date when component mounts or date changes
   useEffect(() => {
-    if (date) {
+    if (date && visible) {
       const dateObj = new Date(date);
       if (!isNaN(dateObj.getTime())) {
         if (isDateInPast(dateObj)) {
@@ -417,17 +417,18 @@ const DatePickerModal = ({
 
   // Process existingBookings to identify booked dates
   useEffect(() => {
+    if (!visible) return; // Only process when modal is visible
+    
     // Log the incoming data to verify what we're working with
     console.log(`Processing ${existingBookings.length} bookings to mark dates`);
     
     // Create a map of dates that have bookings
-    const bookedDatesMap: Record<string, boolean> = {};
+    const bookedDatesMap = {};
     
     if (existingBookings && existingBookings.length > 0) {
       existingBookings.forEach(booking => {
         if (booking.booking_date) {
           const dateKey = booking.booking_date;
-          console.log(`Marking date as booked: ${dateKey}`);
           bookedDatesMap[dateKey] = true;
         }
       });
@@ -435,7 +436,7 @@ const DatePickerModal = ({
     
     console.log(`Marked ${Object.keys(bookedDatesMap).length} dates as booked`);
     setBookedDates(bookedDatesMap);
-  }, [existingBookings]);
+  }, [existingBookings, visible]);
 
   const months = [
     "January", "February", "March", "April", "May", "June",
@@ -455,7 +456,7 @@ const DatePickerModal = ({
   };
 
   // Function to check if a specific date has any bookings
-  const isDateBooked = (year: number, month: number, day: number) => {
+  const isDateBooked = (year, month, day) => {
     const formattedDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     return bookedDates[formattedDate] === true;
   };
@@ -513,6 +514,9 @@ const DatePickerModal = ({
     }
     return days;
   };
+
+  // Don't render anything if not visible
+  if (!visible) return null;
 
   return (
     <Modal
@@ -627,9 +631,10 @@ const TimePickerModal = ({
   const [hours, setHours] = useState("09");
   const [minutes, setMinutes] = useState("00");
   const [showHours, setShowHours] = useState(true);
-  const [conflictingSlots, setConflictingSlots] = useState<{[key: string]: boolean}>({});
+  const [conflictingSlots, setConflictingSlots] = useState({});
 
   const isToday = () => {
+    if (!dateString) return false;
     const today = new Date();
     const bookingDate = new Date(dateString);
     return (
@@ -640,11 +645,11 @@ const TimePickerModal = ({
   };
 
   useEffect(() => {
-    if (time) {
+    if (time && visible) {
       const [h, m] = time.split(":");
       setHours(h || "09");
       setMinutes(m || "00");
-    } else {
+    } else if (visible) {
       const defaultHour = (now.getHours() + 1).toString().padStart(2, "0");
       setHours(defaultHour);
       setMinutes("00");
@@ -653,7 +658,7 @@ const TimePickerModal = ({
 
   // Calculate conflicting time slots based on existing bookings
   useEffect(() => {
-    if (!dateString || existingBookings.length === 0) {
+    if (!dateString || !visible || existingBookings.length === 0) {
       setConflictingSlots({});
       return;
     }
@@ -664,7 +669,7 @@ const TimePickerModal = ({
     );
 
     // Generate map of conflicting hours
-    const conflicts: {[key: string]: boolean} = {};
+    const conflicts = {};
     
     // Mark each hour that has a booking
     bookingsOnDate.forEach(booking => {
@@ -683,7 +688,7 @@ const TimePickerModal = ({
     });
     
     setConflictingSlots(conflicts);
-  }, [dateString, existingBookings, currentBookingId]);
+  }, [dateString, existingBookings, currentBookingId, visible]);
 
   const handleConfirm = () => {
     const newTime = `${hours}:${minutes}`;
@@ -706,7 +711,7 @@ const TimePickerModal = ({
     onClose();
   };
 
-  const renderTimeGrid = (isHours: boolean) => {
+  const renderTimeGrid = (isHours) => {
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     const items = isHours
@@ -778,6 +783,9 @@ const TimePickerModal = ({
       />
     );
   };
+
+  // Don't render anything if not visible
+  if (!visible) return null;
 
   return (
     <Modal
@@ -1263,12 +1271,12 @@ const RescheduleBooking = () => {
   // Update DatePickerModal call to pass bookedDates
   {showDatePicker && (
     <DatePickerModal
-      visible={showDatePicker}
-      onClose={() => setShowDatePicker(false)}
-      date={newDate}
-      onDateChange={(date) => setNewDate(date)}
-      existingBookings={existingBookings}
-    />
+  visible={showDatePicker}
+  onClose={() => setShowDatePicker(false)}
+  date={newDate}
+  onDateChange={(date) => setNewDate(date)}
+  existingBookings={existingBookings}
+/>
   )}
   
   // Update TimePickerModal calls to work with time conflicts
@@ -1613,12 +1621,13 @@ const RescheduleBooking = () => {
 
       {/* Modal Pickers */}
       {showDatePicker && (
-        <DatePickerModal
-          visible={showDatePicker}
-          onClose={() => setShowDatePicker(false)}
-          date={newDate}
-          onDateChange={(date) => setNewDate(date)}
-        />
+      <DatePickerModal
+      visible={showDatePicker}
+      onClose={() => setShowDatePicker(false)}
+      date={newDate}
+      onDateChange={(date) => setNewDate(date)}
+      existingBookings={existingBookings}
+    />
       )}
       {showStartTimePicker && (
         <TimePickerModal
