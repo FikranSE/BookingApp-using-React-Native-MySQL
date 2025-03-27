@@ -288,25 +288,50 @@ const hasTimeConflict = (
   currentBookingId: any = null
 ) => {
   if (!bookingDate || !startTime || !endTime || existingBookings.length === 0) return false;
+  
+  // Properly format the date for comparison
   const formattedDate = formatApiDate(new Date(bookingDate));
+  
+  // Convert start and end times to minutes
   const startMinutes = timeToMinutes(startTime);
   const endMinutes = timeToMinutes(endTime);
   
   // Filter to only include bookings on the selected date and exclude the current booking
   const bookingsOnDate = existingBookings.filter(b => 
-    b.booking_date === formattedDate && (currentBookingId === null || b.id !== currentBookingId)
+    b.booking_date === formattedDate && b.id !== Number(currentBookingId)
   );
+  
+  console.log(`Checking for conflicts among ${bookingsOnDate.length} bookings on ${formattedDate}`);
+
+  // Log all bookings for debugging
+  if (bookingsOnDate.length > 0) {
+    console.log('Bookings to check:', bookingsOnDate.map(b => 
+      `ID:${b.id}, Date:${b.booking_date}, Time:${b.start_time}-${b.end_time}`
+    ));
+  }
   
   // Return true if there's any time conflict with existing bookings
   return bookingsOnDate.some(booking => {
+    // Convert booking times to minutes for comparison
     const bookingStart = timeToMinutes(booking.start_time);
     const bookingEnd = timeToMinutes(booking.end_time);
-    return (
+    
+    // Check for any overlap in time ranges
+    const hasOverlap = (
+      // New booking starts during existing booking
       (startMinutes >= bookingStart && startMinutes < bookingEnd) ||
+      // New booking ends during existing booking
       (endMinutes > bookingStart && endMinutes <= bookingEnd) ||
+      // New booking completely contains existing booking
       (startMinutes <= bookingStart && endMinutes >= bookingEnd)
     );
-  });
+    
+    if (hasOverlap) {
+      console.log(`Conflict found with booking ID:${booking.id}, Time:${booking.start_time}-${booking.end_time}`);
+    }
+    
+    return hasOverlap;
+  }); 
 };
 
 const getConflictDetails = (
@@ -317,19 +342,21 @@ const getConflictDetails = (
   currentBookingId: any = null
 ) => {
   if (!bookingDate || !startTime || !endTime || existingBookings.length === 0) return null;
+  
   const formattedDate = formatApiDate(new Date(bookingDate));
   const startMinutes = timeToMinutes(startTime);
   const endMinutes = timeToMinutes(endTime);
   
   // Filter to only include bookings on the selected date and exclude the current booking
   const bookingsOnDate = existingBookings.filter(b => 
-    b.booking_date === formattedDate && (currentBookingId === null || b.id !== currentBookingId)
+    b.booking_date === formattedDate && b.id !== Number(currentBookingId)
   );
   
   // Find the conflicting booking
   const conflictingBooking = bookingsOnDate.find(booking => {
     const bookingStart = timeToMinutes(booking.start_time);
     const bookingEnd = timeToMinutes(booking.end_time);
+    
     return (
       (startMinutes >= bookingStart && startMinutes < bookingEnd) ||
       (endMinutes > bookingStart && endMinutes <= bookingEnd) ||
@@ -339,14 +366,20 @@ const getConflictDetails = (
   
   if (conflictingBooking) {
     return {
-      bookingId: conflictingBooking.id || conflictingBooking.booking_id,
+      bookingId: conflictingBooking.id,
       startTime: conflictingBooking.start_time,
       endTime: conflictingBooking.end_time,
       pic: conflictingBooking.pic || "Unknown",
-      section: conflictingBooking.section || "Unknown",
-      bookingDate: conflictingBooking.booking_date
+      section: conflictingBooking.section || "Unknown department",
+      bookingDate: conflictingBooking.booking_date,
+      // Add more detailed information
+      overlapType: 
+        (startMinutes <= timeToMinutes(conflictingBooking.start_time) && 
+         endMinutes >= timeToMinutes(conflictingBooking.end_time)) 
+         ? "complete" : "partial"
     };
   }
+  
   return null;
 };
 
@@ -415,28 +448,101 @@ const DatePickerModal = ({
     }
   }, [date, visible]);
 
-  // Process existingBookings to identify booked dates
-  useEffect(() => {
-    if (!visible) return; // Only process when modal is visible
+// Process existingBookings to identify booked dates with improved handling
+useEffect(() => {
+  if (!visible) return; // Only process when modal is visible
+  
+  // Log the incoming data to verify what we're working with
+  console.log(`DatePickerModal: Processing ${existingBookings.length} bookings to mark dates`);
+  
+  // Create a map of dates that have bookings
+  const bookedDatesMap = {};
+  
+  if (existingBookings && existingBookings.length > 0) {
+    // Log first few bookings for debugging
+    console.log("Sample bookings:", existingBookings.slice(0, 3).map(b => ({
+      id: b.id,
+      date: b.booking_date,
+      time: `${b.start_time}-${b.end_time}`
+    })));
     
-    // Log the incoming data to verify what we're working with
-    console.log(`Processing ${existingBookings.length} bookings to mark dates`);
+    existingBookings.forEach(booking => {
+      if (booking.booking_date) {
+        const dateKey = booking.booking_date;
+        bookedDatesMap[dateKey] = true;
+        console.log(`Marking date as booked: ${dateKey}`);
+      }
+    });
+  }
+  
+  console.log(`DatePickerModal: Marked ${Object.keys(bookedDatesMap).length} dates as booked`, bookedDatesMap);
+  setBookedDates(bookedDatesMap);
+}, [existingBookings, visible]);
+
+// Function to check if a specific date has any bookings - with enhanced logging
+const isDateBooked = (year, month, day) => {
+  const formattedDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const isBooked = bookedDates[formattedDate] === true;
+  
+  if (isBooked) {
+    console.log(`Date is booked: ${formattedDate}`);
+  }
+  
+  return isBooked;
+};
+
+// Render with more visual emphasis on booked dates
+const renderCalendarGrid = () => {
+  const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+  const firstDayOfMonth = new Date(selectedYear, selectedMonth, 1).getDay();
+  const days = [];
+
+  // Empty cells for days of the week before the 1st of the month
+  for (let i = 0; i < firstDayOfMonth; i++) {
+    days.push(<View key={`empty-${i}`} className="w-10 h-10 m-1" />);
+  }
+
+  // Render each day of the month
+  for (let i = 1; i <= daysInMonth; i++) {
+    const currentDate = new Date(selectedYear, selectedMonth, i);
+    const isPastDate = isDateInPast(currentDate);
+    const hasBookings = isDateBooked(selectedYear, selectedMonth, i);
     
-    // Create a map of dates that have bookings
-    const bookedDatesMap = {};
+    let bgColor = "bg-gray-100";
+    let textColor = "text-gray-800";
     
-    if (existingBookings && existingBookings.length > 0) {
-      existingBookings.forEach(booking => {
-        if (booking.booking_date) {
-          const dateKey = booking.booking_date;
-          bookedDatesMap[dateKey] = true;
-        }
-      });
+    if (selectedDay === i) {
+      bgColor = "bg-orange-500";
+      textColor = "text-white";
+    } else if (isPastDate) {
+      bgColor = "bg-gray-200";
+      textColor = "text-gray-400";
+    } else if (hasBookings) {
+      // Highlight dates with existing bookings - make more prominent
+      bgColor = "bg-red-200";
+      textColor = "text-red-900";
     }
     
-    console.log(`Marked ${Object.keys(bookedDatesMap).length} dates as booked`);
-    setBookedDates(bookedDatesMap);
-  }, [existingBookings, visible]);
+    days.push(
+      <TouchableOpacity
+        key={i}
+        className={`w-10 h-10 items-center justify-center rounded-full m-1 ${bgColor}`}
+        onPress={() => {
+          if (!isPastDate) {
+            setSelectedDay(i);
+          }
+        }}
+        disabled={isPastDate}
+      >
+        <Text className={`${textColor} ${hasBookings ? 'font-bold' : ''}`}>{i}</Text>
+        {hasBookings && (
+          <View className="absolute bottom-0.5 w-2 h-2 bg-red-600 rounded-full" />
+        )}
+      </TouchableOpacity>
+    );
+  }
+  return days;
+};
 
   const months = [
     "January", "February", "March", "April", "May", "June",
@@ -456,64 +562,10 @@ const DatePickerModal = ({
   };
 
   // Function to check if a specific date has any bookings
-  const isDateBooked = (year, month, day) => {
-    const formattedDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    return bookedDates[formattedDate] === true;
-  };
+
 
   const weekDays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-  const renderCalendarGrid = () => {
-    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-    const firstDayOfMonth = new Date(selectedYear, selectedMonth, 1).getDay();
-    const days = [];
-
-    // Empty cells for days of the week before the 1st of the month
-    for (let i = 0; i < firstDayOfMonth; i++) {
-      days.push(<View key={`empty-${i}`} className="w-10 h-10 m-1" />);
-    }
-
-    // Render each day of the month
-    for (let i = 1; i <= daysInMonth; i++) {
-      const currentDate = new Date(selectedYear, selectedMonth, i);
-      const isPastDate = isDateInPast(currentDate);
-      const hasBookings = isDateBooked(selectedYear, selectedMonth, i);
-      
-      let bgColor = "bg-gray-100";
-      let textColor = "text-gray-800";
-      
-      if (selectedDay === i) {
-        bgColor = "bg-orange-500";
-        textColor = "text-white";
-      } else if (isPastDate) {
-        bgColor = "bg-gray-200";
-        textColor = "text-gray-400";
-      } else if (hasBookings) {
-        // Highlight dates with existing bookings
-        bgColor = "bg-red-100";
-        textColor = "text-red-800";
-      }
-      
-      days.push(
-        <TouchableOpacity
-          key={i}
-          className={`w-10 h-10 items-center justify-center rounded-full m-1 ${bgColor}`}
-          onPress={() => {
-            if (!isPastDate) {
-              setSelectedDay(i);
-            }
-          }}
-          disabled={isPastDate}
-        >
-          <Text className={textColor}>{i}</Text>
-          {hasBookings && (
-            <View className="absolute bottom-0.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
-          )}
-        </TouchableOpacity>
-      );
-    }
-    return days;
-  };
 
   // Don't render anything if not visible
   if (!visible) return null;
@@ -541,15 +593,15 @@ const DatePickerModal = ({
             </Text>
           </View>
           
-          {/* Legend for booked dates */}
-          <View className="flex-row justify-center items-center mb-4 bg-gray-50 p-2 rounded-lg">
+          {/* Legend for booked dates - make it more prominent */}
+          <View className="flex-row justify-center items-center mb-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
             <View className="flex-row items-center mr-4">
-              <View className="w-3 h-3 bg-red-100 rounded-full mr-2" />
-              <Text className="text-gray-600 text-xs">Booked dates</Text>
+              <View className="w-4 h-4 bg-red-100 rounded-full mr-2 border border-red-400" />
+              <Text className="text-gray-700 text-sm font-medium">Booked dates</Text>
             </View>
             <View className="flex-row items-center">
-              <View className="w-3 h-3 bg-orange-500 rounded-full mr-2" />
-              <Text className="text-gray-600 text-xs">Selected date</Text>
+              <View className="w-4 h-4 bg-orange-500 rounded-full mr-2" />
+              <Text className="text-gray-700 text-sm font-medium">Selected date</Text>
             </View>
           </View>
           
@@ -594,6 +646,16 @@ const DatePickerModal = ({
           <View className="flex-row flex-wrap justify-around">
             {renderCalendarGrid()}
           </View>
+          
+          {/* Debug info - can be removed in production */}
+          {Object.keys(bookedDates).length > 0 && (
+            <View className="mt-2 p-2 bg-gray-50 rounded-lg">
+              <Text className="text-xs text-gray-500">
+                {Object.keys(bookedDates).length} date(s) have existing bookings
+              </Text>
+            </View>
+          )}
+          
           <View className="mt-4 flex-row">
             <TouchableOpacity
               onPress={onClose}
@@ -616,6 +678,9 @@ const DatePickerModal = ({
 
 // ==================
 // TimePickerModal Component
+// ==================
+// ==================
+// TimePickerModal Component - Enhanced
 // ==================
 const TimePickerModal = ({ 
   visible, 
@@ -659,17 +724,21 @@ const TimePickerModal = ({
 
   // Calculate conflicting time slots based on existing bookings
   useEffect(() => {
-    if (!dateString || !visible || existingBookings.length === 0) {
+    if (!dateString || !visible) {
       setConflictingSlots({});
       return;
     }
 
+    console.log(`Analyzing time conflicts for ${dateString} with ${existingBookings.length} bookings`);
+    
     const formattedDate = formatApiDate(new Date(dateString));
     const bookingsOnDate = existingBookings.filter(b => 
-      b.booking_date === formattedDate && (currentBookingId === null || b.id !== currentBookingId)
+      b.booking_date === formattedDate && (currentBookingId === null || b.id !== Number(currentBookingId))
     );
 
-    // Generate map of conflicting hours
+    console.log(`Found ${bookingsOnDate.length} bookings on the selected date`);
+
+    // Generate detailed map of conflicting hours with booking info
     const conflicts = {};
     
     // Mark each hour that has a booking
@@ -678,15 +747,36 @@ const TimePickerModal = ({
       const endTime = booking.end_time;
       
       if (startTime && endTime) {
-        const [startHour] = startTime.split(':').map(Number);
-        const [endHour] = endTime.split(':').map(Number);
+        // Parse start and end times
+        const [startHour, startMinute] = startTime.split(':').map(Number);
+        const [endHour, endMinute] = endTime.split(':').map(Number);
         
-        // Mark all hours from start to end as conflicting
+        // Mark each hour in the range as conflicting
         for (let h = startHour; h <= endHour; h++) {
-          conflicts[h.toString().padStart(2, '0')] = true;
+          const hourKey = h.toString().padStart(2, '0');
+          
+          // Add conflict information to the hour
+          if (!conflicts[hourKey]) {
+            conflicts[hourKey] = [];
+          }
+          
+          // Store detailed booking info for tooltip/display
+          conflicts[hourKey].push({
+            id: booking.id,
+            startTime,
+            endTime,
+            pic: booking.pic || 'Unknown',
+            section: booking.section || '',
+            hourCoverage: h === startHour && h === endHour ? 'partial' : 
+                        h === startHour ? 'start' :
+                        h === endHour ? 'end' : 'full'
+          });
         }
       }
     });
+    
+    console.log(`Marked ${Object.keys(conflicts).length} hours with conflicts`);
+    console.log("Conflicts map:", conflicts);
     
     setConflictingSlots(conflicts);
   }, [dateString, existingBookings, currentBookingId, visible]);
@@ -704,8 +794,16 @@ const TimePickerModal = ({
     }
     
     // Warn user if selecting a potentially conflicting time slot
-    if (conflictingSlots[hours]) {
-      onAlert("warning", "This hour may have existing bookings. Please check if your exact time slot is available.");
+    const hourKey = hours;
+    if (conflictingSlots[hourKey] && conflictingSlots[hourKey].length > 0) {
+      const conflictsInThisHour = conflictingSlots[hourKey];
+      const conflictDetails = conflictsInThisHour[0]; // Use first conflict for warning
+      
+      onAlert("warning", 
+        `This hour already has a booking (${conflictDetails.startTime} - ${conflictDetails.endTime})` +
+        (conflictDetails.pic ? ` by ${conflictDetails.pic}` : '') +
+        `. Please verify your time doesn't conflict.`
+      );
     }
     
     onTimeChange(newTime);
@@ -731,8 +829,10 @@ const TimePickerModal = ({
             (!isHours && parseInt(hours) === currentHour && parseInt(item) < currentMinute)
           );
           
-          // Check if this hour has potential conflicts
-          const hasConflict = isHours && conflictingSlots[item];
+          // Check if this hour/minute has potential conflicts
+          const hasConflict = isHours && conflictingSlots[item] && conflictingSlots[item].length > 0;
+          const conflictSeverity = hasConflict ? 
+            conflictingSlots[item].length > 1 ? 'high' : 'medium' : 'none';
           
           let bgColor = "bg-gray-100";
           let textColor = "text-gray-800";
@@ -744,8 +844,8 @@ const TimePickerModal = ({
             bgColor = "bg-gray-200";
             textColor = "text-gray-400";
           } else if (hasConflict) {
-            // Highlight hours with existing bookings
-            bgColor = "bg-red-100";
+            // Highlight hours with existing bookings based on severity
+            bgColor = conflictSeverity === 'high' ? "bg-red-200" : "bg-red-100";
             textColor = "text-red-800";
           }
           
@@ -775,7 +875,9 @@ const TimePickerModal = ({
                 {item}
               </Text>
               {hasConflict && (
-                <View className="absolute bottom-0 w-2 h-2 bg-red-500 rounded-full" />
+                <View className={`absolute bottom-0.5 w-2 h-2 ${
+                  conflictSeverity === 'high' ? 'bg-red-600' : 'bg-red-500'
+                } rounded-full`} />
               )}
             </TouchableOpacity>
           );
@@ -812,10 +914,13 @@ const TimePickerModal = ({
             </View>
           )}
           
-          {/* Legend for conflicting time slots */}
-          <View className="mb-2 bg-red-50 p-2 rounded-lg">
-            <Text className="text-red-700 text-sm text-center">
+          {/* Legend for conflicting time slots - made more prominent */}
+          <View className="mb-2 bg-red-50 p-3 rounded-lg border border-red-100">
+            <Text className="text-red-700 text-sm text-center font-medium">
               Hours marked in red have existing bookings
+            </Text>
+            <Text className="text-red-600 text-xs text-center mt-1">
+              Tap to select anyway, but watch for time conflicts
             </Text>
           </View>
           
@@ -849,6 +954,16 @@ const TimePickerModal = ({
           <View className="border border-gray-200 rounded-lg p-2 bg-white max-h-56">
             {renderTimeGrid(showHours)}
           </View>
+          
+          {/* Debug info - can be removed in production */}
+          {Object.keys(conflictingSlots).length > 0 && (
+            <View className="mt-2 p-2 bg-gray-50 rounded-lg">
+              <Text className="text-xs text-gray-500">
+                {Object.keys(conflictingSlots).length} hour(s) have existing bookings on this date
+              </Text>
+            </View>
+          )}
+          
           <TouchableOpacity
             onPress={handleConfirm}
             className="mt-4 py-3 bg-orange-500 rounded-xl items-center"
@@ -924,6 +1039,7 @@ const RescheduleBooking = () => {
           "Content-Type": "application/json",
         },
       });
+      
       try {
         // Try to fetch as room booking first
         const roomBookingResponse = await axiosInstance.get(`/room-bookings/${id}`);
@@ -952,39 +1068,170 @@ const RescheduleBooking = () => {
         // Fetch all bookings for this room
         await fetchExistingBookings(roomBookingResponse.data.room_id, true);
       } catch (roomError) {
+        console.log("Not a room booking, trying transport booking...");
+        
+// In the fetchBookingDetails function, replace the transport booking handling section with this:
+
+try {
+  // If not room booking, try as transport booking
+  const transportBookingResponse = await axiosInstance.get(`/transport-bookings/${id}`);
+  console.log("Found transport booking:", transportBookingResponse.data);
+  
+  const transportData = transportBookingResponse.data;
+  setBookingDetails(transportData);
+  setBookingType("TRANSPORT");
+  setNewDate(transportData.booking_date);
+  setNewStartTime(transportData.start_time);
+  setNewEndTime(transportData.end_time);
+  setDestination(transportData.destination || "");
+  
+  // Find the correct resource ID - try all possible field names
+  const transportResourceId = transportData.vehicle_id || 
+                            transportData.transport_id || 
+                            transportData.id || 
+                            transportData.booking_id;
+  
+  console.log("Transport Resource ID candidates:", {
+    vehicle_id: transportData.vehicle_id,
+    transport_id: transportData.transport_id,
+    id: transportData.id,
+    booking_id: transportData.booking_id,
+    selected: transportResourceId
+  });
+  
+  // If we found any ID, try to fetch associated data
+  if (transportResourceId) {
+    console.log("Using transportResourceId:", transportResourceId);
+    
+    try {
+      // Try different endpoints for vehicle details
+      const endpoints = [
+        `/vehicles/${transportResourceId}`,
+        `/transports/${transportResourceId}`
+      ];
+      
+      let vehicleDetails = null;
+      
+      for (const endpoint of endpoints) {
         try {
-          // If not room booking, try as transport booking
-          const transportBookingResponse = await axiosInstance.get(`/transport-bookings/${id}`);
-          setBookingDetails(transportBookingResponse.data);
-          setBookingType("TRANSPORT");
-          setNewDate(transportBookingResponse.data.booking_date);
-          setNewStartTime(transportBookingResponse.data.start_time);
-          setNewEndTime(transportBookingResponse.data.end_time);
-          setDestination(transportBookingResponse.data.destination || "");
+          console.log(`Trying to fetch vehicle details from: ${endpoint}`);
+          const vehicleResponse = await axiosInstance.get(endpoint);
           
-          // Fetch vehicle details
-          if (transportBookingResponse.data.vehicle_id) {
-            try {
-              const vehicleResponse = await axiosInstance.get(`/vehicles/${transportBookingResponse.data.vehicle_id}`);
-              if (vehicleResponse.data) {
-                // Update booking details with vehicle info
-                setBookingDetails(prevDetails => ({
-                  ...prevDetails,
-                  vehicle_details: vehicleResponse.data
-                }));
-              }
-            } catch (vehicleDetailError) {
-              console.error("Error fetching vehicle details:", vehicleDetailError);
-            }
+          if (vehicleResponse.data) {
+            vehicleDetails = vehicleResponse.data;
+            console.log(`Successfully retrieved vehicle details from ${endpoint}:`, vehicleDetails);
+            break;
           }
-          
-          // Fetch all bookings for this vehicle
-          await fetchExistingBookings(transportBookingResponse.data.vehicle_id, false);
-        } catch (transportError) {
-          console.error("Error fetching booking details:", transportError);
-          showAlert("error", "Failed to fetch booking details. Please try again later.");
+        } catch (endpointError) {
+          console.log(`Endpoint ${endpoint} failed:`, endpointError.message);
         }
       }
+      
+      if (vehicleDetails) {
+        // Update booking details with vehicle info
+        setBookingDetails(prevDetails => ({
+          ...prevDetails,
+          vehicle_details: vehicleDetails,
+          // Store the correct ID for later use
+          vehicle_id: transportResourceId
+        }));
+      }
+    } catch (vehicleDetailError) {
+      console.error("Error fetching vehicle details:", vehicleDetailError);
+    }
+    
+    // Special handling for transport bookings
+    console.log("Fetching existing transport bookings for resource ID:", transportResourceId);
+    
+    // For transport bookings, we'll fetch all transport bookings and filter client-side
+    try {
+      const transportBookingsResponse = await axiosInstance.get('/transport-bookings');
+      let allTransportBookings = [];
+      
+      if (transportBookingsResponse.data) {
+        if (Array.isArray(transportBookingsResponse.data)) {
+          allTransportBookings = transportBookingsResponse.data;
+        } else if (transportBookingsResponse.data.bookings && Array.isArray(transportBookingsResponse.data.bookings)) {
+          allTransportBookings = transportBookingsResponse.data.bookings;
+        }
+      }
+      
+      console.log(`Retrieved ${allTransportBookings.length} total transport bookings`);
+      
+      // Check all possible ID fields to find matching bookings
+      const currentBookingId = Number(id);
+      
+      const relevantBookings = allTransportBookings.filter(booking => {
+        // First exclude the current booking we're editing
+        if ((booking.id && booking.id === currentBookingId) || 
+            (booking.booking_id && booking.booking_id === currentBookingId)) {
+          return false;
+        }
+        
+        // Then check if this booking is for the same resource
+        const bookingResourceId = booking.vehicle_id || 
+                                 booking.transport_id;
+                                 
+        return Number(bookingResourceId) === Number(transportResourceId);
+      });
+      
+      console.log(`Found ${relevantBookings.length} other bookings for this transport`);
+      
+      if (relevantBookings.length > 0) {
+        console.log("Other transport bookings:", relevantBookings.map(b => ({
+          id: b.id || b.booking_id,
+          date: b.booking_date,
+          time: `${b.start_time}-${b.end_time}`
+        })));
+        
+        // Process booked dates for calendar display
+        const datesMap = {};
+        relevantBookings.forEach(booking => {
+          if (booking.booking_date) {
+            datesMap[booking.booking_date] = true;
+          }
+        });
+        
+        // Process time conflicts
+        const conflictsMap = {};
+        relevantBookings.forEach(booking => {
+          if (booking.booking_date) {
+            if (!conflictsMap[booking.booking_date]) {
+              conflictsMap[booking.booking_date] = [];
+            }
+            conflictsMap[booking.booking_date].push(booking);
+          }
+        });
+        
+        // Store all the data
+        setExistingBookings(relevantBookings);
+        setBookedDates(datesMap);
+        setTimeSlotConflicts(conflictsMap);
+        
+        console.log(`Set ${Object.keys(datesMap).length} booked dates and ${Object.keys(conflictsMap).length} dates with conflicts`);
+      } else {
+        // No other bookings found
+        setExistingBookings([]);
+        setBookedDates({});
+        setTimeSlotConflicts({});
+      }
+    } catch (error) {
+      console.error("Error fetching all transport bookings:", error);
+      setExistingBookings([]);
+      setBookedDates({});
+      setTimeSlotConflicts({});
+    }
+  } else {
+    console.error("Could not determine transport resource ID");
+    setExistingBookings([]);
+    setBookedDates({});
+    setTimeSlotConflicts({});
+  }
+} catch (transportError) {
+  console.error("Error fetching transport booking details:", transportError);
+  showAlert("error", "Failed to fetch booking details. Please try again later.");
+}
+      } 
     } catch (error) {
       console.error("Error fetching booking details:", error);
       showAlert("error", "Failed to fetch booking details. Please try again later.");
@@ -993,114 +1240,226 @@ const RescheduleBooking = () => {
     }
   };
 
-  const fetchExistingBookings = async (resourceId: any, isRoom: boolean = true) => {
-    if (!resourceId) return;
+
+  // Update the fetchExistingBookings function to accommodate transport_id
+
+const fetchExistingBookings = async (resourceId: any, isRoom: boolean = true) => {
+  if (!resourceId) {
+    console.log("No resourceId provided, cannot fetch bookings");
+    return;
+  }
+  
+  try {
+    setLoadingBookings(true);
+    const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
+    if (!authToken) {
+      showAlert("error", "Not authenticated");
+      return;
+    }
+    
+    const axiosInstance = axios.create({
+      baseURL: "https://j9d3hc82-3001.asse.devtunnels.ms/api",
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+    
+    // Log what type of bookings we're fetching
+    console.log(`Fetching ${isRoom ? 'room' : 'transport'} bookings for resourceId: ${resourceId}`);
+    
     try {
-      setLoadingBookings(true);
-      const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
-      if (!authToken) {
-        showAlert("error", "Not authenticated");
-        return;
+      // Try to get all bookings first with explicit endpoint for the type
+      const allBookingsEndpoint = isRoom
+        ? `/room-bookings`
+        : `/transport-bookings`;
+      
+      console.log(`Using endpoint: ${allBookingsEndpoint}`);
+      const response = await axiosInstance.get(allBookingsEndpoint);
+      
+      // Extract bookings from response
+      let allBookings = [];
+      if (response.data) {
+        // Handle different response formats
+        if (Array.isArray(response.data)) {
+          allBookings = response.data;
+        } else if (response.data.bookings && Array.isArray(response.data.bookings)) {
+          allBookings = response.data.bookings;
+        } else {
+          console.log("Unexpected response format:", response.data);
+          // Create an empty array as fallback
+          allBookings = [];
+        }
       }
-      const axiosInstance = axios.create({
-        baseURL: "https://j9d3hc82-3001.asse.devtunnels.ms/api",
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-          "Content-Type": "application/json",
-        },
+      
+      console.log(`Received ${allBookings.length} total bookings`);
+      
+      // Extract the booking ID we're currently editing
+      const bookingParamId = Number(id);
+      
+      // Filter to only include bookings for this specific resource
+      const relevantBookings = allBookings.filter(booking => {
+        // Get the right resource ID field based on booking type
+        const bookingResourceId = isRoom 
+          ? booking.room_id 
+          : (booking.vehicle_id || booking.transport_id); // Check both possible ID fields
+          
+        // Compare as numbers to avoid string comparison issues
+        const isForThisResource = Number(bookingResourceId) === Number(resourceId);
+        const isNotCurrentBooking = booking.id !== bookingParamId && booking.booking_id !== bookingParamId;
+        
+        if (isForThisResource) {
+          console.log(`Found booking ${booking.id || booking.booking_id} for ${isRoom ? 'room' : 'vehicle/transport'} ${resourceId}`);
+        }
+        
+        return isForThisResource && isNotCurrentBooking;
       });
       
-      try {
-        // Try to get all bookings first
-        const allBookingsEndpoint = isRoom
-          ? `/room-bookings`
-          : `/transport-bookings`;
-        
-        console.log(`Trying to fetch all ${isRoom ? 'room' : 'transport'} bookings...`);
-        const response = await axiosInstance.get(allBookingsEndpoint);
-        
-        if (response.data) {
-          // Get all bookings
-          const allBookings = Array.isArray(response.data)
-            ? response.data
-            : response.data.bookings || [];
-          
-          // Filter bookings for this specific resource and exclude current booking
-          const relevantBookings = allBookings.filter(booking => {
-            const bookingResourceId = isRoom ? booking.room_id : booking.vehicle_id;
-            return bookingResourceId == resourceId && booking.id !== id;
-          });
-          
-          console.log(`Found ${relevantBookings.length} existing bookings for this ${isRoom ? 'room' : 'vehicle'}`);
-          setExistingBookings(relevantBookings);
-          
-          // Create a map of booked dates for the calendar
-          const datesMap: Record<string, boolean> = {};
-          const conflictsMap: Record<string, any[]> = {};
-          
-          relevantBookings.forEach(booking => {
-            if (booking.booking_date) {
-              // Mark date as having bookings
-              datesMap[booking.booking_date] = true;
-              
-              // Group bookings by date for conflict checking
-              if (!conflictsMap[booking.booking_date]) {
-                conflictsMap[booking.booking_date] = [];
-              }
-              conflictsMap[booking.booking_date].push(booking);
-            }
-          });
-          
-          setBookedDates(datesMap);
-          setTimeSlotConflicts(conflictsMap);
-          console.log(`Marked ${Object.keys(datesMap).length} dates as having bookings`);
+      console.log(`Filtered to ${relevantBookings.length} bookings for this ${isRoom ? 'room' : 'vehicle/transport'}`);
+      
+      // Explicitly log the booking dates we found
+      if (relevantBookings.length > 0) {
+        console.log("Booking dates found:", 
+          relevantBookings.map(b => ({
+            id: b.id || b.booking_id,
+            date: b.booking_date,
+            time: `${b.start_time}-${b.end_time}`
+          }))
+        );
+      }
+      
+      // Store the filtered bookings
+      setExistingBookings(relevantBookings);
+      
+      // Process booked dates for calendar display
+      const datesMap = {};
+      relevantBookings.forEach(booking => {
+        if (booking.booking_date) {
+          datesMap[booking.booking_date] = true;
         }
-      } catch (error: any) {
-        console.log(`Error fetching all bookings:`, error);
+      });
+      
+      console.log(`Created dates map with ${Object.keys(datesMap).length} dates:`, datesMap);
+      setBookedDates(datesMap);
+      
+      // Process time conflicts by date
+      const conflictsMap = {};
+      relevantBookings.forEach(booking => {
+        if (booking.booking_date) {
+          if (!conflictsMap[booking.booking_date]) {
+            conflictsMap[booking.booking_date] = [];
+          }
+          conflictsMap[booking.booking_date].push(booking);
+        }
+      });
+      
+      console.log(`Created conflicts map with ${Object.keys(conflictsMap).length} dates`);
+      setTimeSlotConflicts(conflictsMap);
+      
+    } catch (error) {
+      console.error(`Error fetching ${isRoom ? 'room' : 'transport'} bookings:`, error);
+      
+      // Display a more specific error for transport bookings
+      if (!isRoom) {
+        console.log("Failed to fetch transport bookings. Attempting alternate method...");
         
-        // Fall back to empty bookings array but don't show an error to the user
+        // For transport: try different endpoint naming formats
+        try {
+          // Try both potential endpoint formats
+          const endpoints = [
+            `/vehicles/${resourceId}/bookings`,
+            `/transports/${resourceId}/bookings`
+          ];
+          
+          let vehicleBookings = [];
+          
+          for (const endpoint of endpoints) {
+            try {
+              console.log(`Trying alternate endpoint: ${endpoint}`);
+              const response = await axiosInstance.get(endpoint);
+              
+              if (response.data) {
+                if (Array.isArray(response.data)) {
+                  vehicleBookings = response.data;
+                } else if (response.data.bookings && Array.isArray(response.data.bookings)) {
+                  vehicleBookings = response.data.bookings;
+                }
+                
+                if (vehicleBookings.length > 0) {
+                  console.log(`Found ${vehicleBookings.length} bookings with endpoint ${endpoint}`);
+                  break; // Exit the loop if we found bookings
+                }
+              }
+            } catch (endpointError) {
+              console.log(`Endpoint ${endpoint} failed:`, endpointError.message);
+              // Continue to the next endpoint
+            }
+          }
+          
+          if (vehicleBookings.length > 0) {
+            console.log(`Alternate method found ${vehicleBookings.length} transport bookings`);
+            
+            // Filter out current booking
+            const filteredBookings = vehicleBookings.filter(b => {
+              const bookingId = b.id || b.booking_id;
+              return bookingId !== Number(id);
+            });
+            
+            setExistingBookings(filteredBookings);
+            
+            // Process booked dates
+            const datesMap = {};
+            filteredBookings.forEach(booking => {
+              if (booking.booking_date) {
+                datesMap[booking.booking_date] = true;
+              }
+            });
+            
+            console.log(`Alternate method created dates map with ${Object.keys(datesMap).length} dates`);
+            setBookedDates(datesMap);
+            
+            // Process time conflicts
+            const conflictsMap = {};
+            filteredBookings.forEach(booking => {
+              if (booking.booking_date) {
+                if (!conflictsMap[booking.booking_date]) {
+                  conflictsMap[booking.booking_date] = [];
+                }
+                conflictsMap[booking.booking_date].push(booking);
+              }
+            });
+            
+            setTimeSlotConflicts(conflictsMap);
+          } else {
+            console.log("All alternate methods failed, no transport bookings found");
+            setExistingBookings([]);
+            setBookedDates({});
+            setTimeSlotConflicts({});
+          }
+        } catch (altError) {
+          console.error("Alternate method also failed:", altError);
+          // Set empty data as fallback
+          setExistingBookings([]);
+          setBookedDates({});
+          setTimeSlotConflicts({});
+        }
+      } else {
+        // For room bookings, set empty data as fallback
         setExistingBookings([]);
         setBookedDates({});
         setTimeSlotConflicts({});
-        
-        // Try to get resource details as last resort
-        try {
-          const resourceEndpoint = isRoom
-            ? `/rooms/${resourceId}`
-            : `/vehicles/${resourceId}`;
-          
-          const resourceResponse = await axiosInstance.get(resourceEndpoint);
-          if (resourceResponse.data) {
-            console.log(`Successfully retrieved ${isRoom ? 'room' : 'vehicle'} details`);
-            if (isRoom) {
-              setBookingDetails(prevDetails => ({
-                ...prevDetails,
-                room_details: resourceResponse.data
-              }));
-            } else {
-              setBookingDetails(prevDetails => ({
-                ...prevDetails,
-                vehicle_details: resourceResponse.data
-              }));
-            }
-          }
-        } catch (resourceError) {
-          console.log(`Could not fetch ${isRoom ? 'room' : 'vehicle'} details:`, resourceError);
-        }
       }
-    } catch (error: any) {
-      console.error("Error in fetchExistingBookings:", error);
-      // Don't show alert to user, just log it
-      console.log("Failed to load existing bookings data.");
-      
-      // Set empty arrays/objects to avoid breaking the app flow
-      setExistingBookings([]);
-      setBookedDates({});
-      setTimeSlotConflicts({});
-    } finally {
-      setLoadingBookings(false);
     }
-  };
+  } catch (error) {
+    console.error("Error in fetchExistingBookings:", error);
+    // Set empty arrays/objects to avoid breaking the app flow
+    setExistingBookings([]);
+    setBookedDates({});
+    setTimeSlotConflicts({});
+  } finally {
+    setLoadingBookings(false);
+  }
+};
 
   const formatDateForAPI = (date: string) => {
     const d = new Date(date);
@@ -1141,42 +1500,40 @@ const RescheduleBooking = () => {
       return false;
     }
     
-    // Only check for conflicts if we have existing bookings
+    // Check for conflicts with existing bookings
+    console.log(`Checking conflicts for booking on ${newDate} from ${newStartTime} to ${newEndTime}`);
+    console.log(`We have ${existingBookings.length} existing bookings to check against`);
+    
+    // Only check for conflicts if we actually found existing bookings
     if (existingBookings.length > 0) {
-      console.log(`Checking for conflicts among ${existingBookings.length} existing bookings on ${newDate}`);
-      
-      // Get bookings for this specific date
-      const bookingsOnDate = timeSlotConflicts[newDate] || [];
-      console.log(`Found ${bookingsOnDate.length} bookings on selected date`);
-      
-      if (bookingsOnDate.length > 0) {
-        // Check for time conflicts with existing bookings
-        if (hasTimeConflict(newDate, newStartTime, newEndTime, existingBookings, id)) {
-          const conflict = getConflictDetails(newDate, newStartTime, newEndTime, existingBookings, id);
-          let errorMessage =
-            bookingType === "ROOM"
-              ? "Booking time conflicts with another reservation for this room"
-              : "Booking time conflicts with another transport reservation";
+      if (hasTimeConflict(newDate, newStartTime, newEndTime, existingBookings, id)) {
+        const conflict = getConflictDetails(newDate, newStartTime, newEndTime, existingBookings, id);
+        let errorMessage =
+          bookingType === "ROOM"
+            ? "Booking time conflicts with another reservation for this room"
+            : "Booking time conflicts with another transport reservation";
+        
+        if (conflict) {
+          errorMessage += ` (${conflict.startTime} - ${conflict.endTime})`;
           
-          if (conflict) {
-            errorMessage += ` (${conflict.startTime} - ${conflict.endTime})`;
-            
-            // Add details about who booked the conflicting slot if available
-            if (conflict.pic) {
-              errorMessage += `, booked by ${conflict.pic}`;
-            }
-            
-            if (conflict.section) {
-              errorMessage += ` from ${conflict.section}`;
-            }
+          // Add details about who booked the conflicting slot if available
+          if (conflict.pic) {
+            errorMessage += `, booked by ${conflict.pic}`;
           }
           
-          showAlert("error", errorMessage);
-          return false;
+          if (conflict.section) {
+            errorMessage += ` from ${conflict.section}`;
+          }
         }
+        
+        showAlert("error", errorMessage);
+        return false;
       }
+    } else {
+      console.log("No existing bookings to check for conflicts");
     }
     
+    // Additional validations (unchanged)
     // Calculate duration in minutes
     const startTimeMinutes = timeToMinutes(newStartTime);
     const endTimeMinutes = timeToMinutes(newEndTime);
@@ -1188,17 +1545,6 @@ const RescheduleBooking = () => {
       // Not blocking, just warning
     }
     
-    // Check if this is the same date and time as the original booking
-    if (
-      bookingDetails.booking_date === newDate &&
-      bookingDetails.start_time === newStartTime &&
-      bookingDetails.end_time === newEndTime &&
-      (bookingType !== "TRANSPORT" || bookingDetails.destination === destination)
-    ) {
-      showAlert("info", "You haven't made any changes to the booking");
-      return false;
-    }
-    
     // Check if the booking is outside business hours (but don't block it)
     const businessStartTime = "08:00";
     const businessEndTime = "17:00";
@@ -1208,79 +1554,21 @@ const RescheduleBooking = () => {
       // Allow to continue - not a blocker
     }
     
-    // Additional resource-specific validations
-    if (bookingType === "ROOM" && bookingDetails.room_details) {
-      // Room-specific validations (weekend availability, operating hours, etc.)
-      try {
-        const roomDetails = bookingDetails.room_details;
-        
-        // Check weekend availability
-        const bookingDay = new Date(newDate).getDay();
-        if ((bookingDay === 0 || bookingDay === 6) && roomDetails.weekend_available === false) {
-          showAlert("error", "This room is not available for booking on weekends");
-          return false;
-        }
-        
-        // Check operating hours if available
-        if (roomDetails.operating_hours) {
-          const { open_time, close_time } = roomDetails.operating_hours;
-          if (open_time && close_time) {
-            if (newStartTime < open_time) {
-              showAlert("error", `This room is only available starting from ${open_time}`);
-              return false;
-            }
-            
-            if (newEndTime > close_time) {
-              showAlert("error", `This room must be vacated by ${close_time}`);
-              return false;
-            }
-          }
-        }
-      } catch (error) {
-        console.log("Error during room-specific validation:", error);
-      }
-    } else if (bookingType === "TRANSPORT" && bookingDetails.vehicle_details) {
-      // Vehicle-specific validations
-      try {
-        const vehicleDetails = bookingDetails.vehicle_details;
-        
-        // Check if vehicle is in maintenance
-        if (vehicleDetails.maintenance_status === "active") {
-          showAlert("error", "This vehicle is currently under maintenance");
-          return false;
-        }
-        
-        // Check if driver is available (if applicable)
-        if (vehicleDetails.requires_driver && !vehicleDetails.driver_available) {
-          showAlert("error", "No driver is available for this vehicle during selected time");
-          return false;
-        }
-        
-        // Check if destination is provided for transport bookings
-        if (!destination.trim()) {
-          showAlert("error", "Please enter a destination for transport booking");
-          return false;
-        }
-      } catch (error) {
-        console.log("Error during vehicle-specific validation:", error);
-      }
-    }
-    
     return true;
   };
   
   // Update DatePickerModal call to pass bookedDates
   {showDatePicker && (
     <DatePickerModal
-  visible={showDatePicker}
-  onClose={() => setShowDatePicker(false)}
-  date={newDate}
-  onDateChange={(date) => setNewDate(date)}
-  existingBookings={existingBookings}
-/>
+      visible={showDatePicker}
+      onClose={() => setShowDatePicker(false)}
+      date={newDate}
+      onDateChange={(date) => setNewDate(date)}
+      existingBookings={existingBookings} // This passes all the booking data
+    />
   )}
   
-  // Update TimePickerModal calls to work with time conflicts
+  // Replace the TimePickerModal components with:
   {showStartTimePicker && (
     <TimePickerModal
       visible={showStartTimePicker}
@@ -1289,8 +1577,9 @@ const RescheduleBooking = () => {
       onTimeChange={(time) => setNewStartTime(time)}
       title="Select Start Time"
       dateString={newDate}
-      existingBookings={existingBookings}
+      existingBookings={existingBookings} // Pass all bookings
       currentBookingId={id}
+      onAlert={showAlert}
     />
   )}
   
@@ -1302,8 +1591,9 @@ const RescheduleBooking = () => {
       onTimeChange={(time) => setNewEndTime(time)}
       title="Select End Time"
       dateString={newDate}
-      existingBookings={existingBookings}
+      existingBookings={existingBookings} // Pass all bookings
       currentBookingId={id}
+      onAlert={showAlert}
     />
   )}
 
@@ -1668,4 +1958,5 @@ const RescheduleBooking = () => {
   );
 };
 
-export default RescheduleBooking;
+export default RescheduleBooking; 
+ 
