@@ -23,48 +23,17 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [debug, setDebug] = useState("");
 
   // Check for existing session on component mount
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
     if (token) {
-      // Verify token validity before redirecting
-      verifyToken(token);
+      console.log("Found existing token, checking validity...");
+      // Optionally verify token with backend
+      router.push("/list/room-bookings"); // Redirect to admin dashboard directly
     }
   }, []);
-
-  // Verify token function
-  const verifyToken = async (token) => {
-    try {
-      // Optional: verify token with backend
-      const response = await axios.get(
-        "https://j9d3hc82-3001.asse.devtunnels.ms/api/admins/auth/verify",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      
-      if (response.data.valid) {
-        navigateTo("/admin");
-      }
-    } catch (err) {
-      // Token invalid, clear storage
-      localStorage.removeItem("adminToken");
-    }
-  };
-
-  // Safe navigation function that works in both Pages and App Router
-  const navigateTo = (path) => {
-    // Using router.push if available (App Router)
-    if (router && router.push) {
-      router.push(path);
-    } else {
-      // Fallback to window.location for Pages Router or if router is not available
-      window.location.href = path;
-    }
-  };
 
   // Handle input change
   const handleChange = (e) => {
@@ -122,6 +91,7 @@ const LoginPage = () => {
     setErrors({ ...errors, general: "" });
 
     try {
+      // Important: Make sure this URL matches your admin login endpoint exactly
       const response = await axios.post(
         "https://j9d3hc82-3001.asse.devtunnels.ms/api/admins/auth/login",
         {
@@ -130,25 +100,25 @@ const LoginPage = () => {
         }
       );
 
+      console.log("Login response:", response.data);
+      setDebug(`Login response received: ${JSON.stringify(response.data)}`);
+
       // Handle successful login
       if (response.data && response.data.token) {
-        // Store token
-        if (rememberMe) {
-          localStorage.setItem("adminToken", response.data.token);
-          // Optional: Store user info
-          if (response.data.user) {
-            localStorage.setItem("adminUser", JSON.stringify(response.data.user));
-          }
-        } else {
-          // Use session storage if not remember me
-          sessionStorage.setItem("adminToken", response.data.token);
-          if (response.data.user) {
-            sessionStorage.setItem("adminUser", JSON.stringify(response.data.user));
-          }
+        // Store token in localStorage (always use localStorage for admin token)
+        localStorage.setItem("adminToken", response.data.token);
+        console.log("Token saved:", response.data.token);
+        
+        // Store admin info if available
+        if (response.data.admin) {
+          localStorage.setItem("adminInfo", JSON.stringify(response.data.admin));
         }
         
-        // Redirect to admin dashboard
-        navigateTo("/admin");
+        // Set axios default headers for future requests
+        axios.defaults.headers.common["Authorization"] = `Bearer ${response.data.token}`;
+        
+        // Redirect to admin dashboard - use the correct path
+        router.push("/list/room-bookings");
       } else {
         setErrors({
           ...errors,
@@ -156,6 +126,9 @@ const LoginPage = () => {
         });
       }
     } catch (err) {
+      console.error("Login error:", err);
+      setDebug(`Login error: ${err.message}, Status: ${err.response?.status}`);
+      
       // Handle different error scenarios
       if (err.response) {
         // Server responded with an error
@@ -213,6 +186,14 @@ const LoginPage = () => {
             <div className="mb-6 p-4 bg-red-50 rounded-lg flex items-start gap-3">
               <AlertCircleIcon className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
               <span className="text-red-600 text-sm">{errors.general}</span>
+            </div>
+          )}
+
+          {/* Debug info (hidden in production) */}
+          {debug && (
+            <div className="mb-6 p-2 bg-gray-50 rounded-lg text-xs text-gray-500 border">
+              <div>Debug info:</div>
+              <div className="font-mono mt-1 break-words">{debug}</div>
             </div>
           )}
 
@@ -320,6 +301,32 @@ const LoginPage = () => {
                 "Sign in to Admin Panel"
               )}
             </button>
+
+            {/* Utils for debugging */}
+            <div className="mt-4 flex justify-center gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.removeItem("adminToken");
+                  localStorage.removeItem("adminInfo");
+                  setDebug("Cleared localStorage tokens");
+                }}
+                className="text-red-500 hover:underline"
+              >
+                Clear tokens
+              </button>
+              <span>|</span>
+              <button
+                type="button"
+                onClick={() => {
+                  const token = localStorage.getItem("adminToken");
+                  setDebug(`Current token: ${token ? token.substring(0, 15) + "..." : "none"}`);
+                }}
+                className="text-blue-500 hover:underline"
+              >
+                Check token
+              </button>
+            </div>
 
             {/* Security note */}
             <div className="text-center mt-6 text-xs text-gray-500">

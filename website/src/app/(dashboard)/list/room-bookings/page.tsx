@@ -67,35 +67,31 @@ const RoomBookingListPage = () => {
   const [roomBookings, setRoomBookings] = useState<RoomBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authStatus, setAuthStatus] = useState<string>("Checking...");
 
-  // Create axios instance with interceptors for authentication
-  const setupAxiosAuth = () => {
+  // Create a custom axios instance to avoid conflicts 
+  const createApiClient = () => {
     // Get token from localStorage
     const token = localStorage.getItem("adminToken");
     
     if (!token) {
-      // If no token found, redirect to login page
+      console.log("No admin token found, redirecting to login");
       router.push("/sign-in");
-      return false;
+      setAuthStatus("No token found");
+      return null;
     }
     
-    // Set default authorization header for all requests
-    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    setAuthStatus(`Token found (${token.substring(0, 10)}...)`);
     
-    // Add response interceptor to handle 401 Unauthorized errors
-    axios.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response && error.response.status === 401) {
-          // If we get a 401 response, token might be expired
-          localStorage.removeItem("adminToken");
-          router.push("/login");
-        }
-        return Promise.reject(error);
+    // Create axios instance with auth header
+    const apiClient = axios.create({
+      baseURL: "https://j9d3hc82-3001.asse.devtunnels.ms/api",
+      headers: {
+        Authorization: `Bearer ${token}`
       }
-    );
+    });
     
-    return true;
+    return apiClient;
   };
 
   // Fetch data on component mount
@@ -104,18 +100,30 @@ const RoomBookingListPage = () => {
       setLoading(true);
       setError(null);
       
-      // Setup authentication
-      const isAuth = setupAxiosAuth();
-      if (!isAuth) return;
+      const apiClient = createApiClient();
+      if (!apiClient) return;
       
       try {
-        const response = await axios.get(
-          "https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings"
-        );
+        console.log("Fetching room bookings...");
+        // Debug request headers
+        const debugHeaders = apiClient.defaults.headers;
+        console.log("Request headers:", debugHeaders);
+        
+        const response = await apiClient.get("/room-bookings");
+        console.log("Room bookings fetched successfully:", response.data);
         setRoomBookings(response.data);
+        setAuthStatus("Authenticated and data loaded");
       } catch (error: any) {
         console.error("Error fetching room bookings:", error);
-        // Display user-friendly error message
+        
+        // Check for unauthorized error
+        if (error.response?.status === 401) {
+          setAuthStatus("Authentication failed (401) - token may be invalid");
+          localStorage.removeItem("adminToken");
+          router.push("/sign-in");
+          return;
+        }
+        
         setError(
           error.response?.data?.message || 
           "Unable to load room bookings. Please try again later."
@@ -197,38 +205,33 @@ const RoomBookingListPage = () => {
     </tr>
   );
 
-  // If still loading, show loading state
-  if (loading) {
-    return (
-      <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0 flex items-center justify-center h-64">
-        <div className="flex flex-col items-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mb-4"></div>
-          <p className="text-gray-600">Loading room bookings...</p>
+  return (
+    <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
+      {/* Auth status (for debugging - remove in production) */}
+      <div className="bg-gray-50 p-2 mb-4 rounded text-xs text-gray-600 border flex justify-between">
+        <div>
+          <span>Auth status: {authStatus}</span>
         </div>
-      </div>
-    );
-  }
-
-  // If there's an error, show error message
-  if (error) {
-    return (
-      <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
-        <div className="bg-red-50 p-4 rounded-md text-red-800">
-          <h3 className="font-bold mb-2">Error</h3>
-          <p>{error}</p>
+        <div className="flex gap-2">
           <button 
-            onClick={() => window.location.reload()}
-            className="mt-3 px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200"
+            onClick={() => {
+              localStorage.removeItem("adminToken");
+              localStorage.removeItem("adminInfo");
+              router.push("/sign-in");
+            }}
+            className="text-red-500 hover:underline text-xs"
           >
-            Try Again
+            Sign out
+          </button>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-blue-500 hover:underline text-xs"
+          >
+            Reload page
           </button>
         </div>
       </div>
-    );
-  }
 
-  return (
-    <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
       {/* TOP */}
       <div className="flex items-center justify-between">
         <h1 className="hidden md:block text-lg font-semibold">Room Bookings</h1>
@@ -245,8 +248,33 @@ const RoomBookingListPage = () => {
           </div>
         </div>
       </div>
-      {/* LIST */}
-      {roomBookings.length === 0 ? (
+
+      {/* Loading state */}
+      {loading && (
+        <div className="flex-1 flex items-center justify-center h-64">
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mb-4"></div>
+            <p className="text-gray-600">Loading room bookings...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && !loading && (
+        <div className="bg-red-50 p-4 rounded-md text-red-800 mt-4">
+          <h3 className="font-bold mb-2">Error</h3>
+          <p>{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-3 px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && !error && roomBookings.length === 0 && (
         <div className="text-center py-10">
           <p className="text-gray-500">No room bookings found.</p>
           <button 
@@ -256,11 +284,15 @@ const RoomBookingListPage = () => {
             Refresh
           </button>
         </div>
-      ) : (
-        <Table columns={columns} renderRow={renderRow} data={roomBookings} />
       )}
-      {/* PAGINATION */}
-      {roomBookings.length > 0 && <Pagination />}
+
+      {/* Data table */}
+      {!loading && !error && roomBookings.length > 0 && (
+        <>
+          <Table columns={columns} renderRow={renderRow} data={roomBookings} />
+          <Pagination />
+        </>
+      )}
     </div>
   );
 };

@@ -1,146 +1,151 @@
+"use client";
+
 import { role } from "@/lib/data";
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 const menuItems = [
   {
-    title: "MENU",
-    items: [
+    icon: "/home.png",
+    label: "Home",
+    href: "/admin",
+    visible: ["admin", "teacher", "student", "parent"],
+  },
+  {
+    icon: "/calendar.png",
+    label: "Bookings",
+    visible: ["admin", "teacher", "student", "parent"],
+    isDropdown: true,
+    subItems: [
       {
-        icon: "/home.png",
-        label: "Home",
-        href: "/admin",
+        label: "Rooms",
+        href: "/list/room-bookings",
         visible: ["admin", "teacher", "student", "parent"],
       },
       {
-        icon: "/teacher.png",
-        label: "Teachers",
-        href: "/list/teachers",
-        visible: ["admin", "teacher"],
-      },
-      {
-        icon: "/student.png",
-        label: "Students",
-        href: "/list/students",
-        visible: ["admin", "teacher"],
-      },
-      {
-        icon: "/parent.png",
-        label: "Parents",
-        href: "/list/parents",
-        visible: ["admin", "teacher"],
-      },
-      {
-        icon: "/subject.png",
-        label: "Subjects",
-        href: "/list/subjects",
-        visible: ["admin"],
-      },
-      {
-        icon: "/class.png",
-        label: "Classes",
-        href: "/list/classes",
-        visible: ["admin", "teacher"],
-      },
-      {
-        icon: "/lesson.png",
-        label: "Lessons",
-        href: "/list/lessons",
-        visible: ["admin", "teacher"],
-      },
-      {
-        icon: "/exam.png",
-        label: "Exams",
-        href: "/list/exams",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/assignment.png",
-        label: "Assignments",
-        href: "/list/assignments",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/result.png",
-        label: "Results",
-        href: "/list/results",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/attendance.png",
-        label: "Attendance",
-        href: "/list/attendance",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/calendar.png",
-        label: "Events",
-        href: "/list/events",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/message.png",
-        label: "Messages",
-        href: "/list/messages",
-        visible: ["admin", "teacher", "student", "parent"],
-      },
-      {
-        icon: "/announcement.png",
-        label: "Announcements",
-        href: "/list/announcements",
+        label: "Transports",
+        href: "/list/transport-bookings",
         visible: ["admin", "teacher", "student", "parent"],
       },
     ],
   },
   {
-    title: "OTHER",
-    items: [
+    icon: "/setting.png",
+    label: "Manage",
+    visible: ["admin"],
+    isDropdown: true,
+    subItems: [
       {
-        icon: "/profile.png",
-        label: "Profile",
-        href: "/profile",
-        visible: ["admin", "teacher", "student", "parent"],
+        label: "Rooms",
+        href: "/list/rooms",
+        visible: ["admin"],
       },
       {
-        icon: "/setting.png",
-        label: "Settings",
-        href: "/settings",
-        visible: ["admin", "teacher", "student", "parent"],
+        label: "Transports",
+        href: "/list/transports",
+        visible: ["admin"],
       },
       {
-        icon: "/logout.png",
-        label: "Logout",
-        href: "/logout",
-        visible: ["admin", "teacher", "student", "parent"],
+        label: "Users",
+        href: "/list/users",
+        visible: ["admin"],
       },
     ],
+  },
+  {
+    icon: "/profile.png",
+    label: "Profile",
+    href: "/profile",
+    visible: ["admin", "teacher", "student", "parent"],
+  },
+  {
+    icon: "/logout.png",
+    label: "Logout",
+    href: "/sign-in",
+    onClick: () => {
+      localStorage.removeItem("adminToken");
+      localStorage.removeItem("adminInfo");
+    },
+    visible: ["admin", "teacher", "student", "parent"],
   },
 ];
 
 const Menu = () => {
+  const [openDropdown, setOpenDropdown] = useState(null);
+
+  const toggleDropdown = (label) => {
+    setOpenDropdown(openDropdown === label ? null : label);
+  };
+
+  const handleLogout = (onClick) => {
+    if (onClick) {
+      onClick();
+    }
+  };
+
   return (
     <div className="mt-4 text-sm">
-      {menuItems.map((i) => (
-        <div className="flex flex-col gap-2" key={i.title}>
-          <span className="hidden lg:block text-gray-400 font-light my-4">
-            {i.title}
-          </span>
-          {i.items.map((item) => {
-            if (item.visible.includes(role)) {
+      <div className="flex flex-col gap-2">
+        {menuItems.map((item) => {
+          if (item.visible.includes(role)) {
+            if (item.isDropdown) {
+              // Render dropdown menu
+              return (
+                <div key={item.label}>
+                  <button
+                    className="w-full flex items-center justify-center lg:justify-between gap-4 text-gray-500 py-2 md:px-2 rounded-md hover:bg-lamaSkyLight"
+                    onClick={() => toggleDropdown(item.label)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <Image src={item.icon} alt="" width={20} height={20} />
+                      <span className="hidden lg:block">{item.label}</span>
+                    </div>
+                    <span className="hidden lg:block">
+                      {openDropdown === item.label ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    </span>
+                  </button>
+                  
+                  {/* Dropdown items */}
+                  {openDropdown === item.label && (
+                    <div className="pl-8 mt-1">
+                      {item.subItems.map((subItem) => {
+                        if (subItem.visible.includes(role)) {
+                          return (
+                            <Link
+                              href={subItem.href}
+                              key={subItem.label}
+                              className="flex items-center py-2 text-gray-500 hover:text-gray-700"
+                            >
+                              <span className="hidden lg:block">{subItem.label}</span>
+                            </Link>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            } else {
+              // Render normal menu item
               return (
                 <Link
                   href={item.href}
                   key={item.label}
                   className="flex items-center justify-center lg:justify-start gap-4 text-gray-500 py-2 md:px-2 rounded-md hover:bg-lamaSkyLight"
+                  onClick={() => handleLogout(item.onClick)}
                 >
                   <Image src={item.icon} alt="" width={20} height={20} />
                   <span className="hidden lg:block">{item.label}</span>
                 </Link>
               );
             }
-          })}
-        </div>
-      ))}
+          }
+          return null;
+        })}
+      </div>
     </div>
   );
 };
