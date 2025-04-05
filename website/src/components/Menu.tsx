@@ -11,23 +11,23 @@ const menuItems = [
     icon: "/home.png",
     label: "Home",
     href: "/admin",
-    visible: ["admin", "teacher", "student", "parent"],
+    visible: ["admin"],
   },
   {
     icon: "/calendar.png",
     label: "Bookings",
-    visible: ["admin", "teacher", "student", "parent"],
+    visible: ["admin"],
     isDropdown: true,
     subItems: [
       {
         label: "Rooms",
         href: "/list/room-bookings",
-        visible: ["admin", "teacher", "student", "parent"],
+        visible: ["admin"],
       },
       {
         label: "Transports",
         href: "/list/transport-bookings",
-        visible: ["admin", "teacher", "student", "parent"],
+        visible: ["admin"],
       },
     ],
   },
@@ -39,17 +39,17 @@ const menuItems = [
     subItems: [
       {
         label: "Rooms",
-        href: "/list/rooms",
+        href: "/manage/rooms",
         visible: ["admin"],
       },
       {
         label: "Transports",
-        href: "/list/transports",
+        href: "/manage/transports",
         visible: ["admin"],
       },
       {
         label: "Users",
-        href: "/list/users",
+        href: "/manage/users",
         visible: ["admin"],
       },
     ],
@@ -58,7 +58,7 @@ const menuItems = [
     icon: "/profile.png",
     label: "Profile",
     href: "/profile",
-    visible: ["admin", "teacher", "student", "parent"],
+    visible: ["admin"],
   },
   {
     icon: "/logout.png",
@@ -68,7 +68,7 @@ const menuItems = [
       localStorage.removeItem("adminToken");
       localStorage.removeItem("adminInfo");
     },
-    visible: ["admin", "teacher", "student", "parent"],
+    visible: ["admin"],
   },
 ];
 
