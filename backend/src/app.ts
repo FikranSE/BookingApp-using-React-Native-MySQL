@@ -14,7 +14,7 @@ import roomBookingRoutes from './routes/roomBookingRoutes';
 import { initModels } from './models';
 import sequelize from './config/db';
 import { adminAuthMiddleware } from './middlewares/adminAuthMiddleware';
-
+ 
 dotenv.config();
 
 const app: Application = express();
