@@ -8,7 +8,7 @@ import { generateToken } from '../utils/generateToken';
 dotenv.config();
 
 /**
- * Register Admin
+ * Register Admin 
  */
 export const adminRegister = async (req: Request, res: Response) => {
   const { username, email, password } = req.body;

@@ -22,7 +22,7 @@ const startServer = async () => {
   } catch (error) {
     console.error('Gagal menghubungkan ke database:', error);
     process.exit(1);
-  }
+  } 
 };
 
 startServer();
