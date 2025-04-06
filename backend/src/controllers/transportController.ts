@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import TransportService from '../services/TransportService';
 import upload from '../utils/multerConfig';
+import fs from 'fs';
+import path from 'path';
 
 class TransportController {
   // Create Transport with image upload
@@ -11,11 +13,21 @@ class TransportController {
       }
 
       try {
-        const image = req.file ? req.file.path : null;
+        const serverUrl = 'https://dbtch5xt-3001.asse.devtunnels.ms/'; // Configure this in your environment
+        const image = req.file ? `${serverUrl}/uploads/${req.file.filename}` : null;
+
         const transportData = { ...req.body, image };
         const transport = await TransportService.createTransport(transportData);
         res.status(201).json(transport);
       } catch (error: any) {
+        // If there was an error and we uploaded a file, clean it up
+        if (req.file && req.file.path) {
+          try {
+            fs.unlinkSync(req.file.path);
+          } catch (unlinkErr) {
+            console.error('Failed to clean up file after error:', unlinkErr);
+          }
+        }
         res.status(400).json({ error: error.message });
       }
     });
@@ -47,30 +59,104 @@ class TransportController {
 
   // Update Transport with image upload
   public static async updateTransport(req: Request, res: Response) {
-    upload.single('image')(req, res, async (err: any) => {
-      if (err) {
-        return res.status(400).json({ error: err.message });
+    try {
+      // First get the existing transport to check for existing image
+      const existingTransport = await TransportService.getTransportById(Number(req.params.id));
+      
+      if (!existingTransport) {
+        return res.status(404).json({ error: 'Transport not found' });
       }
-  
-      try {
-        const image = req.file ? req.file.path : null;
-        const transportData = { ...req.body, image };
-        const updatedTransport = await TransportService.updateTransport(Number(req.params.id), transportData);
-        
-        if (updatedTransport) {
-          res.status(200).json(updatedTransport);
-        } else {
-          res.status(404).json({ error: 'Transport not found' });
+      
+      // Then handle the upload
+      upload.single('image')(req, res, async (err: any) => {
+        if (err) {
+          return res.status(400).json({ error: err.message });
         }
-      } catch (error: any) {
-        res.status(400).json({ error: error.message });
-      }
-    });
+    
+        try {
+          // Get new image path if a file was uploaded
+          const newImagePath = req.file ? req.file.path : null;
+          
+          // Prepare update data
+          const transportData: any = { ...req.body };
+          
+          // Only update image if a new one was uploaded
+          if (newImagePath) {
+            transportData.image = newImagePath;
+            
+            // Try to delete the old image if it exists
+            if (existingTransport.image) {
+              try {
+                // Check if file exists before trying to delete
+                if (fs.existsSync(existingTransport.image)) {
+                  fs.unlinkSync(existingTransport.image);
+                } else {
+                  console.warn(`Could not find old image at ${existingTransport.image} to delete`);
+                }
+              } catch (unlinkErr) {
+                console.error('Error deleting old image file:', unlinkErr);
+                // Continue with the update even if we can't delete the old file
+              }
+            }
+          }
+          
+          const updatedTransport = await TransportService.updateTransport(Number(req.params.id), transportData);
+          
+          if (updatedTransport) {
+            res.status(200).json(updatedTransport);
+          } else {
+            // If update failed and we uploaded a new file, clean it up
+            if (newImagePath) {
+              try {
+                fs.unlinkSync(newImagePath);
+              } catch (unlinkErr) {
+                console.error('Failed to clean up file after update error:', unlinkErr);
+              }
+            }
+            res.status(404).json({ error: 'Transport not found or update failed' });
+          }
+        } catch (error: any) {
+          // If there was an error and we uploaded a file, clean it up
+          if (req.file && req.file.path) {
+            try {
+              fs.unlinkSync(req.file.path);
+            } catch (unlinkErr) {
+              console.error('Failed to clean up file after error:', unlinkErr);
+            }
+          }
+          res.status(400).json({ error: error.message });
+        }
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
   }
 
   // Delete Transport
   public static async deleteTransport(req: Request, res: Response) {
     try {
+      // First get the transport to check for image
+      const transport = await TransportService.getTransportById(Number(req.params.id));
+      
+      if (!transport) {
+        return res.status(404).json({ error: 'Transport not found' });
+      }
+      
+      // Delete the image file if it exists
+      if (transport.image) {
+        try {
+          // Check if file exists before trying to delete
+          if (fs.existsSync(transport.image)) {
+            fs.unlinkSync(transport.image);
+          } else {
+            console.warn(`Could not find image at ${transport.image} to delete`);
+          }
+        } catch (unlinkErr) {
+          console.error('Error deleting image file:', unlinkErr);
+          // Continue with the deletion even if we can't delete the file
+        }
+      }
+      
       const deleted = await TransportService.deleteTransport(Number(req.params.id));
       if (deleted) {
         res.status(200).json({ message: 'Transport deleted successfully' });
@@ -81,6 +167,17 @@ class TransportController {
       res.status(400).json({ error: error.message });
     }
   }
+  
+  // Helper method to ensure uploads directory exists
+  private static ensureUploadsDir() {
+    const uploadsDir = path.join(__dirname, '..', 'uploads');
+    if (!fs.existsSync(uploadsDir)){
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+  }
 }
+
+// Ensure uploads directory exists when controller is loaded
+TransportController.ensureUploadsDir();
 
 export default TransportController;

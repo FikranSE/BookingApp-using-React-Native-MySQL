@@ -9,15 +9,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
-  Car, Plus, Edit, Trash2, X, Save, 
+  BedDouble, Plus, Edit, Trash2, X, Save, 
   Camera, AlertCircle, Users
 } from "lucide-react";
 
-type Transport = {
-  transport_id: number;
-  vehicle_name: string;
-  driver_name: string;
+type Room = {
+  room_id: number;
+  room_name: string;
+  room_type: string;
   capacity: number;
+  facilities: string;
   image?: string;
   createdAt: string;
   updatedAt: string;
@@ -29,18 +30,18 @@ const columns = [
     accessor: "info",
   },
   {
-    header: "Transport ID",
-    accessor: "transport_id",
+    header: "Room ID",
+    accessor: "room_id",
     className: "hidden md:table-cell",
   },
   {
-    header: "Vehicle Name",
-    accessor: "vehicle_name",
+    header: "Room Name",
+    accessor: "room_name",
     className: "hidden md:table-cell",
   },
   {
-    header: "Driver",
-    accessor: "driver_name",
+    header: "Room Type",
+    accessor: "room_type",
     className: "hidden md:table-cell",
   },
   {
@@ -54,10 +55,22 @@ const columns = [
   },
 ];
 
-const TransportManagePage = () => {
+// Room types for dropdown
+const roomTypes = [
+  "Standard",
+  "Deluxe",
+  "Suite",
+  "Executive",
+  "Family",
+  "Single",
+  "Double",
+  "Twin"
+];
+
+const RoomManagePage = () => {
   const router = useRouter();
   const fileInputRef = useRef(null);
-  const [transports, setTransports] = useState<Transport[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [authStatus, setAuthStatus] = useState<string>("Checking...");
@@ -65,11 +78,12 @@ const TransportManagePage = () => {
   // Add/Edit modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [currentTransport, setCurrentTransport] = useState<Transport | null>(null);
+  const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
   const [formData, setFormData] = useState({
-    vehicle_name: "",
-    driver_name: "",
+    room_name: "",
+    room_type: roomTypes[0],
     capacity: 1,
+    facilities: "",
   });
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
@@ -79,25 +93,8 @@ const TransportManagePage = () => {
   
   // Delete confirmation state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [transportToDelete, setTransportToDelete] = useState<number | null>(null);
+  const [roomToDelete, setRoomToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Utility function to fix image URLs
-  const fixImageUrl = (imageUrl) => {
-    if (!imageUrl) return null;
-    
-    // Handle local filesystem paths
-    if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
-      return `/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
-    }
-    
-    // Fix double slash issue in URLs
-    if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
-      return imageUrl.replace('//uploads', '/uploads');
-    }
-    
-    return imageUrl;
-  };
 
   // Create a custom axios instance to avoid conflicts 
   const createApiClient = () => {
@@ -126,10 +123,10 @@ const TransportManagePage = () => {
 
   // Fetch data on component mount
   useEffect(() => {
-    fetchTransports();
+    fetchRooms();
   }, [router]);
 
-  const fetchTransports = async () => {
+  const fetchRooms = async () => {
     setLoading(true);
     setError(null);
     
@@ -137,13 +134,13 @@ const TransportManagePage = () => {
     if (!apiClient) return;
     
     try {
-      console.log("Fetching transports...");
-      const response = await apiClient.get("/transports");
-      console.log("Transports fetched successfully:", response.data);
-      setTransports(response.data);
+      console.log("Fetching rooms...");
+      const response = await apiClient.get("/rooms");
+      console.log("Rooms fetched successfully:", response.data);
+      setRooms(response.data);
       setAuthStatus("Authenticated and data loaded");
     } catch (error: any) {
-      console.error("Error fetching transports:", error);
+      console.error("Error fetching rooms:", error);
       
       // Check for unauthorized error
       if (error.response?.status === 401) {
@@ -155,63 +152,65 @@ const TransportManagePage = () => {
       
       setError(
         error.response?.data?.message || 
-        "Unable to load transports. Please try again later."
+        "Unable to load rooms. Please try again later."
       );
     } finally {
       setLoading(false);
     }
   };
 
-  // Open modal for creating a new transport
-  const handleAddTransport = () => {
+  // Open modal for creating a new room
+  const handleAddRoom = () => {
     setFormData({
-      vehicle_name: "",
-      driver_name: "",
+      room_name: "",
+      room_type: roomTypes[0],
       capacity: 1,
+      facilities: "",
     });
     setSelectedFile(null);
     setPreviewImage(null);
     setFormErrors({});
     setIsEditMode(false);
-    setCurrentTransport(null);
+    setCurrentRoom(null);
     setIsModalOpen(true);
   };
 
-  // Open modal for editing an existing transport
-  const handleEditTransport = (transport: Transport) => {
+  // Open modal for editing an existing room
+  const handleEditRoom = (room: Room) => {
     setFormData({
-      vehicle_name: transport.vehicle_name || "",
-      driver_name: transport.driver_name || "",
-      capacity: transport.capacity || 1,
+      room_name: room.room_name || "",
+      room_type: room.room_type || roomTypes[0],
+      capacity: room.capacity || 1,
+      facilities: room.facilities || "",
     });
     setSelectedFile(null);
     setPreviewImage(null);
     setFormErrors({});
     setIsEditMode(true);
-    setCurrentTransport(transport);
+    setCurrentRoom(room);
     setIsModalOpen(true);
   };
 
-  // Confirm dialog for deleting a transport
-  const handleDeleteClick = (transportId: number) => {
-    setTransportToDelete(transportId);
+  // Confirm dialog for deleting a room
+  const handleDeleteClick = (roomId: number) => {
+    setRoomToDelete(roomId);
     setShowDeleteConfirm(true);
   };
 
-  // Delete a transport
-  const handleDeleteTransport = async () => {
-    if (!transportToDelete) return;
+  // Delete a room
+  const handleDeleteRoom = async () => {
+    if (!roomToDelete) return;
     
     setIsDeleting(true);
     const apiClient = createApiClient();
     if (!apiClient) return;
     
     try {
-      await apiClient.delete(`/transports/${transportToDelete}`);
-      setTransports(transports.filter(transport => transport.transport_id !== transportToDelete));
+      await apiClient.delete(`/rooms/${roomToDelete}`);
+      setRooms(rooms.filter(room => room.room_id !== roomToDelete));
       setStatusMessage({
         type: 'success',
-        message: 'Transport deleted successfully'
+        message: 'Room deleted successfully'
       });
       
       // Hide the message after 3 seconds
@@ -219,15 +218,15 @@ const TransportManagePage = () => {
         setStatusMessage({ type: null, message: null });
       }, 3000);
     } catch (err) {
-      console.error("Error deleting transport:", err);
+      console.error("Error deleting room:", err);
       setStatusMessage({
         type: 'error',
-        message: 'Failed to delete transport. Please try again.'
+        message: 'Failed to delete room. Please try again.'
       });
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
-      setTransportToDelete(null);
+      setRoomToDelete(null);
     }
   };
 
@@ -306,12 +305,12 @@ const TransportManagePage = () => {
   const validateForm = () => {
     const errors = {};
     
-    if (!formData.vehicle_name.trim()) {
-      errors.vehicle_name = 'Vehicle name is required';
+    if (!formData.room_name.trim()) {
+      errors.room_name = 'Room name is required';
     }
     
-    if (!formData.driver_name.trim()) {
-      errors.driver_name = 'Driver name is required';
+    if (!formData.room_type) {
+      errors.room_type = 'Room type is required';
     }
     
     const capacity = parseInt(formData.capacity);
@@ -323,7 +322,7 @@ const TransportManagePage = () => {
     return Object.keys(errors).length === 0;
   };
 
-  // Handle form submission (create/update transport)
+  // Handle form submission (create/update room)
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -337,9 +336,10 @@ const TransportManagePage = () => {
 
     // Prepare form data for submission
     const formDataToSend = new FormData();
-    formDataToSend.append('vehicle_name', formData.vehicle_name.trim());
-    formDataToSend.append('driver_name', formData.driver_name.trim());
+    formDataToSend.append('room_name', formData.room_name.trim());
+    formDataToSend.append('room_type', formData.room_type);
     formDataToSend.append('capacity', formData.capacity.toString());
+    formDataToSend.append('facilities', formData.facilities.trim());
     
     if (selectedFile) {
       formDataToSend.append('image', selectedFile);
@@ -347,33 +347,33 @@ const TransportManagePage = () => {
     
     try {
       let response;
-      if (isEditMode && currentTransport) {
-        // Update existing transport
-        response = await apiClient.put(`/transports/${currentTransport.transport_id}`, formDataToSend, {
+      if (isEditMode && currentRoom) {
+        // Update existing room
+        response = await apiClient.put(`/rooms/${currentRoom.room_id}`, formDataToSend, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         
-        // Update the transports list with the updated transport
-        setTransports(transports.map(transport => 
-          transport.transport_id === currentTransport.transport_id ? response.data : transport
+        // Update the rooms list with the updated room
+        setRooms(rooms.map(room => 
+          room.room_id === currentRoom.room_id ? response.data : room
         ));
         
         setStatusMessage({
           type: 'success',
-          message: 'Transport updated successfully'
+          message: 'Room updated successfully'
         });
       } else {
-        // Create new transport
-        response = await apiClient.post('/transports', formDataToSend, {
+        // Create new room
+        response = await apiClient.post('/rooms', formDataToSend, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         
-        // Add the new transport to the transports list
-        setTransports([...transports, response.data]);
+        // Add the new room to the rooms list
+        setRooms([...rooms, response.data]);
         
         setStatusMessage({
           type: 'success',
-          message: 'Transport created successfully'
+          message: 'Room created successfully'
         });
       }
       
@@ -385,10 +385,10 @@ const TransportManagePage = () => {
         setStatusMessage({ type: null, message: null });
       }, 3000);
     } catch (err) {
-      console.error("Error saving transport:", err);
+      console.error("Error saving room:", err);
       
       // Extract error message from response
-      let errorMessage = 'Failed to save transport. Please try again.';
+      let errorMessage = 'Failed to save room. Please try again.';
       if (err.response && err.response.data) {
         if (err.response.data.message) {
           errorMessage = err.response.data.message;
@@ -417,25 +417,22 @@ const TransportManagePage = () => {
   };
 
   const getPlaceholderImage = () => {
-    // Use a more generic placeholder that's likely to exist in your project
-    // or one from the Room component that already works
-    return "/placeholder-room.jpg"; // If this exists in your project
-    // Alternatively, return a path to any image that definitely exists in your public folder
-    // Or return a data URI for a simple gray box as absolute fallback
-    // return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f0f0f0'/%3E%3Cpath d='M30,30 L70,70 M30,70 L70,30' stroke='%23cccccc' stroke-width='2'/%3E%3C/svg%3E";
+    return "/placeholder-room.jpg"; // Use a public image in your project
   };
 
-  const renderRow = (item: Transport) => (
+  const renderRow = (item: Room) => (
     <tr
-      key={item.transport_id}
+      key={item.room_id}
       className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
     >
       <td className="flex items-center gap-4 p-4">
         <div className="relative w-12 h-12 rounded-md overflow-hidden bg-gray-100">
           {item.image ? (
             <img 
-              src={fixImageUrl(item.image)} 
-              alt={item.vehicle_name}
+              src={typeof item.image === 'string' && item.image.startsWith('E:') 
+                ? `/api/image-proxy?path=${encodeURIComponent(item.image)}`
+                : item.image} 
+              alt={item.room_name}
               className="absolute inset-0 w-full h-full object-cover"
               onError={(e) => {
                 (e.target as HTMLImageElement).onerror = null;
@@ -444,42 +441,42 @@ const TransportManagePage = () => {
             />
           ) : (
             <div className="flex items-center justify-center h-full">
-              <Car size={20} className="text-gray-300" />
+              <BedDouble size={20} className="text-gray-300" />
             </div>
           )}
         </div>
         <div className="flex flex-col">
-          <h3 className="font-semibold">{item.vehicle_name}</h3>
+          <h3 className="font-semibold">{item.room_name}</h3>
           <p className="text-xs text-gray-500">
-            Driver: {item.driver_name}
+            Type: {item.room_type}
           </p>
           <p className="text-xs text-gray-500">
             Capacity: {item.capacity} persons
           </p>
         </div>
       </td>
-      <td className="hidden md:table-cell">{item.transport_id}</td>
-      <td className="hidden md:table-cell">{item.vehicle_name}</td>
-      <td className="hidden md:table-cell">{item.driver_name}</td>
+      <td className="hidden md:table-cell">{item.room_id}</td>
+      <td className="hidden md:table-cell">{item.room_name}</td>
+      <td className="hidden md:table-cell">{item.room_type}</td>
       <td className="hidden lg:table-cell">{item.capacity}</td>
       <td>
         <div className="flex items-center gap-2">
-          <Link href={`/manage/transports/${item.transport_id}`}>
+          <Link href={`/manage/rooms/${item.room_id}`}>
             <button className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky">
               <Image src="/view.png" alt="" width={16} height={16} />
             </button>
           </Link>
           <button
-            onClick={() => handleEditTransport(item)}
+            onClick={() => handleEditRoom(item)}
             className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaBlue text-white"
-            title="Edit Transport"
+            title="Edit Room"
           >
             <Edit size={14} />
           </button>
           <button
-            onClick={() => handleDeleteClick(item.transport_id)}
+            onClick={() => handleDeleteClick(item.room_id)}
             className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaRed text-white"
-            title="Delete Transport"
+            title="Delete Room"
           >
             <Trash2 size={14} />
           </button>
@@ -536,7 +533,7 @@ const TransportManagePage = () => {
 
       {/* TOP */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="hidden md:block text-lg font-semibold">Manage Transports</h1>
+        <h1 className="hidden md:block text-lg font-semibold">Manage Rooms</h1>
         <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
           <TableSearch />
           <div className="flex items-center gap-4 self-end">
@@ -547,11 +544,11 @@ const TransportManagePage = () => {
               <Image src="/sort.png" alt="" width={14} height={14} />
             </button>
             <button 
-              onClick={handleAddTransport}
+              onClick={handleAddRoom}
               className="h-9 px-4 flex items-center justify-center rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
             >
               <Plus size={18} className="mr-1" />
-              <span className="font-medium">Add Transport</span>
+              <span className="font-medium">Add Room</span>
             </button>
           </div>
         </div>
@@ -562,7 +559,7 @@ const TransportManagePage = () => {
         <div className="flex-1 flex items-center justify-center h-64">
           <div className="flex flex-col items-center">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mb-4"></div>
-            <p className="text-gray-600">Loading transports...</p>
+            <p className="text-gray-600">Loading rooms...</p>
           </div>
         </div>
       )}
@@ -573,7 +570,7 @@ const TransportManagePage = () => {
           <h3 className="font-bold mb-2">Error</h3>
           <p>{error}</p>
           <button 
-            onClick={() => fetchTransports()}
+            onClick={() => fetchRooms()}
             className="mt-3 px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200"
           >
             Try Again
@@ -582,34 +579,34 @@ const TransportManagePage = () => {
       )}
 
       {/* Empty state */}
-      {!loading && !error && transports.length === 0 && (
+      {!loading && !error && rooms.length === 0 && (
         <div className="bg-gray-50 rounded-xl p-10 text-center">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center">
-              <Car size={32} className="text-gray-300" />
+              <BedDouble size={32} className="text-gray-300" />
             </div>
           </div>
-          <h3 className="font-bold text-lg mb-2">No Transports Found</h3>
-          <p className="text-gray-500 mb-6">Get started by adding your first transport.</p>
+          <h3 className="font-bold text-lg mb-2">No Rooms Found</h3>
+          <p className="text-gray-500 mb-6">Get started by adding your first room.</p>
           <button 
-            onClick={handleAddTransport}
+            onClick={handleAddRoom}
             className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center mx-auto"
           >
             <Plus size={18} className="mr-2" />
-            Add New Transport
+            Add New Room
           </button>
         </div>
       )}
 
       {/* Data table */}
-      {!loading && !error && transports.length > 0 && (
+      {!loading && !error && rooms.length > 0 && (
         <>
-          <Table columns={columns} renderRow={renderRow} data={transports} />
+          <Table columns={columns} renderRow={renderRow} data={rooms} />
           <Pagination />
         </>
       )}
 
-      {/* Add/Edit Transport Modal */}
+      {/* Add/Edit Room Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-2xl w-full max-h-[90vh] flex flex-col">
@@ -618,10 +615,10 @@ const TransportManagePage = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-3">
-                    <Car size={20} />
+                    <BedDouble size={20} />
                   </div>
                   <h2 className="text-xl font-bold">
-                    {isEditMode ? 'Edit Transport' : 'Add New Transport'}
+                    {isEditMode ? 'Edit Room' : 'Add New Room'}
                   </h2>
                 </div>
                 <button
@@ -636,43 +633,45 @@ const TransportManagePage = () => {
             {/* Modal Body */}
             <div className="overflow-y-auto p-6">
               <form onSubmit={handleSubmit}>
-                {/* Vehicle Name */}
+                {/* Room Name */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Vehicle Name <span className="text-red-500">*</span>
+                    Room Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    name="vehicle_name"
-                    value={formData.vehicle_name}
+                    name="room_name"
+                    value={formData.room_name}
                     onChange={handleInputChange}
                     className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300 ${
-                      formErrors.vehicle_name ? 'border-red-500' : 'border-gray-300'
+                      formErrors.room_name ? 'border-red-500' : 'border-gray-300'
                     }`}
-                    placeholder="Enter vehicle name"
+                    placeholder="Enter room name"
                   />
-                  {formErrors.vehicle_name && (
-                    <p className="text-red-500 text-xs mt-1">{formErrors.vehicle_name}</p>
+                  {formErrors.room_name && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.room_name}</p>
                   )}
                 </div>
                 
-                {/* Driver Name */}
+                {/* Room Type */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Driver Name <span className="text-red-500">*</span>
+                    Room Type <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    name="driver_name"
-                    value={formData.driver_name}
+                  <select
+                    name="room_type"
+                    value={formData.room_type}
                     onChange={handleInputChange}
                     className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300 ${
-                      formErrors.driver_name ? 'border-red-500' : 'border-gray-300'
+                      formErrors.room_type ? 'border-red-500' : 'border-gray-300'
                     }`}
-                    placeholder="Enter driver name"
-                  />
-                  {formErrors.driver_name && (
-                    <p className="text-red-500 text-xs mt-1">{formErrors.driver_name}</p>
+                  >
+                    {roomTypes.map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                  {formErrors.room_type && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.room_type}</p>
                   )}
                 </div>
                 
@@ -703,10 +702,25 @@ const TransportManagePage = () => {
                   )}
                 </div>
                 
+                {/* Facilities */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Facilities
+                  </label>
+                  <textarea
+                    name="facilities"
+                    value={formData.facilities}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-300"
+                    placeholder="Enter room facilities (e.g., Wi-Fi, TV, Mini-bar)"
+                  />
+                </div>
+                
                 {/* Image Upload */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Vehicle Image
+                    Room Image
                   </label>
                   <input 
                     type="file"
@@ -720,13 +734,15 @@ const TransportManagePage = () => {
                     {previewImage ? (
                       <img
                         src={previewImage}
-                        alt="Vehicle preview"
+                        alt="Room preview"
                         className="w-full h-full object-cover"
                       />
-                    ) : currentTransport && currentTransport.image ? (
+                    ) : currentRoom && currentRoom.image ? (
                       <img
-                        src={fixImageUrl(currentTransport.image)}
-                        alt={currentTransport.vehicle_name}
+                        src={typeof currentRoom.image === 'string' && currentRoom.image.startsWith('E:') 
+                          ? `/api/image-proxy?path=${encodeURIComponent(currentRoom.image)}` 
+                          : currentRoom.image}
+                        alt={currentRoom.room_name}
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).onerror = null;
@@ -735,7 +751,7 @@ const TransportManagePage = () => {
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center h-full">
-                        <Car size={48} className="text-gray-300 mb-2" />
+                        <BedDouble size={48} className="text-gray-300 mb-2" />
                         <p className="text-gray-400 text-sm">No image selected</p>
                       </div>
                     )}
@@ -758,8 +774,8 @@ const TransportManagePage = () => {
               </form>
             </div>
             
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-gray-200 flex justify-end space-x-2">
+{/* Modal Footer */}
+<div className="p-4 border-t border-gray-200 flex justify-end space-x-2">
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
@@ -781,7 +797,7 @@ const TransportManagePage = () => {
                 ) : (
                   <>
                     <Save size={18} className="mr-2" />
-                    {isEditMode ? 'Update Transport' : 'Create Transport'}
+                    {isEditMode ? 'Update Room' : 'Create Room'}
                   </>
                 )}
               </button>
@@ -793,7 +809,7 @@ const TransportManagePage = () => {
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-<div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full">
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full">
             {/* Header */}
             <div className="bg-gradient-to-r from-red-500 to-red-600 p-5 text-white">
               <div className="flex items-center">
@@ -807,22 +823,22 @@ const TransportManagePage = () => {
             {/* Body */}
             <div className="p-6">
               <p className="text-gray-700 mb-6">
-                Are you sure you want to delete this transport? This action cannot be undone and all associated data will be permanently removed.
+                Are you sure you want to delete this room? This action cannot be undone and all associated data will be permanently removed.
               </p>
               
-              {/* Get transport details for the transport to be deleted */}
-              {transportToDelete && 
+              {/* Get room details for the room to be deleted */}
+              {roomToDelete && 
                 <div className="bg-gray-50 p-4 rounded-xl mb-6">
                   <div className="flex items-center">
                     <div className="flex-shrink-0 w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <Car size={24} className="text-gray-500" />
+                      <BedDouble size={24} className="text-gray-500" />
                     </div>
                     <div className="ml-4">
                       <h3 className="font-medium">
-                        {transports.find(transport => transport.transport_id === transportToDelete)?.vehicle_name || 'Unknown Transport'}
+                        {rooms.find(room => room.room_id === roomToDelete)?.room_name || 'Unknown Room'}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        ID: {transportToDelete}
+                        ID: {roomToDelete}
                       </p>
                     </div>
                   </div>
@@ -833,7 +849,7 @@ const TransportManagePage = () => {
                 <button
                   onClick={() => {
                     setShowDeleteConfirm(false);
-                    setTransportToDelete(null);
+                    setRoomToDelete(null);
                   }}
                   className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                   disabled={isDeleting}
@@ -841,7 +857,7 @@ const TransportManagePage = () => {
                   Cancel
                 </button>
                 <button
-                  onClick={handleDeleteTransport}
+                  onClick={handleDeleteRoom}
                   disabled={isDeleting}
                   className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center"
                 >
@@ -853,7 +869,7 @@ const TransportManagePage = () => {
                   ) : (
                     <>
                       <Trash2 size={18} className="mr-2" />
-                      Delete Transport
+                      Delete Room
                     </>
                   )}
                 </button>
@@ -866,4 +882,4 @@ const TransportManagePage = () => {
   );
 };
 
-export default TransportManagePage;
+export default RoomManagePage;

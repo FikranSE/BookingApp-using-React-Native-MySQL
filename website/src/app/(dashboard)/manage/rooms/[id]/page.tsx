@@ -7,9 +7,21 @@ import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { 
-  Car, Edit, Trash2, ArrowLeft, Save,
+  BedDouble, Edit, Trash2, ArrowLeft, Save,
   AlertCircle, User, Users, Camera
 } from "lucide-react";
+
+// Add room types for dropdown (same as in the ManageRoomsPage)
+const roomTypes = [
+  "Standard",
+  "Deluxe",
+  "Suite",
+  "Executive",
+  "Family",
+  "Single",
+  "Double",
+  "Twin"
+];
 
 // Add the missing formatDate function
 const formatDate = (dateString) => {
@@ -31,20 +43,21 @@ const formatDate = (dateString) => {
   });
 };
 
-const SingleTransportPage = () => {
+const SingleRoomPage = () => {
   const router = useRouter();
   const params = useParams();
-  const transportId = params.id;
+  const roomId = params.id;
   const fileInputRef = useRef(null);
 
-  const [transport, setTransport] = useState(null);
+  const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
-    vehicle_name: "",
-    driver_name: "",
+    room_name: "",
+    room_type: roomTypes[0],
     capacity: 0,
+    facilities: "",
     image: ""
   });
   const [selectedFile, setSelectedFile] = useState(null);
@@ -69,8 +82,8 @@ const SingleTransportPage = () => {
     });
   };
 
-  // Fetch transport data
-  const fetchTransportData = async () => {
+  // Fetch room data
+  const fetchRoomData = async () => {
     setLoading(true);
     setError(null);
     
@@ -78,17 +91,18 @@ const SingleTransportPage = () => {
     if (!apiClient) return;
     
     try {
-      const response = await apiClient.get(`/transports/${transportId}`);
-      setTransport(response.data);
+      const response = await apiClient.get(`/rooms/${roomId}`);
+      setRoom(response.data);
       setEditData({
-        vehicle_name: response.data.vehicle_name || "",
-        driver_name: response.data.driver_name || "",
+        room_name: response.data.room_name || "",
+        room_type: response.data.room_type || roomTypes[0],
         capacity: response.data.capacity || 0,
+        facilities: response.data.facilities || "",
         image: response.data.image || ""
       });
     } catch (err) {
-      console.error("Error fetching transport:", err);
-      setError("Unable to load transport information. Please try again later.");
+      console.error("Error fetching room:", err);
+      setError("Unable to load room information. Please try again later.");
     } finally {
       setLoading(false);
     }
@@ -99,10 +113,11 @@ const SingleTransportPage = () => {
     if (isEditing) {
       // Reset form data when canceling edit
       setEditData({
-        vehicle_name: transport.vehicle_name || "",
-        driver_name: transport.driver_name || "",
-        capacity: transport.capacity || 0,
-        image: transport.image || ""
+        room_name: room.room_name || "",
+        room_type: room.room_type || roomTypes[0],
+        capacity: room.capacity || 0,
+        facilities: room.facilities || "",
+        image: room.image || ""
       });
       setSelectedFile(null);
       setPreviewImage(null);
@@ -164,8 +179,9 @@ const handleSubmit = async (e) => {
   const formData = new FormData();
   
   // Ensure all required fields are included and properly formatted
-  formData.append('vehicle_name', editData.vehicle_name.trim());
-  formData.append('driver_name', editData.driver_name.trim());
+  formData.append('room_name', editData.room_name.trim());
+  formData.append('room_type', editData.room_type);
+  formData.append('facilities', editData.facilities.trim());
   
   // Make sure capacity is a valid number
   const capacity = parseInt(editData.capacity);
@@ -207,33 +223,33 @@ const handleSubmit = async (e) => {
   }
 
   // For debugging
-  console.log("Submitting transport update...");
-  console.log("Transport ID:", transportId);
+  console.log("Submitting room update...");
+  console.log("Room ID:", roomId);
   
   try {
     // Log request details before sending
-    console.log("API URL:", `${apiClient.defaults.baseURL}/transports/${transportId}`);
+    console.log("API URL:", `${apiClient.defaults.baseURL}/rooms/${roomId}`);
     
-    const response = await apiClient.put(`/transports/${transportId}`, formData, {
+    const response = await apiClient.put(`/rooms/${roomId}`, formData, {
       headers: { 
         'Content-Type': 'multipart/form-data',
       },
     });
     
     console.log("Update successful:", response.data);
-    setTransport(response.data);
+    setRoom(response.data);
     setUpdateStatus({
       type: 'success',
-      message: 'Transport updated successfully',
+      message: 'Room updated successfully',
     });
     setIsEditing(false);
     setPreviewImage(null);
     setSelectedFile(null);
   } catch (err) {
-    console.error("Error updating transport:", err);
+    console.error("Error updating room:", err);
     
     // Extract more detailed error message
-    let errorMessage = 'Failed to update transport. Please try again.';
+    let errorMessage = 'Failed to update room. Please try again.';
     
     if (err.response) {
       // The request was made and the server responded with a status code
@@ -257,7 +273,7 @@ const handleSubmit = async (e) => {
         // Optionally redirect to login
         // setTimeout(() => router.push('/sign-in'), 2000);
       } else if (err.response.status === 403) {
-        errorMessage = 'You do not have permission to update this transport.';
+        errorMessage = 'You do not have permission to update this room.';
       } else if (err.response.status === 413) {
         errorMessage = 'The image file is too large for the server to process.';
       } else if (err.response.status === 422) {
@@ -281,9 +297,9 @@ const handleSubmit = async (e) => {
   }
 };
 
-  // Handle transport deletion
+  // Handle room deletion
   const handleDelete = async () => {
-    if (!window.confirm("Are you sure you want to delete this transport? This action cannot be undone.")) {
+    if (!window.confirm("Are you sure you want to delete this room? This action cannot be undone.")) {
       return;
     }
     
@@ -291,23 +307,23 @@ const handleSubmit = async (e) => {
     if (!apiClient) return;
     
     try {
-      await apiClient.delete(`/transports/${transportId}`);
-      router.push("/manage/transports");
+      await apiClient.delete(`/rooms/${roomId}`);
+      router.push("/manage/rooms");
     } catch (err) {
-      console.error("Error deleting transport:", err);
+      console.error("Error deleting room:", err);
       setUpdateStatus({
         type: 'error',
-        message: 'Failed to delete transport. Please try again.'
+        message: 'Failed to delete room. Please try again.'
       });
     }
   };
 
   // Initial data fetch
   useEffect(() => {
-    if (transportId) {
-      fetchTransportData();
+    if (roomId) {
+      fetchRoomData();
     }
-  }, [transportId, router]);
+  }, [roomId, router]);
 
   // Loading state
   if (loading) {
@@ -332,7 +348,7 @@ const handleSubmit = async (e) => {
             </div>
           </div>
           <div className="p-8 text-center">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Unable to Load Transport</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Unable to Load Room</h3>
             <p className="text-gray-600 mb-6">{error}</p>
             <button 
               onClick={() => router.back()}
@@ -347,8 +363,8 @@ const handleSubmit = async (e) => {
     );
   }
 
-  // No transport found
-  if (!transport) {
+  // No room found
+  if (!room) {
     return (
       <div className="flex h-screen items-center justify-center bg-white p-4">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
@@ -358,14 +374,14 @@ const handleSubmit = async (e) => {
             </div>
           </div>
           <div className="p-8 text-center">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Transport Not Found</h3>
-            <p className="text-gray-600 mb-6">The requested transport could not be found or may have been deleted.</p>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Room Not Found</h3>
+            <p className="text-gray-600 mb-6">The requested room could not be found or may have been deleted.</p>
             <button 
-              onClick={() => router.push("/manage/transports")}
+              onClick={() => router.push("/manage/rooms")}
               className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors flex items-center mx-auto"
             >
               <ArrowLeft size={16} className="mr-2" />
-              Back to Transports
+              Back to Rooms
             </button>
           </div>
         </div>
@@ -404,29 +420,29 @@ const handleSubmit = async (e) => {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           {/* Left column - Main info */}
           <div className="md:col-span-7 lg:col-span-8">
-            {/* Transport info card */}
+            {/* Room info card */}
             <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
               <div className="bg-gradient-to-r from-blue-400 to-blue-500 p-6 text-white">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-                      <Car size={24} />
+                      <BedDouble size={24} />
                     </div>
                     <div className="ml-4">
                       {isEditing ? (
                         <input
                           type="text"
-                          name="vehicle_name"
-                          value={editData.vehicle_name}
+                          name="room_name"
+                          value={editData.room_name}
                           onChange={handleInputChange}
                           className="bg-white/10 backdrop-blur-sm text-2xl font-bold p-1 rounded w-full text-white border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50"
-                          placeholder="Vehicle Name"
+                          placeholder="Room Name"
                         />
                       ) : (
-                        <h2 className="text-2xl font-bold">{transport.vehicle_name}</h2>
+                        <h2 className="text-2xl font-bold">{room.room_name}</h2>
                       )}
                       <div className="mt-1 text-blue-50 flex items-center text-sm">
-                        <span>ID: {transport.transport_id}</span>
+                        <span>ID: {room.room_id}</span>
                       </div>
                     </div>
                   </div>
@@ -444,7 +460,7 @@ const handleSubmit = async (e) => {
                       <button
                         onClick={toggleEditMode}
                         className="rounded-full w-10 h-10 flex items-center justify-center bg-white/20 text-white hover:bg-white/30 transition-colors"
-                        title="Edit Transport"
+                        title="Edit Room"
                       >
                         <Edit size={18} />
                       </button>
@@ -466,7 +482,7 @@ const handleSubmit = async (e) => {
                       <button
                         onClick={handleDelete}
                         className="rounded-full w-10 h-10 flex items-center justify-center bg-red-500 text-white hover:bg-red-600 transition-colors"
-                        title="Delete Transport"
+                        title="Delete Room"
                       >
                         <Trash2 size={18} />
                       </button>
@@ -491,27 +507,27 @@ const handleSubmit = async (e) => {
                     <div className="relative w-full h-full">
                       <img
                         src={previewImage}
-                        alt={transport.vehicle_name}
+                        alt={room.room_name}
                         className="absolute inset-0 w-full h-full object-cover"
                       />
                     </div>
-                  ) : transport.image ? (
+                  ) : room.image ? (
                     <div className="relative w-full h-full">
                       <img
-                        src={typeof transport.image === 'string' && transport.image.startsWith('E:') 
-                          ? `/api/image-proxy?path=${encodeURIComponent(transport.image)}` // See Solution 2 for this approach
-                          : transport.image}
-                        alt={transport.vehicle_name}
+                        src={typeof room.image === 'string' && room.image.startsWith('E:') 
+                          ? `/api/image-proxy?path=${encodeURIComponent(room.image)}` 
+                          : room.image}
+                        alt={room.room_name}
                         className="absolute inset-0 w-full h-full object-cover"
                         onError={(e) => {
                           e.target.onerror = null;
-                          e.target.src = '/placeholder-vehicle.jpg'; // Fallback image path
+                          e.target.src = '/placeholder-room.jpg'; // Fallback image path
                         }}
                       />
                     </div>
                   ) : (
                     <div className="flex items-center justify-center h-full">
-                      <Car size={64} className="text-gray-300" />
+                      <BedDouble size={64} className="text-gray-300" />
                       <p className="text-gray-400 absolute bottom-4">No image available</p>
                     </div>
                   )}
@@ -534,25 +550,27 @@ const handleSubmit = async (e) => {
                   )}
                 </div>
                 
-                {/* Driver info */}
+                {/* Room Type info - MODIFIED TO USE DROPDOWN INSTEAD OF TEXT INPUT */}
                 <div className="flex items-start mb-6 p-4 bg-indigo-50 rounded-2xl">
                   <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-                    <User size={20} className="text-indigo-500" />
+                    <BedDouble size={20} className="text-indigo-500" />
                   </div>
                   <div className="ml-4 flex-grow">
-                    <h3 className="uppercase text-xs font-semibold text-indigo-500 tracking-wider">Driver</h3>
+                    <h3 className="uppercase text-xs font-semibold text-indigo-500 tracking-wider">Room Type</h3>
                     {isEditing ? (
-                      <input
-                        type="text"
-                        name="driver_name"
-                        value={editData.driver_name}
+                      <select
+                        name="room_type"
+                        value={editData.room_type}
                         onChange={handleInputChange}
                         className="mt-1 p-2 border border-indigo-200 rounded w-full bg-white"
-                        placeholder="Driver Name"
-                      />
+                      >
+                        {roomTypes.map((type) => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
                     ) : (
                       <p className="text-lg font-medium text-gray-800">
-                        {transport.driver_name || "Not assigned"}
+                        {room.room_type || "Not assigned"}
                       </p>
                     )}
                   </div>
@@ -578,7 +596,31 @@ const handleSubmit = async (e) => {
                       />
                     ) : (
                       <p className="text-lg font-medium text-gray-800">
-                        {transport.capacity} persons
+                        {room.capacity} persons
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Facilities info */}
+                <div className="flex items-start mb-6 p-4 bg-emerald-50 rounded-2xl">
+                  <div className="flex-shrink-0 w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                    <User size={20} className="text-emerald-500" />
+                  </div>
+                  <div className="ml-4 flex-grow">
+                    <h3 className="uppercase text-xs font-semibold text-emerald-500 tracking-wider">Facilities</h3>
+                    {isEditing ? (
+                      <textarea
+                        name="facilities"
+                        value={editData.facilities}
+                        onChange={handleInputChange}
+                        rows="3"
+                        className="mt-1 p-2 border border-emerald-200 rounded w-full bg-white"
+                        placeholder="Room Facilities"
+                      />
+                    ) : (
+                      <p className="text-lg font-medium text-gray-800">
+                        {room.facilities || "No facilities information available"}
                       </p>
                     )}
                   </div>
@@ -589,36 +631,36 @@ const handleSubmit = async (e) => {
           
           {/* Right column - Summary and metadata */}
           <div className="md:col-span-5 lg:col-span-4">
-            {/* Transport summary card */}
+            {/* Room summary card */}
             <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
               <div className="p-6 border-b border-gray-100">
-                <h3 className="font-bold text-gray-900">Transport Details</h3>
+                <h3 className="font-bold text-gray-900">Room Details</h3>
               </div>
               <div className="p-6">
                 <ul className="space-y-4">
                   <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Transport ID</span>
-                    <span className="font-medium text-gray-800">#{transport.transport_id}</span>
+                    <span className="text-gray-500">Room ID</span>
+                    <span className="font-medium text-gray-800">#{room.room_id}</span>
                   </li>
                   <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Vehicle Name</span>
-                    <span className="font-medium text-gray-800">{transport.vehicle_name}</span>
+                    <span className="text-gray-500">Room Name</span>
+                    <span className="font-medium text-gray-800">{room.room_name}</span>
                   </li>
                   <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Driver</span>
-                    <span className="font-medium text-gray-800">{transport.driver_name || "Not assigned"}</span>
+                    <span className="text-gray-500">Room Type</span>
+                    <span className="font-medium text-gray-800">{room.room_type || "Not assigned"}</span>
                   </li>
                   <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
                     <span className="text-gray-500">Capacity</span>
-                    <span className="font-medium text-gray-800">{transport.capacity} persons</span>
+                    <span className="font-medium text-gray-800">{room.capacity} persons</span>
                   </li>
                   <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
                     <span className="text-gray-500">Created</span>
-                    <span className="font-medium text-gray-800">{formatDate(transport.createdAt)}</span>
+                    <span className="font-medium text-gray-800">{formatDate(room.createdAt)}</span>
                   </li>
                   <li className="flex justify-between items-center py-2">
                     <span className="text-gray-500">Last Updated</span>
-                    <span className="font-medium text-gray-800">{formatDate(transport.updatedAt)}</span>
+                    <span className="font-medium text-gray-800">{formatDate(room.updatedAt)}</span>
                   </li>
                 </ul>
               </div>
@@ -637,7 +679,7 @@ const handleSubmit = async (e) => {
                       className="w-full py-2.5 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium flex items-center justify-center transition-colors"
                     >
                       <Edit size={18} className="mr-2" />
-                      Edit Transport Details
+                      Edit Room Details
                     </button>
                   ) : (
                     <button 
@@ -663,16 +705,16 @@ const handleSubmit = async (e) => {
                     className={`w-full py-2.5 px-4 ${isEditing ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-red-500 hover:bg-red-600 text-white'} rounded-xl font-medium flex items-center justify-center transition-colors`}
                   >
                     <Trash2 size={18} className="mr-2" />
-                    Delete Transport
+                    Delete Room
                   </button>
                 </div>
               </div>
             </div>
             
-            {/* View related bookings */}
-            <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
+{/* View related bookings */}
+<div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
               <div className="p-6">
-                <Link href={`/list/transport-bookings?transport=${transportId}`}>
+                <Link href={`/list/room-bookings?room=${roomId}`}>
                   <button className="w-full py-2.5 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-medium flex items-center justify-center transition-colors">
                     View Related Bookings
                   </button>
@@ -683,11 +725,11 @@ const handleSubmit = async (e) => {
             {/* Navigation links */}
             <div>
               <Link 
-                href="/manage/transports" 
+                href="/manage/rooms" 
                 className="flex items-center text-sky-500 hover:text-sky-600 font-medium transition-colors"
               >
                 <ArrowLeft size={16} className="mr-2" />
-                Back to Transport Management
+                Back to Room Management
               </Link>
             </div>
           </div>
@@ -697,4 +739,4 @@ const handleSubmit = async (e) => {
   );
 };
 
-export default SingleTransportPage;
+export default SingleRoomPage;
