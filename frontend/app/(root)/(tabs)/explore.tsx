@@ -104,11 +104,10 @@ const Explore = () => {
     </TouchableOpacity>
   );
 
-  // Room Card Component with new color scheme
   const RoomCard = ({ room }: { room: IRoom }) => {
     const facilitiesList = room.facilities.split(',').map(item => item.trim());
-    
-    // Updated color map for facility tags
+  
+    // Menambahkan colorMap untuk fasilitas
     const colorMap = {
       0: { bg: 'bg-sky-50', text: 'text-sky-600' },
       1: { bg: 'bg-sky-100', text: 'text-sky-700' },
@@ -116,14 +115,20 @@ const Explore = () => {
       3: { bg: 'bg-orange-100', text: 'text-orange-700' },
     };
   
+    // Pastikan URL gambar menggunakan format absolut
+    const imageUrl = room.image 
+      ? `https://j9d3hc82-3001.asse.devtunnels.ms${room.image.replace(/^\/+/, '')}`  // Pastikan tidak ada double slash
+      : images.smroom;  // Default image jika gambar tidak ada
+    
     return (
       <TouchableOpacity
         className="bg-white rounded-2xl mb-4 overflow-hidden shadow-sm border border-sky-50"
         onPress={() => router.push(`/detail?id=${room.room_id}&type=room`)}
       >
         <View className="flex-row p-2">
+          {/* Menampilkan gambar hanya jika imageUrl valid */}
           <Image
-            source={room.image ? { uri: room.image } : images.smroom}
+            source={{ uri: imageUrl }}  // Pastikan URL adalah string valid
             className="w-24 h-24 rounded-lg"
             resizeMode="cover"
           />
@@ -148,7 +153,7 @@ const Explore = () => {
               </View>
             </View>
             
-            {/* Facilities */}
+            {/* Fasilitas */}
             <View className="flex-row flex-wrap gap-1.5 mt-1">
               {facilitiesList.slice(0, 3).map((facility, index) => (
                 <View 
@@ -172,48 +177,67 @@ const Explore = () => {
     );
   };
   
-  // Transport Card Component with new color scheme
-  const TransportCard = ({ transport }: { transport: ITransport }) => (
-    <TouchableOpacity
-      className="bg-white rounded-2xl mb-4 overflow-hidden shadow-sm border border-sky-50"
-      onPress={() => router.push(`/detail?id=${transport.transport_id}&type=transport`)}
-    >
-      <View className="flex-row p-2">
-        <Image
-          source={transport.image ? { uri: transport.image } : images.smroom}
-          className="w-24 h-24 rounded-lg"
-          resizeMode="cover"
-        />
-        <View className="flex-1 pl-4 justify-between">
-          <View>
-            <Text className="text-base font-semibold text-gray-700" numberOfLines={1}>
-              {transport.vehicle_name}
-            </Text>
-            
-            <View className="flex-row items-center mt-1">
-              <Ionicons name="person" size={13} color="#0EA5E9" />
-              <Text className="text-xs text-sky-500 font-medium ml-1.5">
-                Driver:
-              </Text>
-              <Text className="text-xs text-sky-500 font-medium ml-1.5">
-                {transport.driver_name}
-              </Text>
+  
+  
+  
+  
+  const TransportCard = ({ transport }: { transport: ITransport }) => {
+    // Ensure imageUrl is valid
+    const imageUrl = transport.image ? transport.image : images.smroom; // Default image if image is not available
+    const imageSource = imageUrl && typeof imageUrl === 'string' ? { uri: imageUrl } : null;
+  
+    return (
+      <TouchableOpacity
+        className="bg-white rounded-2xl mb-4 overflow-hidden shadow-sm border border-sky-50"
+        onPress={() => router.push(`/detail?id=${transport.transport_id}&type=transport`)}
+      >
+        <View className="flex-row p-2">
+          {/* Display image only if imageSource is valid */}
+          {imageSource ? (
+            <Image
+              source={imageSource}
+              className="w-24 h-24 rounded-lg"
+              resizeMode="cover"
+            />
+          ) : (
+            <View className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center">
+              <Ionicons name="car-outline" size={24} color="gray" />
             </View>
-            
-            <View className="flex-row items-center">
-             <Image
-               source={icons.seat}
-               style={{ width: 13, height: 13, tintColor: "#F97316" }}
-             />
-              <Text className="text-xs text-orange-500 font-medium ml-1.5">
-                {transport.capacity} seats
+          )}
+          
+          <View className="flex-1 pl-4 justify-between">
+            <View>
+              <Text className="text-base font-semibold text-gray-700" numberOfLines={1}>
+                {transport.vehicle_name}
               </Text>
+              
+              <View className="flex-row items-center mt-1">
+                <Ionicons name="person" size={13} color="#0EA5E9" />
+                <Text className="text-xs text-sky-500 font-medium ml-1.5">
+                  Driver:
+                </Text>
+                <Text className="text-xs text-sky-500 font-medium ml-1.5">
+                  {transport.driver_name}
+                </Text>
+              </View>
+              
+              <View className="flex-row items-center">
+               <Image
+                 source={icons.seat}
+                 style={{ width: 13, height: 13, tintColor: "#F97316" }}
+               />
+                <Text className="text-xs text-orange-500 font-medium ml-1.5">
+                  {transport.capacity} seats
+                </Text>
+              </View>
             </View>
           </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
+  
+  
 
   // Empty state components with new color scheme
   const EmptyState = ({ type }: { type: "Rooms" | "Transportation" }) => (

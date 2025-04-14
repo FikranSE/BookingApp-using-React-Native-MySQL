@@ -135,6 +135,21 @@ const SingleRoomPage = () => {
     });
   };
 
+  const fixImageUrl = (imageUrl) => {
+    if (!imageUrl) return null;
+  
+    // Handle local filesystem paths
+    if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
+      return `/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+    }
+  
+    // Fix double slash issue in URLs
+    if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
+      return imageUrl.replace('//uploads', '/uploads');
+    }
+  
+    return imageUrl;
+  };
   // Handle file selection
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -494,61 +509,59 @@ const handleSubmit = async (e) => {
               <div className="p-6">
                 {/* Image */}
                 <div className="aspect-video bg-gray-100 rounded-xl overflow-hidden relative mb-6 group">
-                  {/* Hidden file input */}
-                  <input 
-                    type="file"
-                    ref={fileInputRef}
-                    accept="image/jpeg,image/png"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  
-                  {previewImage ? (
-                    <div className="relative w-full h-full">
-                      <img
-                        src={previewImage}
-                        alt={room.room_name}
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : room.image ? (
-                    <div className="relative w-full h-full">
-                      <img
-                        src={typeof room.image === 'string' && room.image.startsWith('E:') 
-                          ? `/api/image-proxy?path=${encodeURIComponent(room.image)}` 
-                          : room.image}
-                        alt={room.room_name}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = '/placeholder-room.jpg'; // Fallback image path
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <BedDouble size={64} className="text-gray-300" />
-                      <p className="text-gray-400 absolute bottom-4">No image available</p>
-                    </div>
-                  )}
-                  
-                  {isEditing && (
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <button
-                        onClick={triggerFileInput}
-                        className="bg-white/90 backdrop-blur-sm rounded-xl p-3 flex items-center"
-                      >
-                        <Camera size={20} className="mr-2 text-blue-500" />
-                        <span>Choose Image File (Max 5MB)</span>
-                      </button>
-                      <div className="absolute bottom-4 right-4">
-                        <div className="bg-blue-500 rounded-full p-2 text-white">
-                          <Camera size={20} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+  {/* Hidden file input */}
+  <input 
+    type="file"
+    ref={fileInputRef}
+    accept="image/jpeg,image/png"
+    onChange={handleFileChange}
+    className="hidden"
+  />
+  
+  {previewImage ? (
+    <div className="relative w-full h-full">
+      <img
+        src={previewImage}
+        alt={room.vehicle_name}
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+    </div>
+  ) : room.image ? (
+    <div className="relative w-full h-full">
+      <img
+        src={fixImageUrl(room.image)} // Applying the fixImageUrl function here
+        alt={room.vehicle_name}
+        className="absolute inset-0 w-full h-full object-cover"
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = '/placeholder-vehicle.jpg'; // Fallback image path
+        }}
+      />
+    </div>
+  ) : (
+    <div className="flex items-center justify-center h-full">
+      <Car size={64} className="text-gray-300" />
+      <p className="text-gray-400 absolute bottom-4">No image available</p>
+    </div>
+  )}
+  
+  {isEditing && (
+    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+      <button
+        onClick={triggerFileInput}
+        className="bg-white/90 backdrop-blur-sm rounded-xl p-3 flex items-center"
+      >
+        <Camera size={20} className="mr-2 text-blue-500" />
+        <span>Choose Image File (Max 5MB)</span>
+      </button>
+      <div className="absolute bottom-4 right-4">
+        <div className="bg-blue-500 rounded-full p-2 text-white">
+          <Camera size={20} />
+        </div>
+      </div>
+    </div>
+  )}
+</div>
                 
                 {/* Room Type info - MODIFIED TO USE DROPDOWN INSTEAD OF TEXT INPUT */}
                 <div className="flex items-start mb-6 p-4 bg-indigo-50 rounded-2xl">

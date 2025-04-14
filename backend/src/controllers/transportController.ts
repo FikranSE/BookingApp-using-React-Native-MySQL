@@ -13,7 +13,7 @@ class TransportController {
       }
 
       try {
-        const serverUrl = 'https://dbtch5xt-3001.asse.devtunnels.ms/'; // Configure this in your environment
+        const serverUrl = 'https://j9d3hc82-3001.asse.devtunnels.ms/'; // Configure this in your environment
         const image = req.file ? `${serverUrl}/uploads/${req.file.filename}` : null;
 
         const transportData = { ...req.body, image };
@@ -60,34 +60,29 @@ class TransportController {
   // Update Transport with image upload
   public static async updateTransport(req: Request, res: Response) {
     try {
-      // First get the existing transport to check for existing image
       const existingTransport = await TransportService.getTransportById(Number(req.params.id));
-      
+  
       if (!existingTransport) {
         return res.status(404).json({ error: 'Transport not found' });
       }
-      
-      // Then handle the upload
+  
       upload.single('image')(req, res, async (err: any) => {
         if (err) {
           return res.status(400).json({ error: err.message });
         }
-    
+  
         try {
-          // Get new image path if a file was uploaded
           const newImagePath = req.file ? req.file.path : null;
-          
-          // Prepare update data
           const transportData: any = { ...req.body };
-          
-          // Only update image if a new one was uploaded
+  
+          // Construct the image URL if a new image was uploaded
           if (newImagePath) {
-            transportData.image = newImagePath;
-            
-            // Try to delete the old image if it exists
+            const serverUrl = 'https://j9d3hc82-3001.asse.devtunnels.ms/'; // Ensure this URL is configured correctly
+            transportData.image = `${serverUrl}/uploads/${req.file.filename}`;
+  
+            // Delete the old image if it exists
             if (existingTransport.image) {
               try {
-                // Check if file exists before trying to delete
                 if (fs.existsSync(existingTransport.image)) {
                   fs.unlinkSync(existingTransport.image);
                 } else {
@@ -95,20 +90,17 @@ class TransportController {
                 }
               } catch (unlinkErr) {
                 console.error('Error deleting old image file:', unlinkErr);
-                // Continue with the update even if we can't delete the old file
               }
             }
           }
-          
+  
           const updatedTransport = await TransportService.updateTransport(Number(req.params.id), transportData);
-          
           if (updatedTransport) {
             res.status(200).json(updatedTransport);
           } else {
-            // If update failed and we uploaded a new file, clean it up
             if (newImagePath) {
               try {
-                fs.unlinkSync(newImagePath);
+                fs.unlinkSync(newImagePath); // Clean up the uploaded file if update fails
               } catch (unlinkErr) {
                 console.error('Failed to clean up file after update error:', unlinkErr);
               }
@@ -116,7 +108,7 @@ class TransportController {
             res.status(404).json({ error: 'Transport not found or update failed' });
           }
         } catch (error: any) {
-          // If there was an error and we uploaded a file, clean it up
+          // Cleanup if error occurs during image upload
           if (req.file && req.file.path) {
             try {
               fs.unlinkSync(req.file.path);
@@ -131,6 +123,7 @@ class TransportController {
       res.status(400).json({ error: error.message });
     }
   }
+  
 
   // Delete Transport
   public static async deleteTransport(req: Request, res: Response) {
