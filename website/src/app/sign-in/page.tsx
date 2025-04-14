@@ -93,7 +93,7 @@ const LoginPage = () => {
     try {
       // Important: Make sure this URL matches your admin login endpoint exactly
       const response = await axios.post(
-        "https://dbtch5xt-3001.asse.devtunnels.ms/api/admins/auth/login",
+        "https://j9d3hc82-3001.asse.devtunnels.ms/api/admins/auth/login",
         {
           email: formData.email,
           password: formData.password,
