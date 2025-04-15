@@ -48,6 +48,7 @@ interface IBooking {
   end_time: string;
   status: string;
   section: string;
+  agenda: string;
   description: string;
   type: 'ROOM' | 'TRANSPORT';
   itemName: string;
@@ -310,7 +311,7 @@ const Home = () => {
 
               <View className="flex-1 ml-3">
                 <Text className="text-base font-medium text-gray-700">
-                  {booking.itemName || 'Unnamed Item'}
+                  {booking.agenda || 'Unnamed Item'}
                 </Text>
 
                 <View className="flex-row flex-wrap mt-1">
@@ -321,7 +322,7 @@ const Home = () => {
                     <Text className="font-medium text-gray-600">Section:</Text> {booking.section || 'Not specified'}
                   </Text>
                 </View>
-
+ 
                 <View className="flex-row items-center mt-2">
                   <View className="flex-row items-center mr-2 bg-gray-50 px-2 py-0.5 rounded-full">
                     <Ionicons name="calendar-outline" size={12} color="#0EA5E9" />

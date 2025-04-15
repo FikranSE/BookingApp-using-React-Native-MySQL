@@ -18,11 +18,12 @@ interface IApprovalStatus {
 interface IBooking {
   id: string;
   type: "ROOM" | "TRANSPORT";
-  title: string;
+  agenda: string;
   date: string;
   start_time: string;
   end_time: string;
   section: string;
+  agenda: string;
   isOngoing: boolean;
   approval: IApprovalStatus;
   vehicleName?: string;
@@ -212,7 +213,7 @@ const MyBooking = () => {
             return {
               id: item.booking_id.toString(),
               type: "ROOM",
-              title: item.description || "Meeting Room",
+              agenda: item.agenda || "Meeting Room",
               date: formattedBookingDate,
               start_time: start_time,
               end_time: end_time,
@@ -249,7 +250,7 @@ const MyBooking = () => {
             return {
               id: item.booking_id.toString(),
               type: "TRANSPORT",
-              title: item.description || "Transport Service",
+              agenda: item.agenda || "Transport Service",
               date: formattedBookingDate,
               start_time: start_time,
               end_time: end_time,
@@ -287,7 +288,7 @@ const MyBooking = () => {
   const filteredBookings = bookings.filter((booking) => {
     // Text search filter
     const matchesSearch =
-      booking.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      booking.agenda.toLowerCase().includes(searchQuery.toLowerCase()) ||
       booking.section.toLowerCase().includes(searchQuery.toLowerCase());
 
     // Tab filter (active vs history)
@@ -367,11 +368,11 @@ const MyBooking = () => {
 
   // Filter option button component
   const FilterButton = ({ 
-    title, 
+    agenda, 
     isActive, 
     onPress 
   }: { 
-    title: string; 
+    agenda: string; 
     isActive: boolean; 
     onPress: () => void 
   }) => (
@@ -386,7 +387,7 @@ const MyBooking = () => {
           isActive ? "text-white" : "text-gray-600"
         }`}
       >
-        {title}
+        {agenda}
       </Text>
     </TouchableOpacity>
   );
@@ -413,17 +414,17 @@ const MyBooking = () => {
             <Text className="text-base font-semibold text-gray-700 mb-2">Booking Type</Text>
             <View className="flex-row flex-wrap">
               <FilterButton 
-                title="All Types" 
+                agenda="All Types" 
                 isActive={filterOptions.type === "ALL"} 
                 onPress={() => setFilterOptions({...filterOptions, type: "ALL"})}
               />
               <FilterButton 
-                title="Room" 
+                agenda="Room" 
                 isActive={filterOptions.type === "ROOM"} 
                 onPress={() => setFilterOptions({...filterOptions, type: "ROOM"})}
               />
               <FilterButton 
-                title="Transport" 
+                agenda="Transport" 
                 isActive={filterOptions.type === "TRANSPORT"} 
                 onPress={() => setFilterOptions({...filterOptions, type: "TRANSPORT"})}
               />
@@ -435,17 +436,17 @@ const MyBooking = () => {
             <Text className="text-base font-semibold text-gray-700 mb-2">Time Frame</Text>
             <View className="flex-row flex-wrap">
               <FilterButton 
-                title="All Time" 
+                agenda="All Time" 
                 isActive={filterOptions.timeframe === "ALL"} 
                 onPress={() => setFilterOptions({...filterOptions, timeframe: "ALL"})}
               />
               <FilterButton 
-                title="Recent/Upcoming" 
+                agenda="Recent/Upcoming" 
                 isActive={filterOptions.timeframe === "RECENT"} 
                 onPress={() => setFilterOptions({...filterOptions, timeframe: "RECENT"})}
               />
               <FilterButton 
-                title="Passed" 
+                agenda="Passed" 
                 isActive={filterOptions.timeframe === "PASSED"} 
                 onPress={() => setFilterOptions({...filterOptions, timeframe: "PASSED"})}
               />
@@ -457,27 +458,27 @@ const MyBooking = () => {
             <Text className="text-base font-semibold text-gray-700 mb-2">Status</Text>
             <View className="flex-row flex-wrap">
               <FilterButton 
-                title="All Status" 
+                agenda="All Status" 
                 isActive={filterOptions.status === "ALL"} 
                 onPress={() => setFilterOptions({...filterOptions, status: "ALL"})}
               />
               <FilterButton 
-                title="Pending" 
+                agenda="Pending" 
                 isActive={filterOptions.status === "PENDING"} 
                 onPress={() => setFilterOptions({...filterOptions, status: "PENDING"})}
               />
               <FilterButton 
-                title="Approved" 
+                agenda="Approved" 
                 isActive={filterOptions.status === "APPROVED"} 
                 onPress={() => setFilterOptions({...filterOptions, status: "APPROVED"})}
               />
               <FilterButton 
-                title="Rejected" 
+                agenda="Rejected" 
                 isActive={filterOptions.status === "REJECTED"} 
                 onPress={() => setFilterOptions({...filterOptions, status: "REJECTED"})}
               />
               <FilterButton 
-                title="Expired" 
+                agenda="Expired" 
                 isActive={filterOptions.status === "EXPIRED"} 
                 onPress={() => setFilterOptions({...filterOptions, status: "EXPIRED"})}
               />
@@ -530,7 +531,7 @@ const MyBooking = () => {
           <View className="flex-row justify-between items-start">
             <View className="flex-1 mr-2">
               <Text className="text-[15px] font-bold text-gray-800" numberOfLines={1}>
-                {booking.title}
+                {booking.agenda}
               </Text>
               <View className="flex-row items-center mb-2">
                 <Text className="text-[13px] text-gray-500" numberOfLines={1}>
@@ -748,7 +749,7 @@ const MyBooking = () => {
           <EmptyState />
         )}
         
-        {/* Add some space at the bottom */}
+        {/* Add some space at the bottom */} 
         <View className="h-8" />
       </ScrollView>
     </SafeAreaView>

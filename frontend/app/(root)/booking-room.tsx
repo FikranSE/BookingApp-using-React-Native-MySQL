@@ -217,6 +217,7 @@ const BookingRoom = () => {
     selectedRoomName, 
     pic, 
     section, 
+    agenda,
     description, 
     bookAgain  
   } = params;
@@ -229,6 +230,7 @@ const BookingRoom = () => {
     end_time: '',
     pic: pic || '',
     section: section || '',
+    agenda: agenda || '',
     description: description || '',
   });
   const [rooms, setRooms] = useState([]);
@@ -490,6 +492,9 @@ const BookingRoom = () => {
     }
     if (!form.section.trim()) {
       newErrors.section = 'Section is required';
+    }
+    if (!form.agenda.trim()) {
+      newErrors.agenda = 'Agenda is required';
     }
     if (isDateInPast(form.booking_date)) {
       newErrors.booking_date = 'Cannot book for a past date';
@@ -1015,6 +1020,27 @@ const BookingRoom = () => {
               )}
             </View>
             {errors.section && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.section}</Text>}
+          </View>
+
+          <View className="mb-4">
+            <View className={`flex-row items-center bg-white border ${errors.agenda ? 'border-red-500' : 'border-gray-200'} rounded-xl py-0 px-3 shadow-sm`}>
+              <MaterialIcons name="info" size={22} color="#94A3B8" />
+              <TextInput
+                className="flex-1 ml-3 text-gray-700 h-12 text-base"
+                placeholder="Enter agenda"
+                placeholderTextColor="#94A3B8"
+                defaultValue={form.agenda}
+                onChangeText={(text) => {
+                  setForm(prev => ({ ...prev, agenda: text }));
+                  if (errors.agenda) setErrors(prev => ({ ...prev, agenda: null }));
+                }}
+                style={{ height: 48 }}
+              />
+              {errors.agenda && (
+                <Ionicons name="alert-circle" size={22} color="#EF4444" />
+              )}
+            </View>
+            {errors.agenda && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.agenda}</Text>}
           </View>
 
           <View className="mb-4">

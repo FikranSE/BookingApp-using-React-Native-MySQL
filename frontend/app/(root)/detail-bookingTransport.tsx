@@ -21,6 +21,7 @@ interface IBooking {
   type: 'ROOM' | 'TRANSPORT';
   pic: string;
   section: string;
+  agenda: string;
   roomName?: string;
   vehicleName?: string;
   driverName?: string;
@@ -116,6 +117,7 @@ const DetailBookingTransport = () => {
           type: 'TRANSPORT',
           pic: bookingData.pic || "Not assigned",
           section: bookingData.section || "No section",
+          agenda: bookingData.agenda || "No agenda",
           vehicleName: transportData.vehicle_name || "Unknown Vehicle",
           driverName: transportData.driver_name || "Unknown Driver",
           capacity: transportData.capacity.toString() || "Unknown Capacity",
@@ -256,6 +258,7 @@ const DetailBookingTransport = () => {
           selectedTransportName: bookingDetail.vehicleName || '',
           pic: bookingDetail.pic || '',
           section: bookingDetail.section || '',
+          agenda: bookingDetail.agenda || '',
           description: bookingDetail.description || '',
           destination: bookingDetail.destination || '',
           bookAgain: 'true' // Flag to show alert on booking page
@@ -424,14 +427,24 @@ const DetailBookingTransport = () => {
             >
               <Text className="text-white font-bold text-lg">{bookingDetail.vehicleName}</Text>
               <View className="flex-row items-center mt-1">
-                <Ionicons name="star" size={14} color="#F59E0B" />
-                <Text className="text-white text-xs ml-1">Premium Transport</Text>
+                <Ionicons name="car" size={14} color="#F59E0B" />
+                <Text className="text-white text-xs ml-1">Transport</Text>
               </View>
             </LinearGradient>
           </View>
           
           {/* Info rows with icons */}
           <View className="p-4">
+            <View className="flex-row items-center py-3 border-b border-gray-100">
+              <View className={`w-10 h-10 ${theme.iconBg} rounded-full items-center justify-center`}>
+                <Ionicons name="information-outline" size={20} color={theme.iconColor} />
+              </View>
+              <View className="ml-3">
+                <Text className="text-gray-500 text-sm">Agenda</Text>
+                <Text className="text-gray-800 font-medium">{bookingDetail.agenda}</Text>
+              </View>
+            </View> 
+
             <View className="flex-row items-center py-3 border-b border-gray-100">
               <View className={`w-10 h-10 ${theme.iconBg} rounded-full items-center justify-center`}>
                 <Ionicons name="person-outline" size={20} color={theme.iconColor} />

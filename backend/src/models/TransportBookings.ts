@@ -1,3 +1,4 @@
+// src/models/TransportBooking.ts
 import { Model, DataTypes, Optional } from 'sequelize';
 import sequelize from '../config/db';
 
@@ -15,12 +16,13 @@ interface TransportBookingAttributes {
   notes?: string;
   approver_id?: number;
   approved_at?: Date;
-  destination: string;  // New attribute
+  destination: string;
   createdAt?: Date;
   updatedAt?: Date;
+  agenda?: string; // New attribute
 }
 
-interface TransportBookingCreationAttributes extends Optional<TransportBookingAttributes, 'booking_id' | 'description' | 'notes' | 'approver_id' | 'approved_at'> {}
+interface TransportBookingCreationAttributes extends Optional<TransportBookingAttributes, 'booking_id' | 'description' | 'notes' | 'approver_id' | 'approved_at' | 'agenda'> {}
 
 class TransportBooking extends Model<TransportBookingAttributes, TransportBookingCreationAttributes> implements TransportBookingAttributes {
   public booking_id!: number;
@@ -36,7 +38,8 @@ class TransportBooking extends Model<TransportBookingAttributes, TransportBookin
   public notes?: string;
   public approver_id?: number;
   public approved_at!: Date;
-  public destination!: string;  // New attribute
+  public destination!: string;
+  public agenda?: string; // New attribute
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -98,9 +101,13 @@ TransportBooking.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
-    destination: {  
-      type: DataTypes.STRING, 
-      allowNull: false,  
+    destination: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    agenda: { // New attribute
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {

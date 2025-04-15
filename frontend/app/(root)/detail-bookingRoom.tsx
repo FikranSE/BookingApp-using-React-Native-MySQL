@@ -21,6 +21,7 @@ interface IBooking {
   type: 'ROOM' | 'TRANSPORT';
   pic: string;
   section: string;
+  agenda: string;
   roomName: string;
   roomId: number;
   date: string;
@@ -111,6 +112,7 @@ const DetailBookingRoom = () => {
           type: 'ROOM',
           pic: bookingData.pic || "Not assigned",
           section: bookingData.section || "No section",
+          agenda: bookingData.agenda || "No agenda",
           roomName: roomData.room_name || "Unknown Room",
           roomId: bookingData.room_id,
           date: bookingData.booking_date,
@@ -250,6 +252,7 @@ const DetailBookingRoom = () => {
           selectedRoomName: bookingDetail.roomName || '',
           pic: bookingDetail.pic || '',
           section: bookingDetail.section || '',
+          agenda: bookingDetail.agenda || '',
           description: bookingDetail.description || '',
           bookAgain: 'true' // Flag to show alert on booking page
         }
@@ -421,11 +424,11 @@ const DetailBookingRoom = () => {
           <View className="p-4">
             <View className="flex-row items-center py-3 border-b border-gray-100">
               <View className={`w-10 h-10 ${theme.iconBg} rounded-full items-center justify-center`}>
-                <Ionicons name="location-outline" size={20} color={theme.iconColor} />
+                <Ionicons name="information-outline" size={20} color={theme.iconColor} />
               </View>
               <View className="ml-3">
-                <Text className="text-gray-500 text-sm">Room</Text>
-                <Text className="text-gray-800 font-medium">{bookingDetail.roomName}</Text>
+                <Text className="text-gray-500 text-sm">Agenda</Text>
+                <Text className="text-gray-800 font-medium">{bookingDetail.agenda}</Text>
               </View>
             </View>
             

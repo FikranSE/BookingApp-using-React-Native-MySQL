@@ -18,9 +18,10 @@ interface RoomBookingAttributes {
   approved_at?: Date;
   createdAt?: Date;
   updatedAt?: Date;
+  agenda?: string; // New attribute
 }
 
-interface RoomBookingCreationAttributes extends Optional<RoomBookingAttributes, 'booking_id' | 'description' | 'notes' | 'approver_id' | 'approved_at'> {}
+interface RoomBookingCreationAttributes extends Optional<RoomBookingAttributes, 'booking_id' | 'description' | 'notes' | 'approver_id' | 'approved_at' | 'agenda'> {}
 
 class RoomBooking extends Model<RoomBookingAttributes, RoomBookingCreationAttributes> implements RoomBookingAttributes {
   public booking_id!: number;
@@ -36,6 +37,7 @@ class RoomBooking extends Model<RoomBookingAttributes, RoomBookingCreationAttrib
   public notes?: string;
   public approver_id?: number;
   public approved_at!: Date;
+  public agenda?: string; // New attribute
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -81,7 +83,7 @@ RoomBooking.init(
       allowNull: true,
     },
     status: {
-      type: DataTypes.ENUM('pending', 'approved', 'rejected','cancelled'),
+      type: DataTypes.ENUM('pending', 'approved', 'rejected', 'cancelled'),
       allowNull: false,
       defaultValue: 'pending',
     },
@@ -95,6 +97,10 @@ RoomBooking.init(
     },
     approved_at: {
       type: DataTypes.DATE,
+      allowNull: true,
+    },
+    agenda: { // New attribute
+      type: DataTypes.STRING,
       allowNull: true,
     },
   },
