@@ -821,6 +821,29 @@ const BookingTransport = () => {
     );
   };
 
+  const fixImageUrl = (imageUrl) => {
+    if (!imageUrl) return null;
+  
+    // Handle local filesystem paths
+    if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+    }
+  
+    // Fix double slash issue in URLs
+    if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
+      return imageUrl.replace('//uploads', '/uploads');
+    }
+  
+    // Add base URL if the image path is relative
+    if (typeof imageUrl === 'string' && !imageUrl.startsWith('http')) {
+      // Remove any leading slashes to avoid double slashes
+      const cleanPath = imageUrl.replace(/^\/+/, '');
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
+    }
+  
+    return imageUrl;
+  };
+
   const TimePickerModal = ({ visible, onClose, time, onTimeChange, title }) => {
     const now = new Date();
     const [hours, setHours] = useState('09');
@@ -1207,7 +1230,7 @@ const BookingTransport = () => {
                 >
                   <View className="flex-row items-center">
                     <Image
-                      source={{ uri: transport.image }}
+                      source={{ uri: fixImageUrl(transport.image) }}
                       style={{ width: 60, height: 60, borderRadius: 10 }}
                       className="mr-4"
                     />

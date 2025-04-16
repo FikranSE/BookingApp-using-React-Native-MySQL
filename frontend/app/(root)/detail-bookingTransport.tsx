@@ -42,14 +42,35 @@ const DetailBookingTransport = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [bookingDetail, setBookingDetail] = useState<IBooking | null>(null);
-
+  const processImageUrl = (imageUrl: string | null | undefined): string | undefined => {
+    if (!imageUrl) return undefined;
+    
+    // Handle local filesystem paths
+    if (imageUrl.startsWith('E:') || imageUrl.startsWith('C:')) {
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+    }
+    
+    // Fix double slash issue
+    if (imageUrl.includes('//uploads')) {
+      imageUrl = imageUrl.replace('//uploads', '/uploads');
+    }
+    
+    // Add base URL for relative paths
+    if (!imageUrl.startsWith('http')) {
+      const cleanPath = imageUrl.replace(/^\/+/, '');
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
+    }
+    
+    return imageUrl;
+  };
+  
   useEffect(() => {
     const fetchBookingDetail = async () => {
       if (!id) {
         setLoading(false);
         return;
       }
-
+    
       try {
         const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
         
@@ -58,7 +79,7 @@ const DetailBookingTransport = () => {
           router.push('/(auth)/sign-in');
           return;
         }
-
+    
         const axiosInstance = axios.create({
           baseURL: 'https://j9d3hc82-3001.asse.devtunnels.ms/api',
           headers: {
@@ -66,7 +87,7 @@ const DetailBookingTransport = () => {
             'Content-Type': 'application/json',
           },
         });
-
+    
         // Handle axios errors globally
         axiosInstance.interceptors.response.use(
           response => response,
@@ -78,22 +99,26 @@ const DetailBookingTransport = () => {
             return Promise.reject(error);
           }
         );
-
+    
         // Get transport booking details
         const bookingResponse = await axiosInstance.get(`/transport-bookings/${id}`);
         const bookingData = bookingResponse.data;
-
+    
         // Get transport details
         const transportResponse = await axiosInstance.get(`/transports/${bookingData.transport_id}`);
         const transportData = transportResponse.data;
-
+    
+        // Process the transport image if it exists
+        const transportImage = transportData.image ? processImageUrl(transportData.image) : undefined;
+        console.log("Transport image URL:", transportImage);
+    
         // Get approver details if exists
         let approverName;
         if (bookingData.approved_by) {
           const approverResponse = await axiosInstance.get(`/users/${bookingData.approved_by}`);
           approverName = `${approverResponse.data.first_name} ${approverResponse.data.last_name}`;
         }
-
+    
         // Check if the booking is expired (for PENDING bookings)
         let bookingStatus = bookingData.status.toUpperCase();
         if (bookingStatus === 'PENDING') {
@@ -111,7 +136,7 @@ const DetailBookingTransport = () => {
             bookingStatus = 'EXPIRED';
           }
         }
-
+    
         const mappedBooking: IBooking = {
           id: bookingData.booking_id.toString(),
           type: 'TRANSPORT',
@@ -121,15 +146,14 @@ const DetailBookingTransport = () => {
           vehicleName: transportData.vehicle_name || "Unknown Vehicle",
           driverName: transportData.driver_name || "Unknown Driver",
           capacity: transportData.capacity.toString() || "Unknown Capacity",
-          image: transportData.image || undefined,
+          image: transportImage, // Add the processed image URL
           destination: bookingData.destination || "No destination",
           date: bookingData.booking_date,
           startTime: bookingData.start_time,
           endTime: bookingData.end_time,
           description: bookingData.description,
           isOngoing: false,
-          // Store the transport_id from API in the transportId field
-          transportId: bookingData.transport_id, 
+          transportId: bookingData.transport_id,
           approval: {
             status: bookingStatus as 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED',
             approverName: approverName,
@@ -137,7 +161,7 @@ const DetailBookingTransport = () => {
             feedback: bookingData.notes || undefined,
           },
         };
-
+    
         setBookingDetail(mappedBooking);
       } catch (error) {
         console.error("Error fetching booking details: ", error);
@@ -416,11 +440,16 @@ const DetailBookingTransport = () => {
           
           {/* Vehicle image */}
           <View className="w-full h-48 bg-gray-100">
-            <Image
-              source={bookingDetail.image ? { uri: bookingDetail.image } : images.profile1}
-              className="w-full h-full"
-              resizeMode="cover"
-            />
+          <Image
+            source={bookingDetail.image ? { uri: bookingDetail.image } : images.profile1}
+            className="w-full h-full"
+            resizeMode="cover"
+            defaultSource={images.profile1}
+            onError={(e) => {
+              console.log(`Transport image loading error for ID ${bookingDetail.id}:`, e.nativeEvent.error);
+              console.log(`Attempted to load image: ${bookingDetail.image}`);
+            }}
+          />
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.7)']}
               className="absolute bottom-0 left-0 right-0 p-4"

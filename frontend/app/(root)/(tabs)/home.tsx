@@ -118,6 +118,29 @@ const Home = () => {
     }
   };
 
+
+  const fixImageUrl = (imageUrl) => {
+    if (!imageUrl) return null;
+  
+    // Handle local filesystem paths
+    if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+    }
+  
+    // Fix double slash issue in URLs
+    if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
+      return imageUrl.replace('//uploads', '/uploads');
+    }
+  
+    // Add base URL if the image path is relative
+    if (typeof imageUrl === 'string' && !imageUrl.startsWith('http')) {
+      // Remove any leading slashes to avoid double slashes
+      const cleanPath = imageUrl.replace(/^\/+/, '');
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
+    }
+  
+    return imageUrl;
+  };
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -524,7 +547,7 @@ const Home = () => {
       >
         <View className="relative">
           <Image
-            source={images.profile1}
+            source={{ uri: fixImageUrl(room.image) }}
             className="w-full h-40"
             resizeMode="cover"
           />
@@ -606,7 +629,7 @@ const Home = () => {
     >
       <View className="relative">
         <Image
-          source={images.profile1}
+          source={{ uri: fixImageUrl(transport.image) }}
           className="w-full h-40"
           resizeMode="cover"
         />

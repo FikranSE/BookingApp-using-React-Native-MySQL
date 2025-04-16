@@ -32,6 +32,30 @@ const Explore = () => {
   const [rooms, setRooms] = useState<IRoom[]>([]);
   const [transportations, setTransportations] = useState<ITransport[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Utility function to fix image URLs
+  const fixImageUrl = (imageUrl) => {
+    if (!imageUrl) return null;
+    
+    // Handle local filesystem paths
+    if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+    }
+    
+    // Fix double slash issue in URLs
+    if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
+      return imageUrl.replace('//uploads', '/uploads');
+    }
+    
+    // Add base URL if the image path is relative
+    if (typeof imageUrl === 'string' && !imageUrl.startsWith('http')) {
+      // Remove any leading slashes to avoid double slashes
+      const cleanPath = imageUrl.replace(/^\/+/, '');
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
+    }
+    
+    return imageUrl;
+  };
 
   const fetchAuthToken = async () => {
     return await tokenCache.getToken(AUTH_TOKEN_KEY);
@@ -105,7 +129,9 @@ const Explore = () => {
   );
 
   const RoomCard = ({ room }: { room: IRoom }) => {
-    const facilitiesList = room.facilities.split(',').map(item => item.trim());
+    const facilitiesList = room.facilities 
+      ? room.facilities.split(',').map(item => item.trim()) 
+      : [];
   
     // Menambahkan colorMap untuk fasilitas
     const colorMap = {
@@ -115,10 +141,8 @@ const Explore = () => {
       3: { bg: 'bg-orange-100', text: 'text-orange-700' },
     };
   
-    // Pastikan URL gambar menggunakan format absolut
-    const imageUrl = room.image 
-      ? `https://j9d3hc82-3001.asse.devtunnels.ms${room.image.replace(/^\/+/, '')}`  // Pastikan tidak ada double slash
-      : images.smroom;  // Default image jika gambar tidak ada
+    // Process the image URL using our utility function
+    const imageUrl = fixImageUrl(room.image) || images.smroom;
     
     return (
       <TouchableOpacity
@@ -126,11 +150,15 @@ const Explore = () => {
         onPress={() => router.push(`/detail?id=${room.room_id}&type=room`)}
       >
         <View className="flex-row p-2">
-          {/* Menampilkan gambar hanya jika imageUrl valid */}
+          {/* Image with error handling */}
           <Image
-            source={{ uri: imageUrl }}  // Pastikan URL adalah string valid
+            source={{ uri: imageUrl }}
             className="w-24 h-24 rounded-lg"
             resizeMode="cover"
+            defaultSource={images.smroom}
+            onError={(e) => {
+              console.log("Image load error:", e.nativeEvent.error);
+            }}
           />
           <View className="flex-1 pl-4 justify-between">
             <View>
@@ -177,30 +205,28 @@ const Explore = () => {
     );
   };
   
-  
-  
-  
-  
   const TransportCard = ({ transport }: { transport: ITransport }) => {
-    // Ensure imageUrl is valid
-    const imageUrl = transport.image ? transport.image : images.smroom; // Default image if image is not available
-    const imageSource = imageUrl && typeof imageUrl === 'string' ? { uri: imageUrl } : null;
-  
+    // Process the image URL using our utility function
+    const imageUrl = fixImageUrl(transport.image);
+    
     return (
       <TouchableOpacity
         className="bg-white rounded-2xl mb-4 overflow-hidden shadow-sm border border-sky-50"
         onPress={() => router.push(`/detail?id=${transport.transport_id}&type=transport`)}
       >
         <View className="flex-row p-2">
-          {/* Display image only if imageSource is valid */}
-          {imageSource ? (
+          {imageUrl ? (
             <Image
-              source={imageSource}
+              source={{ uri: imageUrl }}
               className="w-24 h-24 rounded-lg"
               resizeMode="cover"
+              defaultSource={images.smroom}
+              onError={(e) => {
+                console.log("Transport image load error:", e.nativeEvent.error);
+              }}
             />
           ) : (
-            <View className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center">
+            <View className="w-24 h-24 bg-gray-200 rounded-lg items-center justify-center">
               <Ionicons name="car-outline" size={24} color="gray" />
             </View>
           )}
@@ -214,18 +240,15 @@ const Explore = () => {
               <View className="flex-row items-center mt-1">
                 <Ionicons name="person" size={13} color="#0EA5E9" />
                 <Text className="text-xs text-sky-500 font-medium ml-1.5">
-                  Driver:
-                </Text>
-                <Text className="text-xs text-sky-500 font-medium ml-1.5">
-                  {transport.driver_name}
+                  Driver: {transport.driver_name}
                 </Text>
               </View>
               
               <View className="flex-row items-center">
-               <Image
-                 source={icons.seat}
-                 style={{ width: 13, height: 13, tintColor: "#F97316" }}
-               />
+                <Image
+                  source={icons.seat}
+                  style={{ width: 13, height: 13, tintColor: "#F97316" }}
+                />
                 <Text className="text-xs text-orange-500 font-medium ml-1.5">
                   {transport.capacity} seats
                 </Text>
@@ -236,8 +259,6 @@ const Explore = () => {
       </TouchableOpacity>
     );
   };
-  
-  
 
   // Empty state components with new color scheme
   const EmptyState = ({ type }: { type: "Rooms" | "Transportation" }) => (

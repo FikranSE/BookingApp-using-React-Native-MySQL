@@ -23,7 +23,6 @@ interface IBooking {
   start_time: string;
   end_time: string;
   section: string;
-  agenda: string;
   isOngoing: boolean;
   approval: IApprovalStatus;
   vehicleName?: string;
@@ -57,6 +56,29 @@ const MyBooking = () => {
   const defaultRoomImageUrl = "https://images.unsplash.com/photo-1606744824163-985d376605aa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80";
   const defaultTransportImageUrl = "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80";
 
+  // Utility function to process image URLs
+  const processImageUrl = (imageUrl: string | null | undefined): string => {
+    if (!imageUrl) return defaultRoomImageUrl;
+    
+    // Handle local filesystem paths
+    if (imageUrl.startsWith('E:') || imageUrl.startsWith('C:')) {
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+    }
+    
+    // Fix double slash issue
+    if (imageUrl.includes('//uploads')) {
+      imageUrl = imageUrl.replace('//uploads', '/uploads');
+    }
+    
+    // Add base URL for relative paths
+    if (!imageUrl.startsWith('http')) {
+      const cleanPath = imageUrl.replace(/^\/+/, '');
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
+    }
+    
+    return imageUrl;
+  };
+
   // Function to determine if a booking is expired
   const getBookingStatus = (status: string, bookingDate: Date, endTime: string) => {
     if (status.toUpperCase() !== "PENDING") {
@@ -74,6 +96,59 @@ const MyBooking = () => {
     
     // If the booking end time is in the past and status is PENDING, mark as EXPIRED
     return bookingDateTime < now ? "EXPIRED" : "PENDING";
+  };
+
+  // Function to fetch images for rooms and transports
+  const fetchImagesForBookings = async (authToken: string) => {
+    try {
+      // Fetch room images
+      const roomImagesResponse = await fetch(
+        "https://j9d3hc82-3001.asse.devtunnels.ms/api/room-images",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      // Fetch vehicle images
+      const vehicleImagesResponse = await fetch(
+        "https://j9d3hc82-3001.asse.devtunnels.ms/api/vehicle-images",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      let roomImages = {}; 
+      let vehicleImages = {};
+
+      if (roomImagesResponse.ok) {
+        const roomImagesData = await roomImagesResponse.json();
+        // Make sure we're mapping correctly according to database structure
+        roomImagesData.forEach((item: any) => {
+          roomImages[item.room_id] = processImageUrl(item.image_url);
+        });
+      }
+
+      if (vehicleImagesResponse.ok) {
+        const vehicleImagesData = await vehicleImagesResponse.json();
+        // Make sure we're mapping correctly according to database structure
+        vehicleImagesData.forEach((item: any) => { 
+          vehicleImages[item.vehicle_id] = processImageUrl(item.image_url);
+        });
+      }
+
+      return { roomImages, vehicleImages };
+    } catch (error) {
+      console.error("Error fetching images:", error);
+      return { roomImages: {}, vehicleImages: {} };
+    }
   };
 
   useEffect(() => {
@@ -113,13 +188,14 @@ const MyBooking = () => {
     const fetchBookings = async () => {
       try {
         const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
-
+    
         if (!authToken) {
           Alert.alert("Error", "Not authenticated");
           router.push("/(auth)/sign-in");
           return;
         }
-
+    
+        // Fetch booking data directly
         const roomResponse = await fetch(
           "https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings",
           {
@@ -130,7 +206,7 @@ const MyBooking = () => {
             },
           }
         );
-
+    
         const transportResponse = await fetch(
           "https://j9d3hc82-3001.asse.devtunnels.ms/api/transport-bookings",
           {
@@ -141,10 +217,61 @@ const MyBooking = () => {
             },
           }
         );
-
+    
+        // Fetch rooms and transports for image data
+        const roomsResponse = await fetch(
+          "https://j9d3hc82-3001.asse.devtunnels.ms/api/rooms",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+    
+        const transportsResponse = await fetch(
+          "https://j9d3hc82-3001.asse.devtunnels.ms/api/transports",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+    
         const roomData = await roomResponse.json();
         const transportData = await transportResponse.json();
-
+        
+        // Create image mappings from room and transport data
+        let roomImages = {};
+        let transportImages = {};
+        
+        if (roomsResponse.ok) {
+          const roomsData = await roomsResponse.json();
+          console.log("Rooms data fetched:", roomsData.length);
+          
+          roomsData.forEach((room: any) => {
+            if (room.room_id && room.image) {
+              roomImages[room.room_id] = processImageUrl(room.image);
+              console.log(`Room ${room.room_id} image: ${room.image} → ${roomImages[room.room_id]}`);
+            }
+          });
+        }
+        
+        if (transportsResponse.ok) {
+          const transportsData = await transportsResponse.json();
+          console.log("Transports data fetched:", transportsData.length);
+          
+          transportsData.forEach((transport: any) => {
+            if (transport.transport_id && transport.image) {
+              transportImages[transport.transport_id] = processImageUrl(transport.image);
+              console.log(`Transport ${transport.transport_id} image: ${transport.image} → ${transportImages[transport.transport_id]}`);
+            }
+          });
+        }
+    
         if (!roomResponse.ok || !transportResponse.ok) {
           if (roomResponse.status === 401 || transportResponse.status === 401) {
             await tokenCache.removeToken(AUTH_TOKEN_KEY);
@@ -153,46 +280,8 @@ const MyBooking = () => {
           }
           throw new Error("Failed to fetch bookings");
         }
-
-        const roomImagesResponse = await fetch(
-          "https://j9d3hc82-3001.asse.devtunnels.ms/api/room-images",
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        const vehicleImagesResponse = await fetch(
-          "https://j9d3hc82-3001.asse.devtunnels.ms/api/vehicle-images",
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        let roomImages = {}; 
-        let vehicleImages = {};
-
-        if (roomImagesResponse.ok) {
-          const roomImagesData = await roomImagesResponse.json();
-          roomImagesData.forEach((item: any) => {
-            roomImages[item.room_id] = item.image_url;
-          });
-        }
-
-        if (vehicleImagesResponse.ok) {
-          const vehicleImagesData = await vehicleImagesResponse.json();
-          vehicleImagesData.forEach((item: any) => { 
-            vehicleImages[item.vehicle_id] = item.image_url;
-          });
-        }
-
+    
+        // Process room bookings with images
         const mappedRoomBookings = roomData 
           .filter((item: any) => item.user_id === userId)
           .map((item: any) => {
@@ -200,8 +289,25 @@ const MyBooking = () => {
             const formattedBookingDate = `${bookingDate.getDate()} ${bookingDate.toLocaleString('default', { month: 'short' })} ${bookingDate.getFullYear()}`;
             const start_time = item.start_time ? new Date(`1970-01-01T${item.start_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
             const end_time = item.end_time ? new Date(`1970-01-01T${item.end_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
-
-            const imageUrl = roomImages[item.room_id] || defaultRoomImageUrl;
+    
+            // Try to get image directly from booking data first, then from room data
+            let imageUrl;
+            
+            // Check if the item itself has an image_url
+            if (item.image_url) {
+              imageUrl = processImageUrl(item.image_url);
+              console.log(`Room booking ${item.booking_id} has direct image: ${imageUrl}`);
+            } 
+            // Otherwise check if we have an image for this room_id in our mapping
+            else if (roomImages[item.room_id]) {
+              imageUrl = roomImages[item.room_id];
+              console.log(`Room booking ${item.booking_id} using room_id ${item.room_id} image: ${imageUrl}`);
+            } 
+            // Finally fall back to default
+            else {
+              imageUrl = defaultRoomImageUrl;
+              console.log(`Room booking ${item.booking_id} using default image`);
+            }
             
             // Determine the status (check if expired for PENDING status)
             const status = getBookingStatus(
@@ -209,7 +315,7 @@ const MyBooking = () => {
               bookingDate, 
               item.end_time
             );
-
+    
             return {
               id: item.booking_id.toString(),
               type: "ROOM",
@@ -229,7 +335,8 @@ const MyBooking = () => {
               rawDate: bookingDate, // Store raw date for sorting and expired check
             };
           });
-
+    
+        // Process transport bookings with images
         const mappedTransportBookings = transportData
           .filter((item: any) => item.user_id === userId)
           .map((item: any) => {
@@ -237,8 +344,25 @@ const MyBooking = () => {
             const formattedBookingDate = `${bookingDate.getDate()} ${bookingDate.toLocaleString('default', { month: 'short' })} ${bookingDate.getFullYear()}`;
             const start_time = item.start_time ? new Date(`1970-01-01T${item.start_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
             const end_time = item.end_time ? new Date(`1970-01-01T${item.end_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
-
-            const imageUrl = vehicleImages[item.vehicle_id] || defaultTransportImageUrl;
+    
+            // Try to get image directly from booking data first, then from transport data
+            let imageUrl;
+            
+            // Check if the item itself has an image_url
+            if (item.image_url) {
+              imageUrl = processImageUrl(item.image_url);
+              console.log(`Transport booking ${item.booking_id} has direct image: ${imageUrl}`);
+            } 
+            // Otherwise check if we have an image for this transport_id in our mapping
+            else if (transportImages[item.transport_id]) {
+              imageUrl = transportImages[item.transport_id];
+              console.log(`Transport booking ${item.booking_id} using transport_id ${item.transport_id} image: ${imageUrl}`);
+            } 
+            // Finally fall back to default
+            else {
+              imageUrl = defaultTransportImageUrl;
+              console.log(`Transport booking ${item.booking_id} using default image`);
+            }
             
             // Determine the status (check if expired for PENDING status)
             const status = getBookingStatus(
@@ -246,7 +370,7 @@ const MyBooking = () => {
               bookingDate, 
               item.end_time
             );
-
+    
             return {
               id: item.booking_id.toString(),
               type: "TRANSPORT",
@@ -269,10 +393,10 @@ const MyBooking = () => {
               rawDate: bookingDate, // Store raw date for sorting and expired check
             };
           });
-
+    
         const allBookings = [...mappedRoomBookings, ...mappedTransportBookings];
         allBookings.sort((a, b) => (b.rawDate?.getTime() || 0) - (a.rawDate?.getTime() || 0));
-
+    
         setBookings(allBookings);
       } catch (error) {
         console.error("Error fetching bookings: ", error);
@@ -282,7 +406,9 @@ const MyBooking = () => {
       }
     };
 
-    fetchBookings();
+    if (userId) {
+      fetchBookings();
+    }
   }, [userId]);
 
   const filteredBookings = bookings.filter((booking) => {
@@ -391,6 +517,8 @@ const MyBooking = () => {
       </Text>
     </TouchableOpacity>
   );
+
+  
 
   // Filter Modal Component
   const FilterModal = () => (
@@ -513,67 +641,73 @@ const MyBooking = () => {
         router.push(`/detail-bookingTransport?id=${booking.id}`);
       }
     };
-
+  
     const { color, background } = getStatusColorAndBackground(booking.approval.status);
-
+    const defaultImage = booking.type === "ROOM" ? defaultRoomImageUrl : defaultTransportImageUrl;
+  
     return (
       <TouchableOpacity
-      className="bg-white rounded-xl mt-4 mx-4 overflow-hidden shadow-sm"
-      onPress={handlePress}
-    >
-      <View className="flex-row p-2">
-        <Image
-          source={{ uri: booking.imageUrl }}
-          className="w-24 h-full rounded-lg"
-          resizeMode="cover"
-        />
-        <View className="flex-1 pl-3">
-          <View className="flex-row justify-between items-start">
-            <View className="flex-1 mr-2">
-              <Text className="text-[15px] font-bold text-gray-800" numberOfLines={1}>
-                {booking.agenda}
-              </Text>
-              <View className="flex-row items-center mb-2">
-                <Text className="text-[13px] text-gray-500" numberOfLines={1}>
-                  {booking.section}
+        className="bg-white rounded-xl mt-4 mx-4 overflow-hidden shadow-sm"
+        onPress={handlePress}
+      >
+        <View className="flex-row p-2">
+          <Image
+            source={{ uri: booking.imageUrl || defaultImage }}
+            className="w-24 h-24 rounded-lg"
+            resizeMode="cover"
+            defaultSource={{ uri: defaultImage }}
+            onError={(e) => {
+              console.log(`Image load error for ${booking.id}, type: ${booking.type}, URL: ${booking.imageUrl}`);
+              console.log("Error details:", e.nativeEvent.error);
+            }}
+          />
+          <View className="flex-1 pl-3">
+            <View className="flex-row justify-between items-start">
+              <View className="flex-1 mr-2">
+                <Text className="text-[15px] font-bold text-gray-800" numberOfLines={1}>
+                  {booking.agenda}
+                </Text>
+                <View className="flex-row items-center mb-2">
+                  <Text className="text-[13px] text-gray-500" numberOfLines={1}>
+                    {booking.section}
+                  </Text>
+                </View>
+              </View>
+              <View 
+                style={{ backgroundColor: background, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 }}
+              >
+                <Text style={{ color, fontSize: 12, fontWeight: '500' }}>
+                  {booking.approval.status}
                 </Text>
               </View>
             </View>
-            <View 
-              style={{ backgroundColor: background, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 }}
-            >
-              <Text style={{ color, fontSize: 12, fontWeight: '500' }}>
-                {booking.approval.status}
-              </Text>
-            </View>
-          </View>
-          <View className="mt-2 space-y-1">
-            <View className="flex-row items-center">
-              <Ionicons name="calendar" size={13} color="#0EA5E9" />
-              <Text className="text-[10px] text-sky-500 font-medium ml-1.5">
-                {booking.date}
-              </Text>
-            </View>
-            <View className="flex-row items-center">
-              <Ionicons name="time" size={13} color="#F97316" />
-              <Text className="text-[10px] text-orange-500 font-medium ml-1.5">
-                {booking.start_time} - {booking.end_time}
-              </Text>
-            </View>
-            <View className="flex-row items-center">
-              <Ionicons 
-                name={booking.type === "ROOM" ? "business" : "car"} 
-                size={13} 
-                color="#6366F1" 
-              />
-              <Text className="text-[10px] text-indigo-500 font-medium ml-1.5">
-                {booking.type}
-              </Text>
+            <View className="mt-2 space-y-1">
+              <View className="flex-row items-center">
+                <Ionicons name="calendar" size={13} color="#0EA5E9" />
+                <Text className="text-[10px] text-sky-500 font-medium ml-1.5">
+                  {booking.date}
+                </Text>
+              </View>
+              <View className="flex-row items-center">
+                <Ionicons name="time" size={13} color="#F97316" />
+                <Text className="text-[10px] text-orange-500 font-medium ml-1.5">
+                  {booking.start_time} - {booking.end_time}
+                </Text>
+              </View>
+              <View className="flex-row items-center">
+                <Ionicons 
+                  name={booking.type === "ROOM" ? "business" : "car"} 
+                  size={13} 
+                  color="#6366F1" 
+                />
+                <Text className="text-[10px] text-indigo-500 font-medium ml-1.5">
+                  {booking.type}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
     );
   };
 
@@ -756,4 +890,4 @@ const MyBooking = () => {
   );
 };
  
-export default MyBooking; 
+export default MyBooking;

@@ -926,6 +926,29 @@ const BookingRoom = () => {
     </View>
   );
 
+  const fixImageUrl = (imageUrl) => {
+    if (!imageUrl) return null;
+  
+    // Handle local filesystem paths
+    if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+    }
+  
+    // Fix double slash issue in URLs
+    if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
+      return imageUrl.replace('//uploads', '/uploads');
+    }
+  
+    // Add base URL if the image path is relative
+    if (typeof imageUrl === 'string' && !imageUrl.startsWith('http')) {
+      // Remove any leading slashes to avoid double slashes
+      const cleanPath = imageUrl.replace(/^\/+/, '');
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
+    }
+  
+    return imageUrl;
+  };
+
   // ----- BookingLegend: Legend disinkronkan dengan warna di modal select date & time -----
   const BookingLegend = () => (
     <View className="mb-5 px-3 py-4 bg-gray-50 rounded-xl">
@@ -1067,36 +1090,37 @@ const BookingRoom = () => {
           <SectionHeader title="Room Selection" icon="business-outline" />
           {errors.room_id && <Text className="text-red-500 text-xs mb-2">{errors.room_id}</Text>}
           <View className="mb-6">
-            {rooms.map((room) => (
-              <TouchableOpacity
-                key={room.room_id}
-                onPress={() => handleRoomSelection(room.room_id)}
-                className={`p-4 mb-4 rounded-xl border ${
-                  room.room_id === form.room_id 
-                    ? 'bg-sky-50 border-sky-500' 
-                    : 'bg-white border-gray-200'
-                } shadow-sm`}
-              >
-                <View className="flex-row items-center">
-                  <Image
-                    source={{ uri: room.image }}
-                    style={{ width: 60, height: 60, borderRadius: 10 }}
-                    className="mr-4"
-                  />
-                  <View className="flex-1">
-                    <Text className={`text-base ${room.room_id === form.room_id ? 'text-sky-900 font-medium' : 'text-gray-700'}`}>
-                      {room.room_name}
-                    </Text>
-                    <Text className={`text-sm ${room.room_id === form.room_id ? 'text-sky-700' : 'text-gray-500'}`}>
-                      Type: {room.room_type} | Capacity: {room.capacity}
-                    </Text>
-                  </View>
-                  {room.room_id === form.room_id && (
-                    <Ionicons name="checkmark-circle" size={24} color="#0EA5E9" />
-                  )}
+          {rooms.map((room) => (
+            <TouchableOpacity
+              key={room.room_id}
+              onPress={() => handleRoomSelection(room.room_id)}
+              className={`p-4 mb-4 rounded-xl border ${
+                room.room_id === form.room_id
+                  ? 'bg-sky-50 border-sky-500'
+                  : 'bg-white border-gray-200'
+              } shadow-sm`}
+            >
+              <View className="flex-row items-center">
+                <Image
+                  source={{ uri: fixImageUrl(room.image) }}
+                  style={{ width: 60, height: 60, borderRadius: 10 }}
+                  className="mr-4"
+                />
+                <View className="flex-1">
+                  <Text className={`text-base ${room.room_id === form.room_id ? 'text-sky-900 font-medium' : 'text-gray-700'}`}>
+                    {room.room_name}
+                  </Text>
+                  <Text className={`text-sm ${room.room_id === form.room_id ? 'text-sky-700' : 'text-gray-500'}`}>
+                    Type: {room.room_type} | Capacity: {room.capacity}
+                  </Text>
                 </View>
-              </TouchableOpacity>
-            ))}
+                {room.room_id === form.room_id && (
+                  <Ionicons name="checkmark-circle" size={24} color="#0EA5E9" />
+                )}
+              </View>
+            </TouchableOpacity>
+          ))}
+
           </View>
 
           <SectionHeader title="Date & Time" icon="calendar-outline" />

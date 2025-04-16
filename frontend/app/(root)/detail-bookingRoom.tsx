@@ -23,6 +23,7 @@ interface IBooking {
   section: string;
   agenda: string;
   roomName: string;
+  image?: string;
   roomId: number;
   date: string;
   startTime: string;
@@ -38,13 +39,36 @@ const DetailBookingRoom = () => {
   const [loading, setLoading] = useState(true);
   const [bookingDetail, setBookingDetail] = useState<IBooking | null>(null);
 
+
+  const processImageUrl = (imageUrl: string | null | undefined): string | undefined => {
+    if (!imageUrl) return undefined;
+    
+    // Handle local filesystem paths
+    if (imageUrl.startsWith('E:') || imageUrl.startsWith('C:')) {
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+    }
+    
+    // Fix double slash issue
+    if (imageUrl.includes('//uploads')) {
+      imageUrl = imageUrl.replace('//uploads', '/uploads');
+    }
+    
+    // Add base URL for relative paths
+    if (!imageUrl.startsWith('http')) {
+      const cleanPath = imageUrl.replace(/^\/+/, '');
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
+    }
+    
+    return imageUrl;
+  };
+
   useEffect(() => {
     const fetchBookingDetail = async () => {
       if (!id) {
         setLoading(false);
         return;
       }
-  
+    
       try {
         const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
         
@@ -53,7 +77,7 @@ const DetailBookingRoom = () => {
           router.push('/(auth)/sign-in');
           return;
         }
-  
+    
         const axiosInstance = axios.create({
           baseURL: 'https://j9d3hc82-3001.asse.devtunnels.ms/api',
           headers: {
@@ -61,7 +85,7 @@ const DetailBookingRoom = () => {
             'Content-Type': 'application/json',
           },
         });
-  
+    
         // Handle axios errors globally
         axiosInstance.interceptors.response.use(
           response => response,
@@ -73,22 +97,26 @@ const DetailBookingRoom = () => {
             return Promise.reject(error);
           }
         );
-  
+    
         // Get room booking details
         const bookingResponse = await axiosInstance.get(`/room-bookings/${id}`);
         const bookingData = bookingResponse.data;
-  
+    
         // Get room details
         const roomResponse = await axiosInstance.get(`/rooms/${bookingData.room_id}`);
         const roomData = roomResponse.data;
-  
+    
+        // Process the room image if it exists
+        const roomImage = roomData.image ? processImageUrl(roomData.image) : undefined;
+        console.log("Room image URL:", roomImage);
+    
         // Get approver details if exists
         let approverName;
         if (bookingData.approved_by) {
           const approverResponse = await axiosInstance.get(`/users/${bookingData.approved_by}`);
           approverName = `${approverResponse.data.first_name} ${approverResponse.data.last_name}`;
         }
-  
+    
         // Check if the booking is expired (for PENDING bookings)
         let bookingStatus = bookingData.status.toUpperCase();
         if (bookingStatus === 'PENDING') {
@@ -106,7 +134,7 @@ const DetailBookingRoom = () => {
             bookingStatus = 'EXPIRED';
           }
         }
-  
+    
         const mappedBooking: IBooking = {
           id: bookingData.booking_id.toString(),
           type: 'ROOM',
@@ -120,6 +148,7 @@ const DetailBookingRoom = () => {
           endTime: bookingData.end_time,
           description: bookingData.description,
           isOngoing: false,
+          image: roomImage, // Add the processed image URL
           approval: {
             status: bookingStatus as 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED',
             approverName: approverName,
@@ -127,7 +156,7 @@ const DetailBookingRoom = () => {
             feedback: bookingData.notes || undefined,
           },
         };
-  
+    
         setBookingDetail(mappedBooking);
       } catch (error) {
         console.error("Error fetching booking details: ", error);
@@ -403,11 +432,14 @@ const DetailBookingRoom = () => {
           
           {/* Room image */}
           <View className="w-full h-48 bg-gray-100">
-            <Image
-              source={images.roomImage || images.profile1}
-              className="w-full h-full"
-              resizeMode="cover"
-            />
+          <Image
+          source={bookingDetail.image ? { uri: bookingDetail.image } : (images.roomImage || images.profile1)}
+          className="w-full h-full"
+          resizeMode="cover"
+          onError={(e) => {
+            console.log("Image loading error:", e.nativeEvent.error);
+          }}
+        />
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.7)']}
               className="absolute bottom-0 left-0 right-0 p-4"

@@ -32,6 +32,30 @@ const Detail = () => {
   const [data, setData] = useState<IRoom | ITransport | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Utility function to fix image URLs - copied from Explore component
+  const fixImageUrl = (imageUrl) => {
+    if (!imageUrl) return null;
+    
+    // Handle local filesystem paths
+    if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+    }
+    
+    // Fix double slash issue in URLs
+    if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
+      return imageUrl.replace('//uploads', '/uploads');
+    }
+    
+    // Add base URL if the image path is relative
+    if (typeof imageUrl === 'string' && !imageUrl.startsWith('http')) {
+      // Remove any leading slashes to avoid double slashes
+      const cleanPath = imageUrl.replace(/^\/+/, '');
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
+    }
+    
+    return imageUrl;
+  };
+
   const fetchAuthToken = async () => {
     return await tokenCache.getToken(AUTH_TOKEN_KEY);
   };
@@ -129,16 +153,26 @@ const Detail = () => {
   }
 
   const title = type === 'room' ? (data as IRoom).room_name : (data as ITransport).vehicle_name;
+  
+  // Process the image URL for the current data item
+  const imageUrl = type === 'room' 
+    ? fixImageUrl((data as IRoom).image)
+    : fixImageUrl((data as ITransport).image);
 
   return (
     <View className="flex-1 bg-white">
       <StatusBar barStyle="light-content" />
       
       <View className="relative">
+        {/* Use the processed image URL with fallback to default image */}
         <Image
-          source={images.smroom}
+          source={imageUrl ? { uri: imageUrl } : images.smroom}
           className="w-full h-96"
           resizeMode="cover"
+          defaultSource={images.smroom}
+          onError={(e) => {
+            console.log("Image load error:", e.nativeEvent.error);
+          }}
         />
         
         <LinearGradient

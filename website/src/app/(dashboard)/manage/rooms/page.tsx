@@ -96,6 +96,23 @@ const RoomManagePage = () => {
   const [roomToDelete, setRoomToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Utility function to fix image URLs
+  const fixImageUrl = (imageUrl) => {
+    if (!imageUrl) return null;
+    
+    // Handle local filesystem paths
+    if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
+      return `/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+    }
+    
+    // Fix double slash issue in URLs
+    if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
+      return imageUrl.replace('//uploads', '/uploads');
+    }
+    
+    return imageUrl;
+  };
+
   // Create a custom axios instance to avoid conflicts 
   const createApiClient = () => {
     // Get token from localStorage
@@ -429,9 +446,7 @@ const RoomManagePage = () => {
         <div className="relative w-12 h-12 rounded-md overflow-hidden bg-gray-100">
           {item.image ? (
             <img 
-              src={typeof item.image === 'string' && item.image.startsWith('E:') 
-                ? `/api/image-proxy?path=${encodeURIComponent(item.image)}`
-                : item.image} 
+              src={fixImageUrl(item.image)} 
               alt={item.room_name}
               className="absolute inset-0 w-full h-full object-cover"
               onError={(e) => {
@@ -739,9 +754,7 @@ const RoomManagePage = () => {
                       />
                     ) : currentRoom && currentRoom.image ? (
                       <img
-                        src={typeof currentRoom.image === 'string' && currentRoom.image.startsWith('E:') 
-                          ? `/api/image-proxy?path=${encodeURIComponent(currentRoom.image)}` 
-                          : currentRoom.image}
+                        src={fixImageUrl(currentRoom.image)}
                         alt={currentRoom.room_name}
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -774,8 +787,8 @@ const RoomManagePage = () => {
               </form>
             </div>
             
-{/* Modal Footer */}
-<div className="p-4 border-t border-gray-200 flex justify-end space-x-2">
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-gray-200 flex justify-end space-x-2">
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
@@ -802,7 +815,7 @@ const RoomManagePage = () => {
                 )}
               </button>
             </div>
-          </div>
+            </div>
         </div>
       )}
       
