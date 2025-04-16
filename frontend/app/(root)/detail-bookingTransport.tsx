@@ -61,6 +61,7 @@ const DetailBookingTransport = () => {
       return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
     }
     
+    console.log("Processed image URL:", imageUrl);
     return imageUrl;
   };
   
@@ -107,10 +108,16 @@ const DetailBookingTransport = () => {
         // Get transport details
         const transportResponse = await axiosInstance.get(`/transports/${bookingData.transport_id}`);
         const transportData = transportResponse.data;
-    
-        // Process the transport image if it exists
-        const transportImage = transportData.image ? processImageUrl(transportData.image) : undefined;
-        console.log("Transport image URL:", transportImage);
+        
+        // Process the transport image URL using our utility function
+        let processedImageUrl;
+        if (transportData.image) {
+          processedImageUrl = processImageUrl(transportData.image);
+          console.log("Transport image found:", transportData.image);
+          console.log("Processed to:", processedImageUrl);
+        } else {
+          console.log("No image found in transport data");
+        }
     
         // Get approver details if exists
         let approverName;
@@ -146,14 +153,14 @@ const DetailBookingTransport = () => {
           vehicleName: transportData.vehicle_name || "Unknown Vehicle",
           driverName: transportData.driver_name || "Unknown Driver",
           capacity: transportData.capacity.toString() || "Unknown Capacity",
-          image: transportImage, // Add the processed image URL
+          image: processedImageUrl, // Use the processed image URL
           destination: bookingData.destination || "No destination",
           date: bookingData.booking_date,
           startTime: bookingData.start_time,
           endTime: bookingData.end_time,
           description: bookingData.description,
           isOngoing: false,
-          transportId: bookingData.transport_id,
+          transportId: bookingData.transport_id, 
           approval: {
             status: bookingStatus as 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED',
             approverName: approverName,
@@ -173,6 +180,7 @@ const DetailBookingTransport = () => {
         setLoading(false);
       }
     };
+    
 
     fetchBookingDetail();
   }, [id]);
@@ -441,15 +449,15 @@ const DetailBookingTransport = () => {
           {/* Vehicle image */}
           <View className="w-full h-48 bg-gray-100">
           <Image
-            source={bookingDetail.image ? { uri: bookingDetail.image } : images.profile1}
-            className="w-full h-full"
-            resizeMode="cover"
-            defaultSource={images.profile1}
-            onError={(e) => {
-              console.log(`Transport image loading error for ID ${bookingDetail.id}:`, e.nativeEvent.error);
-              console.log(`Attempted to load image: ${bookingDetail.image}`);
-            }}
-          />
+          source={bookingDetail.image ? { uri: bookingDetail.image } : images.profile1}
+          className="w-full h-full"
+          resizeMode="cover"
+          defaultSource={images.profile1}
+          onError={(e) => {
+            console.log(`Transport image loading error for ID ${bookingDetail.id}:`, e.nativeEvent.error);
+            console.log(`Attempted to load image URL: ${bookingDetail.image}`);
+          }}
+        />
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.7)']}
               className="absolute bottom-0 left-0 right-0 p-4"

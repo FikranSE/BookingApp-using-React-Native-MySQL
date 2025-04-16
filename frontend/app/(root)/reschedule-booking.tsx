@@ -57,6 +57,10 @@ const CustomAlert = ({
   
   const colors = type === 'success' ? SUCCESS_COLORS : type === 'error' ? ERROR_COLORS : INFO_COLORS;
 
+
+  // Move this function outside of CustomAlert component
+
+
   useEffect(() => {
     setIsVisible(visible);
     if (visible && autoClose) {
@@ -381,6 +385,28 @@ const getConflictDetails = (
   }
   
   return null;
+};
+
+const processImageUrl = (imageUrl) => {
+  if (!imageUrl) return undefined;
+  
+  // Handle local filesystem paths
+  if (imageUrl.startsWith('E:') || imageUrl.startsWith('C:')) {
+    return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+  }
+  
+  // Fix double slash issue
+  if (imageUrl.includes('//uploads')) {
+    imageUrl = imageUrl.replace('//uploads', '/uploads');
+  }
+  
+  // Add base URL for relative paths
+  if (!imageUrl.startsWith('http')) {
+    const cleanPath = imageUrl.replace(/^\/+/, '');
+    return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
+  }
+  
+  return imageUrl;
 };
 
 const isDateInPast = (date: string | Date) => {
@@ -1024,6 +1050,7 @@ const RescheduleBooking = () => {
 
   const fetchBookingDetails = async () => {
     if (!id) return;
+    
     try {
       setLoading(true);
       const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
@@ -1032,6 +1059,7 @@ const RescheduleBooking = () => {
         router.push("/(auth)/sign-in");
         return;
       }
+      
       const axiosInstance = axios.create({
         baseURL: "https://j9d3hc82-3001.asse.devtunnels.ms/api",
         headers: {
@@ -1054,10 +1082,19 @@ const RescheduleBooking = () => {
           try {
             const roomResponse = await axiosInstance.get(`/rooms/${roomBookingResponse.data.room_id}`);
             if (roomResponse.data) {
-              // Update booking details with room info
+              // Process image URL if it exists
+              let roomImageUrl;
+              if (roomResponse.data.image) {
+                roomImageUrl = processImageUrl(roomResponse.data.image);
+                console.log("Processed room image URL:", roomImageUrl);
+              }
+              
+              // Update booking details with room info and processed image
               setBookingDetails(prevDetails => ({
                 ...prevDetails,
-                room_details: roomResponse.data
+                room_details: roomResponse.data,
+                room_name: roomResponse.data.room_name,
+                image: roomImageUrl // Add the processed image URL
               }));
             }
           } catch (roomDetailError) {
@@ -1070,168 +1107,88 @@ const RescheduleBooking = () => {
       } catch (roomError) {
         console.log("Not a room booking, trying transport booking...");
         
-// In the fetchBookingDetails function, replace the transport booking handling section with this:
-
-try {
-  // If not room booking, try as transport booking
-  const transportBookingResponse = await axiosInstance.get(`/transport-bookings/${id}`);
-  console.log("Found transport booking:", transportBookingResponse.data);
-  
-  const transportData = transportBookingResponse.data;
-  setBookingDetails(transportData);
-  setBookingType("TRANSPORT");
-  setNewDate(transportData.booking_date);
-  setNewStartTime(transportData.start_time);
-  setNewEndTime(transportData.end_time);
-  setDestination(transportData.destination || "");
-  
-  // Find the correct resource ID - try all possible field names
-  const transportResourceId = transportData.vehicle_id || 
-                            transportData.transport_id || 
-                            transportData.id || 
-                            transportData.booking_id;
-  
-  console.log("Transport Resource ID candidates:", {
-    vehicle_id: transportData.vehicle_id,
-    transport_id: transportData.transport_id,
-    id: transportData.id,
-    booking_id: transportData.booking_id,
-    selected: transportResourceId
-  });
-  
-  // If we found any ID, try to fetch associated data
-  if (transportResourceId) {
-    console.log("Using transportResourceId:", transportResourceId);
-    
-    try {
-      // Try different endpoints for vehicle details
-      const endpoints = [
-        `/vehicles/${transportResourceId}`,
-        `/transports/${transportResourceId}`
-      ];
-      
-      let vehicleDetails = null;
-      
-      for (const endpoint of endpoints) {
         try {
-          console.log(`Trying to fetch vehicle details from: ${endpoint}`);
-          const vehicleResponse = await axiosInstance.get(endpoint);
+          // If not room booking, try as transport booking
+          const transportBookingResponse = await axiosInstance.get(`/transport-bookings/${id}`);
+          console.log("Found transport booking:", transportBookingResponse.data);
           
-          if (vehicleResponse.data) {
-            vehicleDetails = vehicleResponse.data;
-            console.log(`Successfully retrieved vehicle details from ${endpoint}:`, vehicleDetails);
-            break;
-          }
-        } catch (endpointError) {
-          console.log(`Endpoint ${endpoint} failed:`, endpointError.message);
-        }
-      }
-      
-      if (vehicleDetails) {
-        // Update booking details with vehicle info
-        setBookingDetails(prevDetails => ({
-          ...prevDetails,
-          vehicle_details: vehicleDetails,
-          // Store the correct ID for later use
-          vehicle_id: transportResourceId
-        }));
-      }
-    } catch (vehicleDetailError) {
-      console.error("Error fetching vehicle details:", vehicleDetailError);
-    }
-    
-    // Special handling for transport bookings
-    console.log("Fetching existing transport bookings for resource ID:", transportResourceId);
-    
-    // For transport bookings, we'll fetch all transport bookings and filter client-side
-    try {
-      const transportBookingsResponse = await axiosInstance.get('/transport-bookings');
-      let allTransportBookings = [];
-      
-      if (transportBookingsResponse.data) {
-        if (Array.isArray(transportBookingsResponse.data)) {
-          allTransportBookings = transportBookingsResponse.data;
-        } else if (transportBookingsResponse.data.bookings && Array.isArray(transportBookingsResponse.data.bookings)) {
-          allTransportBookings = transportBookingsResponse.data.bookings;
-        }
-      }
-      
-      console.log(`Retrieved ${allTransportBookings.length} total transport bookings`);
-      
-      // Check all possible ID fields to find matching bookings
-      const currentBookingId = Number(id);
-      
-      const relevantBookings = allTransportBookings.filter(booking => {
-        // First exclude the current booking we're editing
-        if ((booking.id && booking.id === currentBookingId) || 
-            (booking.booking_id && booking.booking_id === currentBookingId)) {
-          return false;
-        }
-        
-        // Then check if this booking is for the same resource
-        const bookingResourceId = booking.vehicle_id || 
-                                 booking.transport_id;
-                                 
-        return Number(bookingResourceId) === Number(transportResourceId);
-      });
-      
-      console.log(`Found ${relevantBookings.length} other bookings for this transport`);
-      
-      if (relevantBookings.length > 0) {
-        console.log("Other transport bookings:", relevantBookings.map(b => ({
-          id: b.id || b.booking_id,
-          date: b.booking_date,
-          time: `${b.start_time}-${b.end_time}`
-        })));
-        
-        // Process booked dates for calendar display
-        const datesMap = {};
-        relevantBookings.forEach(booking => {
-          if (booking.booking_date) {
-            datesMap[booking.booking_date] = true;
-          }
-        });
-        
-        // Process time conflicts
-        const conflictsMap = {};
-        relevantBookings.forEach(booking => {
-          if (booking.booking_date) {
-            if (!conflictsMap[booking.booking_date]) {
-              conflictsMap[booking.booking_date] = [];
+          const transportData = transportBookingResponse.data;
+          setBookingDetails(transportData);
+          setBookingType("TRANSPORT");
+          setNewDate(transportData.booking_date);
+          setNewStartTime(transportData.start_time);
+          setNewEndTime(transportData.end_time);
+          setDestination(transportData.destination || "");
+          
+          // Find the correct resource ID
+          const transportResourceId = transportData.vehicle_id || 
+                                    transportData.transport_id || 
+                                    transportData.id || 
+                                    transportData.booking_id;
+          
+          console.log("Transport Resource ID candidates:", {
+            vehicle_id: transportData.vehicle_id,
+            transport_id: transportData.transport_id,
+            id: transportData.id,
+            booking_id: transportData.booking_id,
+            selected: transportResourceId
+          });
+          
+          if (transportResourceId) {
+            console.log("Using transportResourceId:", transportResourceId);
+            
+            try {
+              // Try different endpoints for vehicle details
+              const endpoints = [
+                `/vehicles/${transportResourceId}`,
+                `/transports/${transportResourceId}`
+              ];
+              
+              let vehicleDetails = null;
+              
+              for (const endpoint of endpoints) {
+                try {
+                  console.log(`Trying to fetch vehicle details from: ${endpoint}`);
+                  const vehicleResponse = await axiosInstance.get(endpoint);
+                  
+                  if (vehicleResponse.data) {
+                    vehicleDetails = vehicleResponse.data;
+                    console.log(`Successfully retrieved vehicle details from ${endpoint}:`, vehicleDetails);
+                    
+                    // Process image URL if it exists
+                    let vehicleImageUrl;
+                    if (vehicleDetails.image) {
+                      vehicleImageUrl = processImageUrl(vehicleDetails.image);
+                      console.log("Processed vehicle image URL:", vehicleImageUrl);
+                    }
+                    
+                    // Update booking details with vehicle info and processed image
+                    setBookingDetails(prevDetails => ({
+                      ...prevDetails,
+                      vehicle_details: vehicleDetails,
+                      vehicle_id: transportResourceId,
+                      vehicle_name: vehicleDetails.vehicle_name,
+                      image: vehicleImageUrl // Add the processed image URL
+                    }));
+                    
+                    break;
+                  }
+                } catch (endpointError) {
+                  console.log(`Endpoint ${endpoint} failed:`, endpointError.message);
+                }
+              }
+            } catch (vehicleDetailError) {
+              console.error("Error fetching vehicle details:", vehicleDetailError);
             }
-            conflictsMap[booking.booking_date].push(booking);
+            
+            // Fetch existing transport bookings
+            await fetchExistingBookings(transportResourceId, false);
           }
-        });
-        
-        // Store all the data
-        setExistingBookings(relevantBookings);
-        setBookedDates(datesMap);
-        setTimeSlotConflicts(conflictsMap);
-        
-        console.log(`Set ${Object.keys(datesMap).length} booked dates and ${Object.keys(conflictsMap).length} dates with conflicts`);
-      } else {
-        // No other bookings found
-        setExistingBookings([]);
-        setBookedDates({});
-        setTimeSlotConflicts({});
+        } catch (transportError) {
+          console.error("Error fetching transport booking details:", transportError);
+          showAlert("error", "Failed to fetch booking details. Please try again later.");
+        }
       }
-    } catch (error) {
-      console.error("Error fetching all transport bookings:", error);
-      setExistingBookings([]);
-      setBookedDates({});
-      setTimeSlotConflicts({});
-    }
-  } else {
-    console.error("Could not determine transport resource ID");
-    setExistingBookings([]);
-    setBookedDates({});
-    setTimeSlotConflicts({});
-  }
-} catch (transportError) {
-  console.error("Error fetching transport booking details:", transportError);
-  showAlert("error", "Failed to fetch booking details. Please try again later.");
-}
-      } 
     } catch (error) {
       console.error("Error fetching booking details:", error);
       showAlert("error", "Failed to fetch booking details. Please try again later.");
@@ -1761,52 +1718,68 @@ const fetchExistingBookings = async (resourceId: any, isRoom: boolean = true) =>
         <View className="mx-5 -mt-5 bg-white p-5 rounded-2xl border border-sky-100 shadow-lg">
           <Text className={`${theme.text} font-bold mb-3 text-lg`}>Current Reservation</Text>
           {bookingType === "TRANSPORT" ? (
-            <View className="mb-4">
-              <View className="w-full h-40 bg-gray-100 rounded-lg overflow-hidden mb-4">
-                <Image
-                  source={bookingDetails.image ? { uri: bookingDetails.image } : images.profile1}
-                  className="w-full h-full"
-                  resizeMode="cover"
-                />
-              </View>
-              <View className="flex-row items-center mb-4">
-                <View className={`w-12 h-12 ${theme.secondary} rounded-full items-center justify-center mr-4`}>
-                  <Ionicons name="car-outline" size={22} color="#0EA5E9" />
-                </View>
-                <View>
-                  <Text className="text-gray-500 text-xs">Vehicle</Text>
-                  <Text className="text-gray-800 font-medium text-base">
-                    {bookingDetails.vehicle_name || "N/A"}
-                  </Text>
-                </View>
-              </View>
-              <View className="flex-row items-center mb-4">
-                <View className={`w-12 h-12 ${theme.secondary} rounded-full items-center justify-center mr-4`}>
-                  <Ionicons name="navigate-outline" size={22} color="#0EA5E9" />
-                </View>
-                <View>
-                  <Text className="text-gray-500 text-xs">Destination</Text>
-                  <Text className="text-gray-800 font-medium text-base">
-                    {bookingDetails.destination}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          ) : (
-            <View className="mb-4">
-              <View className="flex-row items-center mb-4">
-                <View className={`w-12 h-12 ${theme.secondary} rounded-full items-center justify-center mr-4`}>
-                  <Ionicons name="business-outline" size={22} color="#0EA5E9" />
-                </View>
-                <View>
-                  <Text className="text-gray-500 text-xs">Room</Text>
-                  <Text className="text-gray-800 font-medium text-base">
-                    {bookingDetails.room_name || "N/A"}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          )}
+  <View className="mb-4">
+    <View className="w-full h-40 bg-gray-100 rounded-lg overflow-hidden mb-4">
+      <Image
+        source={bookingDetails.image ? { uri: bookingDetails.image } : images.profile1}
+        className="w-full h-full"
+        resizeMode="cover"
+        onError={(e) => {
+          console.log(`Transport image loading error:`, e.nativeEvent.error);
+          console.log(`Attempted to load image: ${bookingDetails.image}`);
+        }}
+      />
+    </View>
+    <View className="flex-row items-center mb-4">
+      <View className={`w-12 h-12 ${theme.secondary} rounded-full items-center justify-center mr-4`}>
+        <Ionicons name="car-outline" size={22} color="#0EA5E9" />
+      </View>
+      <View>
+        <Text className="text-gray-500 text-xs">Vehicle</Text>
+        <Text className="text-gray-800 font-medium text-base">
+          {bookingDetails.vehicle_name || "N/A"}
+        </Text>
+      </View>
+    </View>
+    <View className="flex-row items-center mb-4">
+      <View className={`w-12 h-12 ${theme.secondary} rounded-full items-center justify-center mr-4`}>
+        <Ionicons name="navigate-outline" size={22} color="#0EA5E9" />
+      </View>
+      <View>
+        <Text className="text-gray-500 text-xs">Destination</Text>
+        <Text className="text-gray-800 font-medium text-base">
+          {bookingDetails.destination}
+        </Text>
+      </View>
+    </View>
+  </View>
+) : (
+  <View className="mb-4">
+    {/* Add room image for room bookings */}
+    <View className="w-full h-40 bg-gray-100 rounded-lg overflow-hidden mb-4">
+      <Image
+        source={bookingDetails.image ? { uri: bookingDetails.image } : (images.roomImage || images.profile1)}
+        className="w-full h-full"
+        resizeMode="cover"
+        onError={(e) => {
+          console.log(`Room image loading error:`, e.nativeEvent.error);
+          console.log(`Attempted to load image: ${bookingDetails.image}`);
+        }}
+      />
+    </View>
+    <View className="flex-row items-center mb-4">
+      <View className={`w-12 h-12 ${theme.secondary} rounded-full items-center justify-center mr-4`}>
+        <Ionicons name="business-outline" size={22} color="#0EA5E9" />
+      </View>
+      <View>
+        <Text className="text-gray-500 text-xs">Room</Text>
+        <Text className="text-gray-800 font-medium text-base">
+          {bookingDetails.room_name || "N/A"}
+        </Text>
+      </View>
+    </View>
+  </View>
+)}
           <View className="flex-row items-center mb-4">
             <View className={`w-12 h-12 ${theme.secondary} rounded-full items-center justify-center mr-4`}>
               <Ionicons name="calendar-outline" size={22} color="#0EA5E9" />

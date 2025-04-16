@@ -105,10 +105,13 @@ const DetailBookingRoom = () => {
         // Get room details
         const roomResponse = await axiosInstance.get(`/rooms/${bookingData.room_id}`);
         const roomData = roomResponse.data;
-    
+        
         // Process the room image if it exists
-        const roomImage = roomData.image ? processImageUrl(roomData.image) : undefined;
-        console.log("Room image URL:", roomImage);
+        let roomImage;
+        if (roomData.image) {
+          roomImage = processImageUrl(roomData.image);
+          console.log("Room image URL:", roomImage);
+        }
     
         // Get approver details if exists
         let approverName;
@@ -168,6 +171,7 @@ const DetailBookingRoom = () => {
         setLoading(false);
       }
     };
+    
   
     fetchBookingDetail();
   }, [id]);
@@ -436,8 +440,10 @@ const DetailBookingRoom = () => {
           source={bookingDetail.image ? { uri: bookingDetail.image } : (images.roomImage || images.profile1)}
           className="w-full h-full"
           resizeMode="cover"
+          defaultSource={images.roomImage || images.profile1}
           onError={(e) => {
-            console.log("Image loading error:", e.nativeEvent.error);
+            console.log(`Room image loading error for booking ${bookingDetail.id}:`, e.nativeEvent.error);
+            console.log(`Attempted to load image URL: ${bookingDetail.image}`);
           }}
         />
             <LinearGradient
