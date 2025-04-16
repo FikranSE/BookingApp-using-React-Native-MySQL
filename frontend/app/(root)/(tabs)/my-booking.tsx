@@ -9,7 +9,7 @@ import { AUTH_TOKEN_KEY } from "@/lib/constants";
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface IApprovalStatus {
-  status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
+  status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "CANCELLED";
   feedback?: string;
   approverName?: string;
   approvedAt?: string;
@@ -35,7 +35,7 @@ interface IBooking {
 interface FilterOptions {
   type: "ALL" | "ROOM" | "TRANSPORT";
   timeframe: "ALL" | "RECENT" | "PASSED";
-  status: "ALL" | "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
+  status: "ALL" | "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "CANCELLED";
 }
 
 const MyBooking = () => {
@@ -81,10 +81,17 @@ const MyBooking = () => {
 
   // Function to determine if a booking is expired
   const getBookingStatus = (status: string, bookingDate: Date, endTime: string) => {
+    // If status is already CANCELLED, preserve it
+    if (status.toUpperCase() === "CANCELLED") {
+      return "CANCELLED";
+    }
+    
+    // If status is not PENDING, return it as is
     if (status.toUpperCase() !== "PENDING") {
       return status.toUpperCase();
     }
     
+    // For PENDING status, check if it's expired
     const now = new Date();
     const bookingDateTime = new Date(bookingDate);
     
@@ -326,7 +333,7 @@ const MyBooking = () => {
               section: item.section || "Office section",
               isOngoing: false,
               approval: {
-                status: status as "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED",
+                status: status as "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "CANCELLED",
                 approverName: item.pic,
                 approvedAt: item.approved_at ? new Date(item.approved_at).toISOString() : undefined,
                 feedback: item.notes || undefined,
@@ -381,7 +388,7 @@ const MyBooking = () => {
               section: item.section || "Transport section",
               isOngoing: false,
               approval: {
-                status: status as "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED",
+                status: status as "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "CANCELLED",
                 approverName: item.pic,
                 approvedAt: item.approved_at ? new Date(item.approved_at).toISOString() : undefined,
                 feedback: item.notes || undefined,
@@ -421,7 +428,7 @@ const MyBooking = () => {
     const matchesTab =
       activeTab === "BOOKED"
         ? (booking.approval.status === "APPROVED" || booking.approval.status === "PENDING")
-        : (booking.approval.status === "REJECTED" || booking.approval.status === "EXPIRED");
+        : (booking.approval.status === "REJECTED" || booking.approval.status === "EXPIRED" || booking.approval.status === "CANCELLED");
 
     // Type filter (room vs transport)
     const matchesType =
@@ -469,6 +476,11 @@ const MyBooking = () => {
         return { 
           color: "#6B7280", // Gray text
           background: "rgba(107, 114, 128, 0.1)" // Light gray background
+        };
+      case "CANCELLED": 
+        return { 
+          color: "#7C3AED", // Purple text
+          background: "rgba(124, 58, 237, 0.1)" // Light purple background
         };
       default: 
         return { 
@@ -610,6 +622,11 @@ const MyBooking = () => {
                 isActive={filterOptions.status === "EXPIRED"} 
                 onPress={() => setFilterOptions({...filterOptions, status: "EXPIRED"})}
               />
+              <FilterButton 
+                agenda="Cancelled" 
+                isActive={filterOptions.status === "CANCELLED"} 
+                onPress={() => setFilterOptions({...filterOptions, status: "CANCELLED"})}
+              />
             </View>
           </View>
 
@@ -629,7 +646,7 @@ const MyBooking = () => {
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </View> 
     </Modal>
   );
 
@@ -641,7 +658,7 @@ const MyBooking = () => {
         router.push(`/detail-bookingTransport?id=${booking.id}`);
       }
     };
-  
+   
     const { color, background } = getStatusColorAndBackground(booking.approval.status);
     const defaultImage = booking.type === "ROOM" ? defaultRoomImageUrl : defaultTransportImageUrl;
   
@@ -656,11 +673,11 @@ const MyBooking = () => {
             className="w-24 h-24 rounded-lg"
             resizeMode="cover"
             defaultSource={{ uri: defaultImage }}
-            onError={(e) => {
+            onError={(e) => { 
               console.log(`Image load error for ${booking.id}, type: ${booking.type}, URL: ${booking.imageUrl}`);
               console.log("Error details:", e.nativeEvent.error);
-            }}
-          />
+            }} 
+          /> 
           <View className="flex-1 pl-3">
             <View className="flex-row justify-between items-start">
               <View className="flex-1 mr-2">
@@ -886,8 +903,8 @@ const MyBooking = () => {
         {/* Add some space at the bottom */} 
         <View className="h-8" />
       </ScrollView>
-    </SafeAreaView>
+    </SafeAreaView> 
   );
-};
+}; 
  
 export default MyBooking;

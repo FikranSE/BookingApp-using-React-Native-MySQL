@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, ActivityIndicator, Alert, TouchableOpacity, Image } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, Modal, TouchableOpacity, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
@@ -9,8 +9,110 @@ import { tokenCache } from "@/lib/auth";
 import { AUTH_TOKEN_KEY } from "@/lib/constants";
 import { LinearGradient } from 'expo-linear-gradient';
 
+// ==================
+// Custom Alert Component
+// ==================
+const CustomAlert = ({ 
+  visible, 
+  type = 'success',
+  title = '', 
+  message = '', 
+  onClose = () => {},
+  autoClose = true,
+  duration = 3000,
+  bookingType = 'TRANSPORT'
+}) => {
+  const [isVisible, setIsVisible] = useState(visible);
+
+  const SUCCESS_COLORS = {
+    bg: 'bg-green-500',
+    bgLight: 'bg-green-50',
+    text: 'text-green-800',
+    border: 'border-green-200',
+    icon: 'checkmark-circle'
+  };
+  
+  const ERROR_COLORS = {
+    bg: 'bg-red-500',
+    bgLight: 'bg-red-50',
+    text: 'text-red-800',
+    border: 'border-red-200',
+    icon: 'close-circle'
+  };
+  
+  const INFO_COLORS = {
+    bg: 'bg-sky-500',
+    bgLight: 'bg-sky-50',
+    text: 'text-sky-800',
+    border: 'border-sky-200',
+    icon: 'information-circle'
+  };
+  
+  const WARNING_COLORS = {
+    bg: 'bg-yellow-500',
+    bgLight: 'bg-yellow-50',
+    text: 'text-yellow-800',
+    border: 'border-yellow-200',
+    icon: 'warning'
+  };
+  
+  const colors = type === 'success' 
+    ? SUCCESS_COLORS 
+    : type === 'error' 
+      ? ERROR_COLORS 
+      : type === 'warning'
+        ? WARNING_COLORS
+        : INFO_COLORS;
+
+  useEffect(() => {
+    setIsVisible(visible);
+    if (visible && autoClose) {
+      const timer = setTimeout(() => onClose(), duration);
+      return () => clearTimeout(timer);
+    }
+  }, [visible, autoClose, duration, onClose]);
+
+  if (!isVisible) return null;
+
+  return (
+    <Modal
+      transparent
+      visible={isVisible}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 justify-center items-center bg-black bg-opacity-20">
+        <View className={`w-11/12 rounded-xl p-5 ${colors.bgLight} ${colors.border} border shadow-lg`}>
+          <View className="flex-row justify-between items-center mb-3">
+            <View className="flex-row items-center">
+              <View className={`w-8 h-8 ${colors.bg} rounded-full items-center justify-center mr-3`}>
+                <Ionicons name={colors.icon} size={18} color="white" />
+              </View>
+              <Text className={`${colors.text} font-bold text-lg`}>
+                {title || (type === 'success' ? 'Success' : type === 'error' ? 'Error' : type === 'warning' ? 'Warning' : 'Information')}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+          <Text className="text-gray-700 mb-4 pl-11">{message}</Text>
+          <TouchableOpacity
+            onPress={onClose}
+            className={`py-3 ${colors.bg} rounded-lg items-center mt-2`}
+          >
+            <Text className="text-white font-medium">
+              {type === 'error' ? 'Try Again' : 'Got It'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 interface IApprovalStatus {
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'CANCELLED';
   feedback?: string;
   approverName?: string;
   approvedAt?: string;
@@ -42,6 +144,22 @@ const DetailBookingTransport = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [bookingDetail, setBookingDetail] = useState<IBooking | null>(null);
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertType, setAlertType] = useState('success');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [showConfirmAlert, setShowConfirmAlert] = useState(false);
+  
+  const showCancellationAlert = () => {
+    setAlertType('success');
+    setAlertMessage('Your booking has been cancelled successfully');
+    setAlertVisible(true);
+    
+    // Use router.redirect to refresh the page after cancellation
+    setTimeout(() => {
+      router.replace('/(root)/(tabs)/my-booking'); // Adjust this path to your actual bookings list page
+    }, 2000);
+  };
+  
   const processImageUrl = (imageUrl: string | null | undefined): string | undefined => {
     if (!imageUrl) return undefined;
     
@@ -76,8 +194,12 @@ const DetailBookingTransport = () => {
         const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
         
         if (!authToken) {
-          Alert.alert('Error', 'Not authenticated');
-          router.push('/(auth)/sign-in');
+          setAlertType('error');
+          setAlertMessage('Not authenticated');
+          setAlertVisible(true);
+          setTimeout(() => {
+            router.push('/(auth)/sign-in');
+          }, 1500);
           return;
         }
     
@@ -162,7 +284,7 @@ const DetailBookingTransport = () => {
           isOngoing: false,
           transportId: bookingData.transport_id, 
           approval: {
-            status: bookingStatus as 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED',
+            status: bookingStatus as 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'CANCELLED',
             approverName: approverName,
             approvedAt: bookingData.approved_at ? new Date(bookingData.approved_at).toISOString() : undefined,
             feedback: bookingData.notes || undefined,
@@ -172,16 +294,14 @@ const DetailBookingTransport = () => {
         setBookingDetail(mappedBooking);
       } catch (error) {
         console.error("Error fetching booking details: ", error);
-        Alert.alert(
-          'Error',
-          'Failed to fetch booking details. Please try again later.'
-        );
+        setAlertType('error');
+        setAlertMessage('Failed to fetch booking details. Please try again later.');
+        setAlertVisible(true);
       } finally {
         setLoading(false);
       }
     };
     
-
     fetchBookingDetail();
   }, [id]);
 
@@ -252,6 +372,24 @@ const DetailBookingTransport = () => {
           statusBadgeBg: 'bg-gray-100',
           iconSize: 24
         };
+      case 'CANCELLED':
+        return {
+          gradientColors: ['#FFFFFFFF', '#FFFFFFFF'],
+          headerGradient: ['#7C3AED', '#6D28D9'], // Purple gradient for cancelled
+          iconBg: 'bg-purple-50',
+          iconColor: '#7C3AED',
+          textColor: 'text-purple-800',
+          cardBg: 'bg-purple-50',
+          buttonBg: 'bg-purple-600',
+          secondaryButtonBg: 'bg-purple-50',
+          secondaryButtonText: 'text-purple-700',
+          icon: 'close-circle-outline',
+          illustration: images.cancelled || images.profile1,
+          message: "This booking has been cancelled by you or admin.",
+          statusText: "Cancelled",
+          statusBadgeBg: 'bg-purple-100',
+          iconSize: 24
+        };
       default:
         return {
           gradientColors: ['#FFFFFFFF', '#FFFFFFFF'],
@@ -304,52 +442,59 @@ const DetailBookingTransport = () => {
     }
   };
 
-  
+  // Show custom confirmation dialog instead of native Alert
+  const handleCancel = () => {
+    setShowConfirmAlert(true);
+  };
 
-  const handleCancel = async () => {
-    Alert.alert(
-      'Cancel Booking',
-      'Are you sure you want to cancel this booking?',
-      [
-        {
-          text: 'No',
-          style: 'cancel',
+  // Handle the actual cancellation after confirmation
+  const handleConfirmCancel = async () => {
+    setShowConfirmAlert(false);
+    
+    try {
+      if (!id) return;
+      
+      const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
+      
+      if (!authToken) {
+        setAlertType('error');
+        setAlertMessage('Not authenticated');
+        setAlertVisible(true);
+        setTimeout(() => {
+          router.push('/(auth)/sign-in');
+        }, 1500);
+        return;
+      }
+
+      // Show loading indicator
+      setLoading(true);
+
+      const axiosInstance = axios.create({
+        baseURL: 'https://j9d3hc82-3001.asse.devtunnels.ms/api',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
         },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              if (!id) return;
-              
-              const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
-              
-              if (!authToken) {
-                Alert.alert('Error', 'Not authenticated');
-                router.push('/(auth)/sign-in');
-                return;
-              }
+      });
 
-              await axios.delete(
-                `https://j9d3hc82-3001.asse.devtunnels.ms/api/transport-bookings/${id}`,
-                {
-                  headers: {
-                    Authorization: `Bearer ${authToken}`,
-                    'Content-Type': 'application/json',
-                  },
-                }
-              );
+      // Update the booking status to CANCELLED
+      await axiosInstance.put(`/transport-bookings/${id}`, {
+        status: 'CANCELLED'
+      });
 
-              Alert.alert('Success', 'Booking cancelled successfully');
-              router.back();
-            } catch (error) {
-              console.error('Error cancelling booking:', error);
-              Alert.alert('Error', 'Failed to cancel booking. Please try again.');
-            }
-          },
-        },
-      ],
-    );
+      // Hide loading indicator
+      setLoading(false);
+      
+      // Show success message
+      showCancellationAlert();
+      
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      setLoading(false);
+      setAlertType('error');
+      setAlertMessage('Failed to cancel booking. Please try again.');
+      setAlertVisible(true);
+    }
   };
 
   if (loading) {
@@ -372,9 +517,62 @@ const DetailBookingTransport = () => {
   const isPendingStatus = bookingDetail.approval.status === 'PENDING';
   const isApprovedStatus = bookingDetail.approval.status === 'APPROVED';
   const isExpiredStatus = bookingDetail.approval.status === 'EXPIRED';
+  const isCancelledStatus = bookingDetail.approval.status === 'CANCELLED';
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: theme.gradientColors[1] }}>
+      {/* Regular alert for messages */}
+      <CustomAlert
+        visible={alertVisible}
+        type={alertType}
+        message={alertMessage}
+        onClose={() => setAlertVisible(false)}
+        bookingType={bookingDetail?.type || 'TRANSPORT'}
+      />
+
+      {/* Confirmation alert with Yes/No buttons */}
+      <Modal
+        transparent
+        visible={showConfirmAlert}
+        animationType="fade"
+        onRequestClose={() => setShowConfirmAlert(false)}
+      >
+        <View className="flex-1 justify-center items-center bg-black bg-opacity-20">
+          <View className="w-11/12 rounded-xl p-5 bg-yellow-50 border border-yellow-200 shadow-lg">
+            <View className="flex-row justify-between items-center mb-3">
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 bg-yellow-500 rounded-full items-center justify-center mr-3">
+                  <Ionicons name="warning" size={18} color="white" />
+                </View>
+                <Text className="text-yellow-800 font-bold text-lg">
+                  Confirm Cancellation
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowConfirmAlert(false)}>
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+            <Text className="text-gray-700 mb-4 pl-11">
+              Are you sure you want to cancel this booking?
+            </Text>
+            <View className="flex-row space-x-2">
+              <TouchableOpacity
+                onPress={() => setShowConfirmAlert(false)}
+                className="flex-1 py-3 bg-gray-200 rounded-lg items-center"
+              >
+                <Text className="text-gray-700 font-medium">No, Keep</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleConfirmCancel}
+                className="flex-1 py-3 bg-red-500 rounded-lg items-center"
+              >
+                <Text className="text-white font-medium">Yes, Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      
       {/* Themed Header */}
       <LinearGradient
         colors={theme.headerGradient}
@@ -405,7 +603,8 @@ const DetailBookingTransport = () => {
             <Text className="text-white text-xl font-bold mb-1">
               {bookingDetail.approval.status === 'APPROVED' ? 'Booking Confirmed!' : 
                bookingDetail.approval.status === 'REJECTED' ? 'Booking Rejected' : 
-               bookingDetail.approval.status === 'EXPIRED' ? 'Booking Expired' : 'Booking Pending'}
+               bookingDetail.approval.status === 'EXPIRED' ? 'Booking Expired' :
+               bookingDetail.approval.status === 'CANCELLED' ? 'Booking Cancelled' : 'Booking Pending'}
             </Text>
             <Text className="text-white/90 text-center max-w-xs">
               {theme.message}
@@ -530,7 +729,7 @@ const DetailBookingTransport = () => {
           </View>
           
           <View className="p-4">
-            <View className="flex-row items-center mb-4">
+          <View className="flex-row items-center mb-4">
               <View className={`w-10 h-10 ${theme.iconBg} rounded-full items-center justify-center`}>
                 <Ionicons name="calendar-outline" size={20} color={theme.iconColor} />
               </View>
@@ -630,6 +829,21 @@ const DetailBookingTransport = () => {
           </View>
         )}
 
+        {/* Cancelled booking notice */}
+        {isCancelledStatus && (
+          <View className={`${theme.cardBg} rounded-xl shadow-sm mb-4 p-4`}>
+            <View className="flex-row items-start">
+              <Ionicons name="close-circle-outline" size={24} color={theme.iconColor} />
+              <View className="ml-3 flex-1">
+                <Text className={`${theme.textColor} font-semibold`}>Booking Cancelled</Text>
+                <Text className="text-gray-600 mt-1">
+                  This booking has been cancelled. You can book this transport again if you still need it.
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Expired notice (only shown for expired bookings) */}
         {isExpiredStatus && (
           <View className={`${theme.cardBg} rounded-xl shadow-sm mb-4 p-4`}>
@@ -666,6 +880,16 @@ const DetailBookingTransport = () => {
 
         {/* Book Again button for APPROVED bookings */}
         {isApprovedStatus && (
+          <TouchableOpacity 
+            onPress={handleBookAgain}
+            className={`mb-4 py-4 rounded-xl items-center shadow-sm ${theme.buttonBg}`}
+          >
+            <Text className="text-white font-semibold">Book Again</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Book Again button for CANCELLED bookings */}
+        {isCancelledStatus && (
           <TouchableOpacity 
             onPress={handleBookAgain}
             className={`mb-4 py-4 rounded-xl items-center shadow-sm ${theme.buttonBg}`}
