@@ -1,5 +1,3 @@
-// backend/src/controllers/authController.ts
-
 import { Request, Response } from 'express';
 import AuthService from '../services/authService';
 
@@ -45,6 +43,18 @@ class AuthController {
           token: result.token,
         },
       });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  // Handler untuk mengganti password
+  public static async changePassword(req: Request, res: Response) {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const userId = (req as any).user.id; // Assuming the user ID is added to the request by an authentication middleware
+      const result = await AuthService.changePassword(userId, currentPassword, newPassword);
+      res.status(200).json(result);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }

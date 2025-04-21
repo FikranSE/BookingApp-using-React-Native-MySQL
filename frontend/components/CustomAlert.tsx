@@ -126,9 +126,6 @@ const CustomAlert = ({
                 {title || (type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Information')}
               </Text>
             </View>
-            <TouchableOpacity onPress={handleClose}>
-              <Ionicons name="close" size={24} color="#64748B" />
-            </TouchableOpacity>
           </View>
           
           {/* Message */}

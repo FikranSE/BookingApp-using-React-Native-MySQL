@@ -1,5 +1,3 @@
-// backend/src/services/authService.ts
-
 import User from '../models/User';
 import bcrypt from 'bcrypt';
 import { generateToken } from '../utils/token';
@@ -64,6 +62,29 @@ class AuthService {
     const token = generateToken({ id: user.id, email: user.email });
 
     return { user, token };
+  }
+
+  // Ganti password pengguna
+  public static async changePassword(userId: number, currentPassword: string, newPassword: string) {
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new Error('Pengguna tidak ditemukan');
+    }
+
+    // Cek apakah password saat ini cocok
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      throw new Error('Password saat ini salah');
+    }
+
+    // Hash password baru
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password pengguna
+    user.password = hashedNewPassword;
+    await user.save();
+
+    return { message: 'Password berhasil diubah' };
   }
 }
 
