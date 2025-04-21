@@ -86,20 +86,6 @@ const Profile = () => {
         {/* Divider */}
         <View className="h-px bg-gray-100 mx-6" />
         
-        {/* Stats Cards - Minimal Design */}
-        <View className="px-6 pt-6">
-          <Text className="text-sm font-medium text-gray-500 mb-3">OVERVIEW</Text>
-          <View className="flex-row justify-between">
-            <View className="w-[48%] bg-sky-50 rounded-xl p-4">
-              <Text className="text-sky-500 text-2xl font-bold">12</Text>
-              <Text className="text-gray-600 text-sm mt-1">Total Bookings</Text>
-            </View>
-            <View className="w-[48%] bg-orange-50 rounded-xl p-4">
-              <Text className="text-orange-500 text-2xl font-bold">3</Text>
-              <Text className="text-gray-600 text-sm mt-1">Active Bookings</Text>
-            </View>
-          </View>
-        </View>
         
         {/* Account Settings */}
         <View className="px-6 pt-8">
