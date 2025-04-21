@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
   BedDouble, Plus, Edit, Trash2, X, Save, 
-  Camera, AlertCircle, Users
+  Camera, AlertCircle, Users, Eye
 } from "lucide-react";
 
 type Room = {
@@ -57,14 +57,9 @@ const columns = [
 
 // Room types for dropdown
 const roomTypes = [
-  "Standard",
-  "Deluxe",
-  "Suite",
-  "Executive",
-  "Family",
-  "Single",
-  "Double",
-  "Twin"
+  "Small Room",
+  "Middle Room",
+  "Big Room"
 ];
 
 const RoomManagePage = () => {
@@ -477,20 +472,20 @@ const RoomManagePage = () => {
       <td>
         <div className="flex items-center gap-2">
           <Link href={`/manage/rooms/${item.room_id}`}>
-            <button className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky">
-              <Image src="/view.png" alt="" width={16} height={16} />
+            <button className="w-7 h-7 flex items-center justify-center text-white rounded-full bg-lamaSky hover:bg-sky-500">
+            <Eye size={14} />
             </button>
           </Link>
           <button
             onClick={() => handleEditRoom(item)}
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaBlue text-white"
+            className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaBlue text-white bg-orange-300 hover:bg-orange-500"
             title="Edit Room"
           >
             <Edit size={14} />
           </button>
           <button
             onClick={() => handleDeleteClick(item.room_id)}
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaRed text-white"
+            className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaRed bg-red-300 text-white hover:bg-red-600"
             title="Delete Room"
           >
             <Trash2 size={14} />

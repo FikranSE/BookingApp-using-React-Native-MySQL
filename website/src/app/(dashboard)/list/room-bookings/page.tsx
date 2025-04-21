@@ -9,36 +9,38 @@ import TableSearch from "@/components/TableSearch";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Trash2, CalendarDays,BedDouble } from "lucide-react"; // Import necessary icons
 
 type RoomBooking = {
   booking_id: number;
   user_id: number;
   room_id: number;
   booking_date: string;
+  agenda: string;
   start_time: string;
   end_time: string;
   pic: string;
   section: string;
   description?: string;
-  status: string; // 'pending', 'approved', 'rejected'
+  status: string;
   notes?: string;
   approver_id?: number;
   approved_at?: string;
 };
 
+// Updated columns to include status
 const columns = [
   {
-    header: "Info",
-    accessor: "info",
+    header: "Booking ID",
+    accessor: "booking_id",
   },
   {
-    header: "Room ID",
-    accessor: "room_id",
-    className: "hidden md:table-cell",
+    header: "PIC",
+    accessor: "pic",
   },
   {
-    header: "Booking Date",
-    accessor: "booking_date",
+    header: "Agenda",
+    accessor: "agenda",
     className: "hidden md:table-cell",
   },
   {
@@ -52,9 +54,14 @@ const columns = [
     className: "hidden lg:table-cell",
   },
   {
+    header: "Room ID",
+    accessor: "room_id",
+    className: "hidden lg:table-cell",
+  },
+  {
     header: "Status",
     accessor: "status",
-    className: "hidden lg:table-cell",
+    className: "hidden md:table-cell",
   },
   {
     header: "Actions",
@@ -68,6 +75,11 @@ const RoomBookingListPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [authStatus, setAuthStatus] = useState<string>("Checking...");
+  
+  // Delete confirmation states
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [bookingToDelete, setBookingToDelete] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Create a custom axios instance to avoid conflicts 
   const createApiClient = () => {
@@ -136,16 +148,6 @@ const RoomBookingListPage = () => {
     fetchRoomBookings();
   }, [router]);
 
-  // Format date to more readable format
-  const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-  };
-
   // Format time to 12-hour format
   const formatTime = (timeString: string) => {
     const [hours, minutes] = timeString.split(':');
@@ -154,6 +156,37 @@ const RoomBookingListPage = () => {
     date.setMinutes(parseInt(minutes));
     
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Handle delete booking
+  const handleDeleteBooking = async () => {
+    if (!bookingToDelete) return;
+    
+    setIsDeleting(true);
+    const apiClient = createApiClient();
+    if (!apiClient) return;
+    
+    try {
+      await apiClient.delete(`/room-bookings/${bookingToDelete}`);
+      
+      // Remove the deleted booking from state
+      setRoomBookings(prevBookings => 
+        prevBookings.filter(booking => booking.booking_id !== bookingToDelete)
+      );
+      
+      // Close modal
+      setShowDeleteConfirm(false);
+      setBookingToDelete(null);
+      
+    } catch (error: any) {
+      console.error("Error deleting booking:", error);
+      setError(
+        error.response?.data?.message || 
+        "Unable to delete the room booking. Please try again later."
+      );
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Get appropriate badge color based on status
@@ -170,36 +203,40 @@ const RoomBookingListPage = () => {
     }
   };
 
+  // Modified renderRow to include status column with badges
   const renderRow = (item: RoomBooking) => (
     <tr
       key={item.booking_id}
       className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
     >
-      <td className="flex items-center gap-4 p-4">
-        <div className="flex flex-col">
-          <h3 className="font-semibold">Room {item.room_id}</h3>
-          <p className="text-xs text-gray-500">
-            {formatDate(item.booking_date)} • {formatTime(item.start_time)}
-          </p>
-        </div>
-      </td>
-      <td className="hidden md:table-cell">{item.room_id}</td>
-      <td className="hidden md:table-cell">{formatDate(item.booking_date)}</td>
-      <td className="hidden md:table-cell">{formatTime(item.start_time)}</td>
-      <td className="hidden md:table-cell">{formatTime(item.end_time)}</td>
-      <td className="hidden md:table-cell">
+      <td className="p-4">#{item.booking_id}</td>
+      <td className="p-4">{item.pic}</td>
+      <td className="hidden md:table-cell p-4">{item.agenda}</td>
+      <td className="hidden md:table-cell p-4">{formatTime(item.start_time)}</td>
+      <td className="hidden lg:table-cell p-4">{formatTime(item.end_time)}</td>
+      <td className="hidden lg:table-cell p-4">{item.room_id}</td>
+      <td className="hidden md:table-cell p-4">
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
           {item.status}
         </span>
       </td>
-      <td>
+      <td className="p-4">
         <div className="flex items-center gap-2">
           <Link href={`/list/room-bookings/${item.booking_id}`}>
             <button className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky">
               <Image src="/view.png" alt="" width={16} height={16} />
             </button>
           </Link>
-          <FormModal table="room-booking" type="delete" id={item.booking_id} />
+          {/* Replace FormModal with delete button */}
+          <button 
+            onClick={() => {
+              setBookingToDelete(item.booking_id);
+              setShowDeleteConfirm(true);
+            }}
+            className="w-7 h-7 flex items-center justify-center rounded-full bg-red-100 hover:bg-red-200"
+          >
+            <Trash2 size={16} className="text-red-600" />
+          </button>
         </div>
       </td>
     </tr>
@@ -292,6 +329,79 @@ const RoomBookingListPage = () => {
           <Table columns={columns} renderRow={renderRow} data={roomBookings} />
           <Pagination />
         </>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-500 to-red-600 p-5 text-white">
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-3">
+                  <Trash2 size={20} />
+                </div>
+                <h2 className="text-xl font-bold">Confirm Deletion</h2>
+              </div>
+            </div>
+            
+            {/* Body */}
+            <div className="p-6">
+              <p className="text-gray-700 mb-6">
+                Are you sure you want to delete this room booking? This action cannot be undone and all associated data will be permanently removed.
+              </p>
+              
+                {/* Get booking details for the booking to be deleted */}
+                {bookingToDelete && 
+                <div className="bg-gray-50 p-4 rounded-xl mb-6">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                       <BedDouble size={24} className="text-gray-500" />
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="font-medium">
+                        Room Booking #{bookingToDelete}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {roomBookings.find(booking => booking.booking_id === bookingToDelete)?.agenda || 'Unknown Booking'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              }
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setBookingToDelete(null);
+                  }}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteBooking}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={18} className="mr-2" />
+                      Delete Booking
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -8,19 +8,14 @@ import { useParams } from "next/navigation";
 import Image from "next/image";
 import { 
   BedDouble, Edit, Trash2, ArrowLeft, Save,
-  AlertCircle, User, Users, Camera
+  AlertCircle, User, Users, Camera, Car
 } from "lucide-react";
 
 // Add room types for dropdown (same as in the ManageRoomsPage)
 const roomTypes = [
-  "Standard",
-  "Deluxe",
-  "Suite",
-  "Executive",
-  "Family",
-  "Single",
-  "Double",
-  "Twin"
+  "Small",
+  "Middle",
+  "Big"
 ];
 
 // Add the missing formatDate function

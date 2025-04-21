@@ -1066,26 +1066,6 @@ const BookingRoom = () => {
             {errors.agenda && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.agenda}</Text>}
           </View>
 
-          <View className="mb-4">
-            <View className={`flex-row items-center bg-white border ${errors.destination ? 'border-red-500' : 'border-gray-200'} rounded-xl py-0 px-3 shadow-sm`}>
-              <MaterialIcons name="place" size={22} color="#94A3B8" />
-              <TextInput
-                className="flex-1 ml-3 text-gray-700 h-12 text-base"
-                placeholder="Enter destination"
-                placeholderTextColor="#94A3B8"
-                defaultValue={form.destination}
-                onChangeText={(text) => {
-                  setForm(prev => ({ ...prev, destination: text }));
-                  if (errors.destination) setErrors(prev => ({ ...prev, destination: null }));
-                }}
-                style={{ height: 48 }}
-              />
-              {errors.destination && (
-                <Ionicons name="alert-circle" size={22} color="#EF4444" />
-              )}
-            </View>
-            {errors.destination && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.destination}</Text>}
-          </View>
 
           <SectionHeader title="Room Selection" icon="business-outline" />
           {errors.room_id && <Text className="text-red-500 text-xs mb-2">{errors.room_id}</Text>}
