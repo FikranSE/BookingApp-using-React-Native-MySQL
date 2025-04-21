@@ -332,7 +332,7 @@ const Explore = () => {
         <View className="h-16" />
       </ScrollView>
     </SafeAreaView>
-  );
+  );  
 };
 
 export default Explore;

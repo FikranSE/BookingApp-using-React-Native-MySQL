@@ -429,7 +429,7 @@ const Home = () => {
                 />
               </View>
             </BlurView>
-
+ 
             <View className="flex-1 ml-3">
               <Text className="text-base font-medium text-gray-700">
                 {booking.agenda || 'Unnamed Item'}
