@@ -332,7 +332,7 @@ const Home = () => {
                 </View>
               </BlurView>
 
-              <View className="flex-1 ml-3">
+              <View className="flex-1 ml-3"> 
                 <Text className="text-base font-medium text-gray-700">
                   {booking.agenda || 'Unnamed Item'}
                 </Text>
@@ -432,7 +432,7 @@ const Home = () => {
 
             <View className="flex-1 ml-3">
               <Text className="text-base font-medium text-gray-700">
-                {booking.itemName || 'Unnamed Item'}
+                {booking.agenda || 'Unnamed Item'}
               </Text>
 
               <View className="flex-row flex-wrap mt-1">
@@ -465,7 +465,7 @@ const Home = () => {
               </View>
             </View>
 
-            <View className="rounded-full px-2.5 py-1 bg-green-50 border border-green-100">
+            <View className="rounded-full px-2.5 py-1 bg-green-100 border border-green-100">
               <Text className="text-xs font-medium text-green-600">
                 Completed
               </Text>
