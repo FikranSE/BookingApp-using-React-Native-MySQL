@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
   User, Plus, Edit, Trash2, X, Save, 
-  AlertCircle, Users, Eye, Mail, Phone
+  AlertCircle, Users, Eye, Mail, Phone, Lock
 } from "lucide-react";
 
 type User = {
@@ -68,6 +68,8 @@ const UserManagePage = () => {
     name: "",
     email: "",
     phone: "",
+    password: "",
+    confirmPassword: ""
   });
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -171,6 +173,8 @@ const UserManagePage = () => {
       name: "",
       email: "",
       phone: "",
+      password: "",
+      confirmPassword: ""
     });
     setFormErrors({});
     setIsEditMode(false);
@@ -184,6 +188,8 @@ const UserManagePage = () => {
       name: user.name || "",
       email: user.email || "",
       phone: user.phone || "",
+      password: "",
+      confirmPassword: ""
     });
     setFormErrors({});
     setIsEditMode(true);
@@ -246,6 +252,14 @@ const UserManagePage = () => {
         [name]: ''
       });
     }
+    
+    // Clear confirmPassword error if password changes
+    if (name === 'password' && formErrors.confirmPassword) {
+      setFormErrors({
+        ...formErrors,
+        confirmPassword: ''
+      });
+    }
   };
 
   // Validate form before submission
@@ -266,6 +280,33 @@ const UserManagePage = () => {
       errors.phone = 'Phone must contain only numbers';
     }
     
+    // Only validate password fields for new users or if password is provided for existing users
+    if (!isEditMode) {
+      // Creating new user - password is required
+      if (!formData.password) {
+        errors.password = 'Password is required';
+      } else if (formData.password.length < 6) {
+        errors.password = 'Password must be at least 6 characters';
+      }
+      
+      if (!formData.confirmPassword) {
+        errors.confirmPassword = 'Please confirm your password';
+      } else if (formData.password !== formData.confirmPassword) {
+        errors.confirmPassword = 'Passwords do not match';
+      }
+    } else if (formData.password) {
+      // Editing user - password validation only if a new password is provided
+      if (formData.password.length < 6) {
+        errors.password = 'Password must be at least 6 characters';
+      }
+      
+      if (!formData.confirmPassword) {
+        errors.confirmPassword = 'Please confirm your password';
+      } else if (formData.password !== formData.confirmPassword) {
+        errors.confirmPassword = 'Passwords do not match';
+      }
+    }
+    
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -284,9 +325,21 @@ const UserManagePage = () => {
 
     try {
       let response;
+      // Prepare data to send to the API
+      const dataToSend = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone
+      };
+      
+      // Add password only if it's provided (required for new users)
+      if (formData.password) {
+        dataToSend.password = formData.password;
+      }
+      
       if (isEditMode && currentUser) {
         // Update existing user
-        response = await apiClient.put(`/users/${currentUser.id}`, formData);
+        response = await apiClient.put(`/users/${currentUser.id}`, dataToSend);
         
         // Update the users list with the updated user
         setUsers(users.map(user => 
@@ -299,7 +352,7 @@ const UserManagePage = () => {
         });
       } else {
         // Create new user
-        response = await apiClient.post('/users', formData);
+        response = await apiClient.post('/users', dataToSend);
         
         // Add the new user to the users list
         setUsers([...users, response.data.data]);
@@ -619,6 +672,55 @@ const UserManagePage = () => {
                   <p className="text-xs text-gray-500 mt-1">
                     Phone number should contain only digits.
                   </p>
+                </div>
+
+                {/* Password */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Password {!isEditMode && <span className="text-red-500">*</span>}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      className={`w-full p-2 pl-9 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300 ${
+                        formErrors.password ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder={isEditMode ? "Leave blank to keep current password" : "Enter password"}
+                    />
+                    <Lock size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  </div>
+                  {formErrors.password && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.password}</p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Password must be at least 6 characters long.
+                  </p>
+                </div>
+                
+                {/* Confirm Password */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Confirm Password {!isEditMode && <span className="text-red-500">*</span>}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="password"
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                      className={`w-full p-2 pl-9 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300 ${
+                        formErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder={isEditMode ? "Confirm new password" : "Confirm password"}
+                    />
+                    <Lock size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  </div>
+                  {formErrors.confirmPassword && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.confirmPassword}</p>
+                  )}
                 </div>
               </form>
             </div>

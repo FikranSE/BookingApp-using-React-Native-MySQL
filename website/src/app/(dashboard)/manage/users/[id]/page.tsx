@@ -79,12 +79,20 @@ const SingleUserPage = () => {
     
     try {
       const response = await apiClient.get(`/users/${userId}`);
-      setUser(response.data);
+      console.log("API Response:", response.data); // Debug the API response
+      
+      // Extract the user data from the nested response structure
+      const userData = response.data.data;
+      
+      // Set the user state with the actual data
+      setUser(userData);
+      
+      // Set the edit data using the correct properties
       setEditData({
-        name: response.data.name || "",
-        email: response.data.email || "",
-        phone: response.data.phone || "",
-        image: response.data.image || ""
+        name: userData.name || "",
+        email: userData.email || "",
+        phone: userData.phone || "",
+        image: userData.image || ""
       });
     } catch (err) {
       console.error("Error fetching user:", err);
@@ -237,7 +245,12 @@ const handleSubmit = async (e) => {
     });
     
     console.log("Update successful:", response.data);
-    setUser(response.data);
+    // Update the user state with the updated data
+    if (response.data && response.data.data) {
+      setUser(response.data.data);
+    } else {
+      setUser(response.data);
+    }
     setUpdateStatus({
       type: 'success',
       message: 'User updated successfully',
@@ -438,7 +451,7 @@ const handleSubmit = async (e) => {
                         <h2 className="text-2xl font-bold">{user.name}</h2>
                       )}
                       <div className="mt-1 text-indigo-50 flex items-center text-sm">
-                        <span>ID: {user.user_id}</span>
+                        <span>ID: {user.id}</span>
                       </div>
                     </div>
                   </div>
@@ -600,7 +613,7 @@ const handleSubmit = async (e) => {
                 <ul className="space-y-4">
                   <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
                     <span className="text-gray-500">User ID</span>
-                    <span className="font-medium text-gray-800">#{user.user_id}</span>
+                    <span className="font-medium text-gray-800">#{user.id}</span>
                   </li>
                   <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
                     <span className="text-gray-500">Name</span>
@@ -672,7 +685,7 @@ const handleSubmit = async (e) => {
             </div>
             
             {/* View related activities */}
-            <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
+            {/* <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
               <div className="p-6">
                 <Link href={`/manage/activities?user=${userId}`}>
                   <button className="w-full py-2.5 px-4 bg-violet-50 hover:bg-violet-100 text-violet-700 rounded-xl font-medium flex items-center justify-center transition-colors">
@@ -680,7 +693,7 @@ const handleSubmit = async (e) => {
                   </button>
                 </Link>
               </div>
-            </div>
+            </div> */}
             
             {/* Navigation links */}
             <div>
