@@ -9,7 +9,7 @@ import TableSearch from "@/components/TableSearch";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Trash2, Car } from "lucide-react"; // Import necessary icons
+import { Eye, Trash2, Car } from "lucide-react"; // Import necessary icons
 
 // This code implements the updated delete confirmation for both TransportBookingListPage and RoomBookingListPage
 
@@ -200,8 +200,8 @@ const TransportBookingListPage = () => {
       <td className="p-4">
         <div className="flex items-center gap-2">
           <Link href={`/list/transport-bookings/${item.booking_id}`}>
-            <button className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky">
-              <Image src="/view.png" alt="" width={16} height={16} />
+            <button className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky text-white hover:bg-sky-500">
+            <Eye size={16} />
             </button>
           </Link>
           {/* Replace FormModal with delete button */}
@@ -210,9 +210,9 @@ const TransportBookingListPage = () => {
               setBookingToDelete(item.booking_id);
               setShowDeleteConfirm(true);
             }}
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-red-100 hover:bg-red-200"
+            className="w-7 h-7 flex items-center justify-center rounded-full bg-red-300 text-white hover:bg-red-500"
           >
-            <Trash2 size={16} className="text-red-600" />
+            <Trash2 size={16} />
           </button>
         </div>
       </td>

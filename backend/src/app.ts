@@ -14,6 +14,7 @@ import roomBookingRoutes from './routes/roomBookingRoutes';
 import { initModels } from './models';
 import sequelize from './config/db';
 import { adminAuthMiddleware } from './middlewares/adminAuthMiddleware';
+import userRoutes from './routes/userRoutes';
  
 dotenv.config();
 
@@ -37,6 +38,7 @@ sequelize.sync({ force: false }) // Ganti ke true jika ingin reset tabel
   });
 
 // Routes
+app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes); // Routes untuk User
 app.use('/api/admins/auth', adminAuthRoutes); // Routes untuk Admin Auth
 app.use('/api/admins', adminAuthMiddleware, adminRoutes); // Routes lainnya untuk Admin, dilindungi oleh middleware

@@ -9,7 +9,7 @@ import TableSearch from "@/components/TableSearch";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Trash2, CalendarDays,BedDouble } from "lucide-react"; // Import necessary icons
+import { Eye, Trash2, CalendarDays,BedDouble } from "lucide-react"; // Import necessary icons
 
 type RoomBooking = {
   booking_id: number;
@@ -223,8 +223,8 @@ const RoomBookingListPage = () => {
       <td className="p-4">
         <div className="flex items-center gap-2">
           <Link href={`/list/room-bookings/${item.booking_id}`}>
-            <button className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky">
-              <Image src="/view.png" alt="" width={16} height={16} />
+          <button className="w-7 h-7 flex items-center justify-center text-white rounded-full bg-lamaSky hover:bg-sky-500">
+            <Eye size={14} />
             </button>
           </Link>
           {/* Replace FormModal with delete button */}
@@ -233,9 +233,9 @@ const RoomBookingListPage = () => {
               setBookingToDelete(item.booking_id);
               setShowDeleteConfirm(true);
             }}
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-red-100 hover:bg-red-200"
+            className="w-7 h-7 flex items-center justify-center rounded-full bg-red-300 text-white hover:bg-red-500"
           >
-            <Trash2 size={16} className="text-red-600" />
+            <Trash2 size={16} />
           </button>
         </div>
       </td>
