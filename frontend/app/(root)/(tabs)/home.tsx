@@ -9,18 +9,18 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  StyleSheet,
+  RefreshControl,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import axios from 'axios';
 import api from "@/lib/api";
-import { images } from "@/constants";
 import { tokenCache } from "@/lib/auth";
 import { AUTH_TOKEN_KEY } from "@/lib/constants";
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
+import { StatusBar } from 'expo-status-bar';
 
 const { width } = Dimensions.get('window');
 
@@ -56,13 +56,116 @@ interface IBooking {
   pic: string;
   room_id?: number;
   transport_id?: number;
+  room_image?: string;
+  transport_image?: string;
+  image?: string;
 }
 
 const BASE_URL = 'https://j9d3hc82-3001.asse.devtunnels.ms/api';
 
+// Custom Alert Component - Similar to the one used in detail page
+const CustomAlert = ({ 
+  visible, 
+  type = 'success',
+  title = '', 
+  message = '', 
+  onClose = () => {},
+  autoClose = true,
+  duration = 3000,
+  bookingType = 'ROOM'
+}) => {
+  const [isVisible, setIsVisible] = useState(visible);
+
+  const SUCCESS_COLORS = {
+    bg: 'bg-green-500',
+    bgLight: 'bg-green-50',
+    text: 'text-green-800',
+    border: 'border-green-200',
+    icon: 'checkmark-circle'
+  };
+  
+  const ERROR_COLORS = {
+    bg: 'bg-red-500',
+    bgLight: 'bg-red-50',
+    text: 'text-red-800',
+    border: 'border-red-200',
+    icon: 'close-circle'
+  };
+  
+  const INFO_COLORS = {
+    bg: 'bg-sky-500',
+    bgLight: 'bg-sky-50',
+    text: 'text-sky-800',
+    border: 'border-sky-200',
+    icon: 'information-circle'
+  };
+  
+  const WARNING_COLORS = {
+    bg: 'bg-yellow-500',
+    bgLight: 'bg-yellow-50',
+    text: 'text-yellow-800',
+    border: 'border-yellow-200',
+    icon: 'warning'
+  };
+  
+  const colors = type === 'success' 
+    ? SUCCESS_COLORS 
+    : type === 'error' 
+      ? ERROR_COLORS 
+      : type === 'warning'
+        ? WARNING_COLORS
+        : INFO_COLORS;
+
+  useEffect(() => {
+    setIsVisible(visible);
+    if (visible && autoClose) {
+      const timer = setTimeout(() => onClose(), duration);
+      return () => clearTimeout(timer);
+    }
+  }, [visible, autoClose, duration, onClose]);
+
+  if (!isVisible) return null;
+
+  return (
+    <Modal
+      transparent
+      visible={isVisible}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 justify-center items-center bg-black bg-opacity-20">
+        <View className={`w-11/12 rounded-xl p-5 ${colors.bgLight} ${colors.border} border shadow-lg`}>
+          <View className="flex-row justify-between items-center mb-3">
+            <View className="flex-row items-center">
+              <View className={`w-8 h-8 ${colors.bg} rounded-full items-center justify-center mr-3`}>
+                <Ionicons name={colors.icon} size={18} color="white" />
+              </View>
+              <Text className={`${colors.text} font-bold text-lg`}>
+                {title || (type === 'success' ? 'Success' : type === 'error' ? 'Error' : type === 'warning' ? 'Warning' : 'Information')}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+          <Text className="text-gray-700 mb-4 pl-11">{message}</Text>
+          <TouchableOpacity
+            onPress={onClose}
+            className={`py-3 ${colors.bg} rounded-lg items-center mt-2`}
+          >
+            <Text className="text-white font-medium">
+              {type === 'error' ? 'Try Again' : 'Got It'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const Home = () => {
   // State declarations
-  const [activeTab, setActiveTab] = useState<"Rooms" | "Transport">("Rooms");
+  const [activeTab, setActiveTab] = useState<"Recent" | "Past">("Recent");
   const [notifications, setNotifications] = useState(3);
   const [rooms, setRooms] = useState<IRoom[]>([]);
   const [user, setUser] = useState<any>(null);
@@ -70,10 +173,16 @@ const Home = () => {
   const [recentBookings, setRecentBookings] = useState<IBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [pastApprovedBookings, setPastApprovedBookings] = useState<IBooking[]>([]);
-  
-  // 1) State untuk search:
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
-
+  
+  // States for cancellation
+  const [showConfirmAlert, setShowConfirmAlert] = useState(false);
+  const [bookingToCancel, setBookingToCancel] = useState<IBooking | null>(null);
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertType, setAlertType] = useState('success');
+  const [alertMessage, setAlertMessage] = useState('');
+  
   const router = useRouter();
 
   // Helper functions
@@ -118,29 +227,27 @@ const Home = () => {
     }
   };
 
-
-  const fixImageUrl = (imageUrl) => {
-    if (!imageUrl) return null;
-  
-    // Handle local filesystem paths
-    if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
+  // Utility function to process image URLs
+  const processImageUrl = (imageUrl: string | null | undefined): string | undefined => {
+    if (!imageUrl) return undefined;
+    if (imageUrl === 'null') return undefined;
+    
+    if (typeof imageUrl === 'string' && (imageUrl.startsWith('E:') || imageUrl.startsWith('C:'))) {
       return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
     }
-  
-    // Fix double slash issue in URLs
+    
     if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
       return imageUrl.replace('//uploads', '/uploads');
     }
-  
-    // Add base URL if the image path is relative
+    
     if (typeof imageUrl === 'string' && !imageUrl.startsWith('http')) {
-      // Remove any leading slashes to avoid double slashes
       const cleanPath = imageUrl.replace(/^\/+/, '');
       return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
     }
-  
+    
     return imageUrl;
   };
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -185,14 +292,14 @@ const Home = () => {
         handleError(error);
       }
 
-      // Fetch bookings
+      // Fetch bookings after we have rooms and transports
       try {
         const [roomBookingsRes, transportBookingsRes] = await Promise.all([
           axios.get(`${BASE_URL}/room-bookings`, { headers }),
           axios.get(`${BASE_URL}/transport-bookings`, { headers })
         ]);
 
-        // Filter bookings untuk user saat ini
+        // Filter bookings for current user
         const filteredRoomBookings = roomBookingsRes.data.filter(booking =>
           booking.user_id === currentUserId
         );
@@ -200,20 +307,28 @@ const Home = () => {
           booking.user_id === currentUserId
         );
 
+        // Now we can add images to each booking from our already loaded rooms and transports data
         const allBookings = [
-          ...filteredRoomBookings.map((booking: any) => ({
-            ...booking,
-            type: 'ROOM' as const,
-            itemName: rooms.find((room) => room.room_id === booking.room_id)?.room_name
-          })),
-          ...filteredTransportBookings.map((booking: any) => ({
-            ...booking,
-            type: 'TRANSPORT' as const,
-            itemName: transports.find((transport) => transport.transport_id === booking.transport_id)?.vehicle_name
-          }))
+          ...filteredRoomBookings.map((booking: any) => {
+            const room = rooms.find((r) => r.room_id === booking.room_id);
+            return {
+              ...booking,
+              type: 'ROOM' as const,
+              itemName: room?.room_name || 'Unknown Room',
+              image: room?.image ? processImageUrl(room.image) : null
+            };
+          }),
+          ...filteredTransportBookings.map((booking: any) => {
+            const transport = transports.find((t) => t.transport_id === booking.transport_id);
+            return {
+              ...booking,
+              type: 'TRANSPORT' as const,
+              itemName: transport?.vehicle_name || 'Unknown Vehicle',
+              image: transport?.image ? processImageUrl(transport.image) : null
+            };
+          })
         ].sort((a, b) => new Date(b.booking_date).getTime() - new Date(a.booking_date).getTime());
-
-        setRecentBookings(allBookings.slice(0, 5));
+        setRecentBookings(allBookings.slice(0, 10));
 
         // Past Approved
         const currentDate = new Date();
@@ -238,34 +353,105 @@ const Home = () => {
       handleError(error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchData();
   };
 
   useEffect(() => {
     fetchData();
   }, [user]);
 
-  // 2) Buat data terfilter berdasarkan searchQuery
-  const filteredRooms = rooms.filter((room) => {
-    const lowerQuery = searchQuery.toLowerCase();
-    // Anda bisa menambahkan field filtering lain sesuai kebutuhan
-    return (
-      room.room_name.toLowerCase().includes(lowerQuery) ||
-      room.room_type.toLowerCase().includes(lowerQuery) ||
-      room.facilities.toLowerCase().includes(lowerQuery)
-    );
-  });
+  // Show cancellation confirmation dialog
+  const handleCancel = (booking: IBooking) => {
+    setBookingToCancel(booking);
+    setShowConfirmAlert(true);
+  };
 
-  const filteredTransports = transports.filter((transport) => {
-    const lowerQuery = searchQuery.toLowerCase();
-    return (
-      transport.vehicle_name.toLowerCase().includes(lowerQuery) ||
-      transport.driver_name.toLowerCase().includes(lowerQuery)
-    );
-  });
+  // Handle the actual cancellation after confirmation
+  const handleConfirmCancel = async () => {
+    if (!bookingToCancel) return;
+    
+    setShowConfirmAlert(false);
+    
+    try {
+      const authToken = await fetchAuthToken();
+      
+      if (!authToken) {
+        setAlertType('error');
+        setAlertMessage('Not authenticated');
+        setAlertVisible(true);
+        setTimeout(() => {
+          router.push('/(auth)/sign-in');
+        }, 1500);
+        return;
+      }
 
-  // Modern Booking Card
-  const RecentBookingCard = ({ booking }: { booking: IBooking }) => {
+      // Show loading indicator
+      setLoading(true);
+
+      const axiosInstance = axios.create({
+        baseURL: BASE_URL,
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      // Update the booking status to CANCELLED based on booking type
+      if (bookingToCancel.type === 'ROOM') {
+        await axiosInstance.put(`/room-bookings/${bookingToCancel.booking_id}`, {
+          status: 'CANCELLED'
+        });
+      } else if (bookingToCancel.type === 'TRANSPORT') {
+        await axiosInstance.put(`/transport-bookings/${bookingToCancel.booking_id}`, {
+          status: 'CANCELLED'
+        });
+      }
+
+      // Hide loading indicator
+      setLoading(false);
+      
+      // Show success message
+      setAlertType('success');
+      setAlertMessage('Your booking has been cancelled successfully');
+      setAlertVisible(true);
+      
+      // Refresh data after cancellation
+      setTimeout(() => {
+        fetchData();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      setLoading(false);
+      setAlertType('error');
+      setAlertMessage('Failed to cancel booking. Please try again.');
+      setAlertVisible(true);
+    }
+  };
+
+  // Filter bookings based on search query
+  const filteredBookings = activeTab === "Recent" 
+    ? recentBookings.filter(booking => 
+        booking.agenda?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        booking.itemName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        booking.pic?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        booking.section?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : pastApprovedBookings.filter(booking => 
+        booking.agenda?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        booking.itemName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        booking.pic?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        booking.section?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+  // Minimalist Booking Card with Image
+  const BookingCard = ({ booking, index }: { booking: IBooking, index: number }) => {
     const handlePress = () => {
       if (booking.type.toUpperCase() === "ROOM") {
         router.push(`/detail-bookingRoom?id=${booking.booking_id}`);
@@ -278,618 +464,444 @@ const Home = () => {
       switch (status.toLowerCase()) {
         case 'approved':
           return {
-            bg: 'bg-green-100',
-            text: 'text-green-600',
+            bg: 'bg-sky-500',
+            text: 'text-white',
             label: 'Approved'
           };
         case 'pending':
           return {
-            bg: 'bg-orange-100',
-            text: 'text-orange-600',
+            bg: 'bg-orange-400',
+            text: 'text-white',
             label: 'Pending'
           };
         case 'rejected':
           return {
-            bg: 'bg-red-100',
-            text: 'text-red-600',
+            bg: 'bg-gray-400',
+            text: 'text-white',
             label: 'Rejected'
+          };
+        case 'cancelled':
+          return {
+            bg: 'bg-purple-400',
+            text: 'text-white',
+            label: 'Cancelled'
           };
         default:
           return {
-            bg: 'bg-gray-100',
-            text: 'text-gray-600',
+            bg: 'bg-gray-300',
+            text: 'text-gray-700',
             label: status
           };
       }
     };
 
     const statusStyle = getStatusStyle(booking.status);
+    const bookingDate = new Date(booking.booking_date);
+    const formattedDate = bookingDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+
+    // Only show cancel button for PENDING or APPROVED bookings
+    const showCancelButton = activeTab === "Recent" && 
+      (booking.status.toLowerCase() === 'pending' || booking.status.toLowerCase() === 'approved');
 
     return (
-      <View
-        className="mx-4 mb-3 overflow-hidden rounded-xl"
-        style={{
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 4
-        }}
+      <Animated.View
+        entering={FadeInDown.delay(index * 50)}
+        className="mx-4 mb-4"
       >
-        <LinearGradient
-          colors={['#ffffff', '#f8fafc']}
-          className="border border-gray-100 rounded-xl"
+        <TouchableOpacity
+          onPress={handlePress}
+          className="overflow-hidden rounded-lg bg-white"
+          style={{
+            shadowColor: "#0ea5e9",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 8,
+            elevation: 2
+          }}
         >
+          {/* Card Image */}
+          <View className="relative">
+            <Image
+              source={{ uri: booking.image || 'https://via.placeholder.com/500x200/f1f5f9/94a3b8?text=No+Image' }}
+              className="w-full h-36"
+              resizeMode="cover"
+            />
+            
+            {/* Status badge overlay */}
+            <View className={`absolute top-3 right-3 ${statusStyle.bg} px-2 py-1 rounded-md`}>
+              <Text className={`${statusStyle.text} text-xs font-medium`}>
+                {statusStyle.label}
+              </Text>
+            </View>
+            
+            {/* Type badge overlay */}
+            <View className="absolute top-3 left-3 bg-white/80 backdrop-blur-sm px-2 py-1 rounded-md">
+              <Text className="text-xs font-medium text-sky-500">
+                {booking.type === 'ROOM' ? 'Room' : 'Transport'}
+              </Text>
+            </View>
+          </View>
+          
           <View className="p-4">
-            <View className="flex-row items-center">
-              <BlurView intensity={60} tint="light" className="w-12 h-12 rounded-full overflow-hidden">
-                <View className="w-full h-full bg-gray-100/80 items-center justify-center">
-                  <Ionicons
-                    name={booking.type === 'ROOM' ? 'business' : 'car'}
-                    size={20}
-                    color="#0EA5E9"
-                  />
-                </View>
-              </BlurView>
-
-              <View className="flex-1 ml-3"> 
-                <Text className="text-base font-medium text-gray-700">
-                  {booking.agenda || 'Unnamed Item'}
+            {/* Card Header */}
+            <View className="mb-3">
+              <Text className="text-gray-800 text-lg font-medium" numberOfLines={1}>
+                {booking.agenda || 'Unnamed Booking'}
+              </Text>
+              <Text className="text-gray-500 text-sm" numberOfLines={1}>
+                {booking.itemName || (booking.type === 'ROOM' ? 'Unnamed Room' : 'Unnamed Vehicle')}
+              </Text>
+            </View>
+            
+            {/* Booking Info - Two columns */}
+            <View className="flex-row mb-3">
+              <View className="flex-1 border-r border-gray-100 pr-3">
+                <Text className="text-sky-500 text-xs mb-1">Date & Time</Text>
+                <Text className="text-gray-700">{formattedDate}</Text>
+                <Text className="text-gray-500 text-xs">
+                  {booking.start_time} - {booking.end_time}
                 </Text>
-
-                <View className="flex-row flex-wrap mt-1">
-                  <Text className="text-xs text-gray-500 mr-2">
-                    <Text className="font-medium text-gray-600">PIC:</Text> {booking.pic || 'Not specified'}
-                  </Text>
-                  <Text className="text-xs text-gray-500">
-                    <Text className="font-medium text-gray-600">Section:</Text> {booking.section || 'Not specified'}
-                  </Text>
-                </View>
- 
-                <View className="flex-row items-center mt-2">
-                  <View className="flex-row items-center mr-2 bg-gray-50 px-2 py-0.5 rounded-full">
-                    <Ionicons name="calendar-outline" size={12} color="#0EA5E9" />
-                    <Text className="text-xs text-gray-500 ml-1">
-                      {new Date(booking.booking_date).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </Text>
-                  </View>
-
-                  <View className="flex-row items-center bg-gray-50 px-2 py-0.5 rounded-full">
-                    <Ionicons name="time-outline" size={12} color="#0EA5E9" />
-                    <Text className="text-xs text-gray-500 ml-1">
-                      {booking.start_time} - {booking.end_time}
-                    </Text>
-                  </View>
-                </View>
               </View>
-
-              <View className={`rounded-full px-2.5 py-1 ${statusStyle.bg}`}>
-                <View className="flex-row items-center">
-                  <Text className={`text-xs font-medium ${statusStyle.text}`}>
-                    {statusStyle.label}
-                  </Text>
-                </View>
+              
+              <View className="flex-1 pl-3">
+                <Text className="text-orange-400 text-xs mb-1">Section</Text>
+                <Text className="text-gray-700">{booking.section || 'Not specified'}</Text>
+                <Text className="text-gray-500 text-xs">
+                  PIC: {booking.pic || 'Not specified'}
+                </Text>
               </View>
             </View>
-
-            <View className="flex-row justify-between mt-3 pt-3 border-t border-gray-100">
+            
+            {/* Action Buttons */}
+            <View className="flex-row mt-3 pt-3 border-t border-gray-100">
               <TouchableOpacity
                 onPress={handlePress}
-                className="flex-row items-center bg-sky-50 px-3 py-1.5 rounded-full"
+                className="flex-1 bg-sky-500 py-2.5 rounded-md mr-2 items-center"
               >
-                <Ionicons name="eye-outline" size={16} color="#0EA5E9" />
-                <Text className="text-sky-500 text-xs font-medium ml-1">View Details</Text>
+                <Text className="text-white text-sm font-medium">Details</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => {
-                  // Logic cancel booking
-                }}
-                className="flex-row items-center bg-red-50 px-3 py-1.5 rounded-full"
-              >
-                <Ionicons name="close-outline" size={16} color="#EF4444" />
-                <Text className="text-red-500 text-xs font-medium ml-1">Cancel</Text>
-              </TouchableOpacity>
+              {showCancelButton ? (
+                <TouchableOpacity
+                  onPress={() => handleCancel(booking)}
+                  className="flex-1 bg-gray-100 py-2.5 rounded-md ml-2 items-center"
+                >
+                  <Text className="text-gray-600 text-sm font-medium">Cancel</Text>
+                </TouchableOpacity>
+              ) : activeTab === "Past" ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    // Navigate booking creation (Book Again)
+                    if (booking.type.toUpperCase() === "ROOM") {
+                      router.push({
+                        pathname: '/booking-room',
+                        params: {
+                          selectedRoomId: booking.room_id,
+                          selectedRoomName: booking.itemName,
+                          pic: booking.pic,
+                          section: booking.section,
+                          description: booking.description,
+                          bookAgain: 'true'
+                        }
+                      });
+                    } else if (booking.type.toUpperCase() === "TRANSPORT") {
+                      router.push({
+                        pathname: '/booking-transport',
+                        params: {
+                          selectedTransportId: booking.transport_id,
+                          selectedTransportName: booking.itemName,
+                          pic: booking.pic,
+                          section: booking.section,
+                          description: booking.description,
+                          bookAgain: 'true'
+                        }
+                      });
+                    }
+                  }}
+                  className="flex-1 bg-orange-400 py-2.5 rounded-md ml-2 items-center"
+                >
+                  <Text className="text-white text-sm font-medium">Book Again</Text>
+                </TouchableOpacity>
+              ) : (
+                <View className="flex-1 ml-2" />
+              )}
             </View>
           </View>
-        </LinearGradient>
-      </View>
+        </TouchableOpacity>
+      </Animated.View>
     );
   };
-
-  // Modern Past Booking Card
-  const PastBookingCard = ({ booking }: { booking: IBooking }) => (
-    <View
-      key={`past-${booking.type}-${booking.booking_id}`}
-      className="mx-4 mb-3 overflow-hidden rounded-xl"
-      style={{
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4
-      }}
-    >
-      <LinearGradient
-        colors={['#ffffff', '#f8fafc']}
-        className="border border-gray-100 rounded-xl"
-      >
-        <View className="p-4">
-          <View className="flex-row items-center">
-            <BlurView intensity={60} tint="light" className="w-12 h-12 rounded-full overflow-hidden">
-              <View className="w-full h-full bg-gray-100/80 items-center justify-center">
-                <Ionicons
-                  name={booking.type === 'ROOM' ? 'business' : 'car'}
-                  size={20}
-                  color="#0EA5E9"
-                />
-              </View>
-            </BlurView>
- 
-            <View className="flex-1 ml-3">
-              <Text className="text-base font-medium text-gray-700">
-                {booking.agenda || 'Unnamed Item'}
-              </Text>
-
-              <View className="flex-row flex-wrap mt-1">
-                <Text className="text-xs text-gray-500 mr-2">
-                  <Text className="font-medium text-gray-600">PIC:</Text> {booking.pic || 'Not specified'}
-                </Text>
-                <Text className="text-xs text-gray-500">
-                  <Text className="font-medium text-gray-600">Section:</Text> {booking.section || 'Not specified'}
-                </Text>
-              </View>
-
-              <View className="flex-row items-center mt-2">
-                <View className="flex-row items-center mr-2 bg-gray-50 px-2 py-0.5 rounded-full">
-                  <Ionicons name="calendar-outline" size={12} color="#0EA5E9" />
-                  <Text className="text-xs text-gray-500 ml-1">
-                    {new Date(booking.booking_date).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
-                  </Text>
-                </View>
-
-                <View className="flex-row items-center bg-gray-50 px-2 py-0.5 rounded-full">
-                  <Ionicons name="time-outline" size={12} color="#0EA5E9" />
-                  <Text className="text-xs text-gray-500 ml-1">
-                    {booking.start_time} - {booking.end_time}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <View className="rounded-full px-2.5 py-1 bg-green-100 border border-green-100">
-              <Text className="text-xs font-medium text-green-600">
-                Completed
-              </Text>
-            </View>
-          </View>
-
-          <View className="flex-row justify-between mt-3 pt-3 border-t border-gray-100">
-            <TouchableOpacity
-              onPress={() => {
-                if (booking.type.toUpperCase() === "ROOM") {
-                  router.push(`/detail-bookingRoom?id=${booking.booking_id}`);
-                } else if (booking.type.toUpperCase() === "TRANSPORT") {
-                  router.push(`/detail-bookingTransport?id=${booking.booking_id}`);
-                }
-              }}
-              className="flex-row items-center bg-sky-50 px-3 py-1.5 rounded-full"
-            >
-              <Ionicons name="eye-outline" size={16} color="#0EA5E9" />
-              <Text className="text-sky-500 text-xs font-medium ml-1">View Details</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                // Navigate booking creation (Book Again)
-                if (booking.type.toUpperCase() === "ROOM") {
-                  router.push({
-                    pathname: '/booking-room',
-                    params: {
-                      selectedRoomId: booking.room_id,
-                      selectedRoomName: booking.itemName,
-                      pic: booking.pic,
-                      section: booking.section,
-                      description: booking.description,
-                      bookAgain: 'true'
-                    }
-                  });
-                } else if (booking.type.toUpperCase() === "TRANSPORT") {
-                  router.push({
-                    pathname: '/booking-transport',
-                    params: {
-                      selectedTransportId: booking.transport_id,
-                      selectedTransportName: booking.itemName,
-                      pic: booking.pic,
-                      section: booking.section,
-                      description: booking.description,
-                      bookAgain: 'true'
-                    }
-                  });
-                }
-              }}
-              className="flex-row items-center bg-orange-50 px-3 py-1.5 rounded-full"
-            >
-              <Ionicons name="repeat-outline" size={16} color="#F97316" />
-              <Text className="text-orange-500 text-xs font-medium ml-1">Book Again</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </LinearGradient>
-    </View>
-  );
-
-  // Modern Room Card
-  const RoomCard = ({ room }: { room: IRoom }) => {
-    // Split facilities string
-    const facilitiesList = room.facilities.split(',').map(item => item.trim());
-
-    return (
-      <TouchableOpacity
-        onPress={() => router.push(`/detail?id=${room.room_id}&type=room`)}
-        className="mb-4 mx-2 rounded-2xl overflow-hidden"
-        style={{
-          width: width * 0.75,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.15,
-          shadowRadius: 12,
-          elevation: 8
-        }}
-      >
-        <View className="relative">
-          <Image
-            source={{ uri: fixImageUrl(room.image) }}
-            className="w-full h-40"
-            resizeMode="cover"
-          />
-
-          <LinearGradient
-            colors={['rgba(14, 165, 233, 0.15)', 'rgba(14, 165, 233, 0.05)']}
-            className="absolute top-0 left-0 right-0 bottom-0"
-          />
-
-          <View className="absolute top-3 right-3">
-            <BlurView intensity={80} tint="light" className="rounded-full overflow-hidden">
-              <View className="px-3 py-1.5 flex-row items-center">
-                <Ionicons name="people" size={14} color="#0EA5E9" />
-                <Text className="text-sky-600 font-medium text-xs">
-                  {room.capacity} people
-                </Text>
-              </View>
-            </BlurView>
-          </View>
-        </View>
-
-        <View className="p-4 bg-white">
-          <View className="flex-row items-center justify-between mb-3">
-            <View>
-              <Text className="text-lg text-gray-800 font-bold">{room.room_name}</Text>
-              <Text className="text-gray-500 text-sm">{room.room_type}</Text>
-            </View>
-
-            <TouchableOpacity
-              className="px-4 py-2 rounded-xl bg-orange-400"
-              onPress={() => router.push(`/detail?id=${room.room_id}&type=room`)}
-              style={{
-                shadowColor: "#f97316",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.3,
-                shadowRadius: 4,
-                elevation: 3
-              }}
-            >
-              <Text className="text-white font-medium text-xs">Book Now</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View className="flex-row flex-wrap gap-2 mt-1">
-            {facilitiesList.slice(0, 3).map((facility, index) => (
-              <View
-                key={index}
-                className="bg-sky-50 px-3 py-1 rounded-full border border-sky-100"
-              >
-                <Text className="text-sky-600 text-xs">
-                  {facility}
-                </Text>
-              </View>
-            ))}
-            {facilitiesList.length > 3 && (
-              <View className="bg-gray-50 px-3 py-1 rounded-full border border-gray-200">
-                <Text className="text-gray-500 text-xs">+{facilitiesList.length - 3} more</Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  // Modern Transport Card
-  const TransportCard = ({ transport }: { transport: ITransport }) => (
-    <TouchableOpacity
-      onPress={() => router.push(`/detail?id=${transport.transport_id}&type=transport`)}
-      className="mb-4 mx-2 rounded-2xl overflow-hidden"
-      style={{
-        width: width * 0.75,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 8
-      }}
-    >
-      <View className="relative">
-        <Image
-          source={{ uri: fixImageUrl(transport.image) }}
-          className="w-full h-40"
-          resizeMode="cover"
-        />
-
-        <LinearGradient
-          colors={['rgba(14, 165, 233, 0.15)', 'rgba(14, 165, 233, 0.05)']}
-          className="absolute top-0 left-0 right-0 bottom-0"
-        />
-
-        <View className="absolute top-3 right-3">
-          <BlurView intensity={80} tint="light" className="rounded-full overflow-hidden">
-            <View className="px-3 py-1.5 flex-row items-center">
-              <Ionicons name="people" size={14} color="#0EA5E9" />
-              <Text className="text-sky-600 font-medium text-xs">
-                {transport.capacity} seats
-              </Text>
-            </View>
-          </BlurView>
-        </View>
-      </View>
-
-      <View className="p-4 bg-white">
-        <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-lg text-gray-800 font-bold">{transport.vehicle_name}</Text>
-            <View className="flex-row items-center mt-1">
-              <Ionicons name="person" size={12} color="#718096" />
-              <Text className="text-gray-500 text-sm ml-1">
-                Driver: {transport.driver_name}
-              </Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            className="px-4 py-2 rounded-xl"
-            onPress={() => router.push(`/detail?id=${transport.transport_id}&type=transport`)}
-            style={{
-              backgroundColor: '#f97316',
-              shadowColor: "#f97316",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.3,
-              shadowRadius: 4,
-              elevation: 3
-            }}
-          >
-            <Text className="text-white font-medium text-xs">Book Now</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-
-  // Section Title
-  const SectionTitle = ({ title, actionText = "See All", onActionPress }) => (
-    <View className="px-4 flex-row justify-between items-center mb-4 mt-6">
-      <View className="flex-row items-center">
-        <View className="w-1 h-5 bg-sky-500 rounded-full mr-2" />
-        <Text className="text-lg font-bold text-gray-800">{title}</Text>
-      </View>
-      <TouchableOpacity
-        onPress={onActionPress}
-        className="flex-row items-center"
-      >
-        <Text className="text-sky-500 font-medium text-sm mr-1">{actionText}</Text>
-        <Feather name="chevron-right" size={16} color="#0EA5E9" />
-      </TouchableOpacity>
-    </View>
-  );
 
   // Empty State component
   const EmptyState = ({ icon, title, message }) => (
-    <View className="mx-4 mb-8 bg-white p-5 rounded-xl border border-gray-100 items-center shadow-sm">
-      <View className="bg-sky-50 w-16 h-16 rounded-full items-center justify-center mb-2">
-        <Ionicons name={icon} size={28} color="#0EA5E9" />
+    <Animated.View 
+      entering={FadeInDown.delay(200)}
+      className="mx-6 my-8 bg-white p-6 rounded-lg items-center"
+      style={{
+        shadowColor: "#0ea5e9",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 1
+      }}
+    >
+      <View className="bg-sky-50 w-16 h-16 rounded-full items-center justify-center mb-4">
+        <Ionicons name={icon} size={28} color="#0ea5e9" />
       </View>
-      <Text className="text-gray-800 font-bold text-lg mt-2">{title}</Text>
-      <Text className="text-gray-500 text-center mt-1">{message}</Text>
-    </View>
+      <Text className="text-gray-800 font-medium text-lg text-center">{title}</Text>
+      <Text className="text-gray-500 text-center mt-2 text-sm">{message}</Text>
+      
+      <TouchableOpacity 
+        className="mt-6 bg-orange-400 px-6 py-3 rounded-md"
+        onPress={() => router.push('/(root)/(tabs)')}
+      >
+        <Text className="text-white font-medium text-sm">Browse Available Items</Text>
+      </TouchableOpacity>
+    </Animated.View>
   );
 
+  // Loading indicator with minimalist design
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50">
-        <ActivityIndicator size="large" color="#0EA5E9" />
+      <View className="flex-1 justify-center items-center bg-white">
+        <View className="items-center">
+          <ActivityIndicator size="large" color="#0ea5e9" />
+          <Text className="text-sky-500 mt-4 text-sm font-medium">Loading your bookings</Text>
+          <View className="h-1 w-32 mt-4 bg-gray-100 rounded-full overflow-hidden">
+            <Animated.View 
+              className="h-full bg-orange-400"
+              entering={FadeInRight}
+              style={{
+                width: '70%',
+              }}
+            />
+          </View>
+        </View>
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white pb-20">
-      <LinearGradient
-        colors={['#0EA5E9', '#38BDF8']}
-        className="pt-4 pb-6 px-4 rounded-b-3xl"
-        style={{
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.2,
-          shadowRadius: 12,
-          elevation: 10
-        }}
-      >
-        <View className="flex-row justify-between items-center mb-4">
-          <View className="flex-row items-center">
-            <BlurView intensity={20} tint="light" className="w-10 h-10 rounded-full overflow-hidden">
-              <View className="w-full h-full items-center justify-center bg-white/30">
-                <Text className="text-white font-bold">
+    <>
+      <StatusBar style="dark" />
+      <SafeAreaView className="flex-1 bg-gray-50">
+        {/* Success/Error Alert */}
+        <CustomAlert
+          visible={alertVisible}
+          type={alertType}
+          message={alertMessage}
+          onClose={() => setAlertVisible(false)}
+          bookingType={bookingToCancel?.type || 'ROOM'}
+        />
+
+        {/* Confirmation alert with Yes/No buttons */}
+        <Modal
+          transparent
+          visible={showConfirmAlert}
+          animationType="fade"
+          onRequestClose={() => setShowConfirmAlert(false)}
+        >
+          <View className="flex-1 justify-center items-center bg-black bg-opacity-20">
+            <View className="w-11/12 rounded-xl p-5 bg-yellow-50 border border-yellow-200 shadow-lg">
+              <View className="flex-row justify-between items-center mb-3">
+                <View className="flex-row items-center">
+                  <View className="w-8 h-8 bg-yellow-500 rounded-full items-center justify-center mr-3">
+                    <Ionicons name="warning" size={18} color="white" />
+                  </View>
+                  <Text className="text-yellow-800 font-bold text-lg">
+                    Confirm Cancellation
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowConfirmAlert(false)}>
+                  <Ionicons name="close" size={24} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+              <Text className="text-gray-700 mb-4 pl-11">
+                Are you sure you want to cancel this booking?
+              </Text>
+              <View className="flex-row space-x-2">
+                <TouchableOpacity
+                  onPress={() => setShowConfirmAlert(false)}
+                  className="flex-1 py-3 bg-gray-200 rounded-lg items-center"
+                >
+                  <Text className="text-gray-700 font-medium">No, Keep</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleConfirmCancel}
+                  className="flex-1 py-3 bg-red-500 rounded-lg items-center"
+                >
+                  <Text className="text-white font-medium">Yes, Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+        
+        {/* Minimalist Header */}
+        <View className="pt-2 pb-4">
+          {/* Profile and action buttons */}
+          <Animated.View 
+            entering={FadeInDown.delay(50)}
+            className="flex-row justify-between items-center px-4 mt-2 mb-4"
+          >
+            <View className="flex-row items-center">
+              <View className="w-10 h-10 rounded-full overflow-hidden bg-sky-50 items-center justify-center border border-sky-100">
+                <Text className="text-sky-500 font-medium">
                   {user?.email ? getInitials(user.email) : 'U'}
                 </Text>
               </View>
-            </BlurView>
-            <View className="ml-3">
-              <Text className="text-sky-100 text-xs">{getGreeting()}</Text>
-              <Text className="text-white text-base font-medium">{user?.name || 'User'}</Text>
+              <View className="ml-3">
+                <Text className="text-gray-400 text-xs">{getGreeting()}</Text>
+                <Text className="text-gray-800 text-base font-medium">{user?.name || 'User'}</Text>
+              </View>
             </View>
-          </View>
 
-          <TouchableOpacity
-            onPress={() => router.push('/(root)/notifikasi')}
-            className="relative"
-          >
-            <BlurView intensity={20} tint="light" className="w-10 h-10 rounded-full overflow-hidden">
-              <View className="w-full h-full items-center justify-center">
-                <Ionicons name="notifications-outline" size={20} color="white" />
-              </View>
-            </BlurView>
-            {notifications > 0 && (
-              <View className="absolute -top-1 -right-1 bg-orange-500 w-5 h-5 rounded-full items-center justify-center border-2 border-white">
-                <Text className="text-white text-xs font-bold">
-                  {notifications}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Search Bar di-header */}
-        <View className="flex-row bg-white/20 rounded-xl px-3 py-2.5 items-center backdrop-blur-md">
-          <Ionicons name="search-outline" size={18} color="white" />
-          <TextInput
-            placeholder="Search rooms or vehicles..."
-            className="flex-1 pl-2 text-white"
-            placeholderTextColor="rgba(255, 255, 255, 0.7)"
-            // 3) Update searchQuery saat teks berubah
-            onChangeText={(text) => setSearchQuery(text)}
-            value={searchQuery}
-          />
-        </View>
-      </LinearGradient>
-
-      <ScrollView className="flex-1">
-        <View className="px-4 mt-6 mb-6 z-10">
-          <View
-            className="flex-row bg-white rounded-2xl border border-sky-50"
-            style={{
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.1,
-              shadowRadius: 12,
-              elevation: 6
-            }}
-          >
-            {['Rooms', 'Transport'].map((tab) => (
+            <View className="flex-row">
               <TouchableOpacity
-                key={tab}
-                onPress={() => setActiveTab(tab as "Rooms" | "Transport")}
-                className={`flex-1 py-3 ${
-                  activeTab === tab ? 'bg-sky-500' : 'bg-transparent'
-                } ${tab === 'Rooms' ? 'rounded-l-2xl' : 'rounded-r-2xl'}`}
+                onPress={() => router.push('/(root)/settings')}
+                className="mr-3"
               >
-                <View className="flex-row items-center justify-center">
-                  <Ionicons
-                    name={tab === 'Rooms' ? 'business' : 'car'}
-                    size={16}
-                    color={activeTab === tab ? 'white' : '#94A3B8'}
-                    style={{ marginRight: 4 }}
-                  />
+                <View className="w-9 h-9 rounded-full bg-sky-50 items-center justify-center">
+                  <Ionicons name="settings-outline" size={18} color="#0ea5e9" />
+                </View>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={() => router.push('/(root)/notifikasi')}
+                className="relative"
+              >
+                <View className="w-9 h-9 rounded-full bg-sky-50 items-center justify-center">
+                  <Ionicons name="notifications-outline" size={18} color="#0ea5e9" />
+                </View>
+                {notifications > 0 && (
+                  <View className="absolute -top-1 -right-1 bg-orange-400 w-5 h-5 rounded-full items-center justify-center border border-white">
+                    <Text className="text-white text-xs font-bold">
+                      {notifications}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+
+          {/* Search Bar with minimalist design */}
+          <Animated.View
+            entering={FadeInDown.delay(100)}
+            className="mx-4 mb-4"
+          >
+            <View className="flex-row bg-white rounded-lg px-3 py-2 items-center border border-gray-100">
+              <Ionicons name="search-outline" size={18} color="#9ca3af" />
+              <TextInput
+                placeholder="Search your bookings..."
+                placeholderTextColor="#9ca3af"
+                className="flex-1 ml-2 text-gray-700"
+                onChangeText={(text) => setSearchQuery(text)}
+                value={searchQuery}
+                style={{fontSize: 14}}
+              />
+              {searchQuery ? (
+                <TouchableOpacity onPress={() => setSearchQuery("")}>
+                  <Ionicons name="close-circle" size={16} color="#9ca3af" />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </Animated.View>
+
+          {/* Tab Toggle with minimalist design */}
+          <Animated.View 
+            entering={FadeInDown.delay(150)}
+            className="flex-row justify-center mx-4"
+          >
+            <View 
+              className="flex-row bg-sky-50 rounded-lg p-1 w-full"
+            >
+              {['Recent', 'Past'].map((tab) => (
+                <TouchableOpacity
+                  key={tab}
+                  onPress={() => setActiveTab(tab as "Recent" | "Past")}
+                  className={`flex-1 py-2 ${
+                    activeTab === tab ? 'bg-white rounded-md' : ''
+                  }`}
+                  style={{
+                    shadowColor: activeTab === tab ? "#0ea5e9" : "transparent",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: activeTab === tab ? 0.1 : 0,
+                    shadowRadius: 2,
+                    elevation: activeTab === tab ? 1 : 0
+                  }}
+                >
                   <Text
-                    className={`text-center font-medium ${
-                      activeTab === tab ? 'text-white' : 'text-gray-500'
+                    className={`text-center text-sm ${
+                      activeTab === tab ? 'text-sky-500 font-medium' : 'text-gray-500'
                     }`}
                   >
                     {tab}
                   </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Animated.View>
           </View>
-        </View>
 
-        <View className="px-4 mb-4">
-          <Text className="text-lg font-bold text-gray-800 mb-2">
-            Featured {activeTab}
-          </Text>
-          <Text className="text-gray-500 mb-4">
-            Find and book the best {activeTab.toLowerCase()} for your needs
-          </Text>
-        </View>
-
-        {/* 4) Menampilkan data terfilter */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
-          className="mb-6"
-        >
-          {activeTab === "Rooms"
-            ? filteredRooms.map((room) => (
-                <RoomCard key={room.room_id} room={room} />
-              ))
-            : filteredTransports.map((transport) => (
-                <TransportCard key={transport.transport_id} transport={transport} />
-              ))
+        {/* Main Content Area with Refresh Control */}
+        <ScrollView 
+          className="flex-1" 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#0ea5e9"]}
+              tintColor="#0ea5e9"
+            />
           }
+        >
+          <Animated.View 
+            entering={FadeInDown.delay(200)}
+            className="px-4 flex-row items-center justify-between mb-2"
+          >
+            <View className="flex-row items-center">
+              <View className="w-1 h-4 bg-sky-500 rounded-full mr-2" />
+              <Text className="text-gray-800 font-medium">
+                {activeTab === "Recent" ? "Your Bookings" : "Past Bookings"}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => router.push('/(root)/(tabs)/my-booking')}
+              className="flex-row items-center"
+            >
+              <Text className="text-sky-500 text-sm mr-1">View All</Text>
+              <Feather name="chevron-right" size={14} color="#0ea5e9" />
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Bookings List */}
+          {filteredBookings.length > 0 ? (
+            filteredBookings.map((booking, index) => (
+              <BookingCard 
+                key={`${booking.type}-${booking.booking_id}`} 
+                booking={booking}
+                index={index}
+              />
+            ))
+          ) : (
+            <EmptyState
+              icon={activeTab === "Recent" ? "calendar-outline" : "checkmark-done-circle-outline"}
+              title={`No ${activeTab} Bookings`}
+              message={activeTab === "Recent" 
+                ? "You don't have any recent bookings. Create a new booking to get started."
+                : "You don't have any past bookings yet."
+              }
+            />
+          )}
+
+          <View className="h-20" />
         </ScrollView>
-
-        <SectionTitle
-          title="Recent Bookings"
-          onActionPress={() => router.push('/(root)/(tabs)/my-booking')}
-        />
-
-        {recentBookings.length > 0 ? (
-          <View className="mb-6">
-            {recentBookings.slice(0, 3).map((booking) => (
-              <RecentBookingCard
-                key={`${booking.type}-${booking.booking_id}`}
-                booking={booking}
-              />
-            ))}
-          </View>
-        ) : (
-          <EmptyState
-            icon="calendar-outline"
-            title="No Recent Bookings"
-            message="You haven't made any bookings yet. Book a room or transport to get started."
-          />
-        )}
-
-        <SectionTitle
-          title="Past Approved Bookings"
-          onActionPress={() => router.push('/(root)/(tabs)/my-booking')}
-        />
-
-        {pastApprovedBookings.length > 0 ? (
-          <View className="mb-8">
-            {pastApprovedBookings.slice(0, 3).map((booking) => (
-              <PastBookingCard
-                key={`past-${booking.type}-${booking.booking_id}`}
-                booking={booking}
-              />
-            ))}
-          </View>
-        ) : (
-          <EmptyState
-            icon="checkmark-circle-outline"
-            title="No Past Bookings"
-            message="You don't have any completed bookings yet"
-          />
-        )}
-      </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </>
   );
 };
 

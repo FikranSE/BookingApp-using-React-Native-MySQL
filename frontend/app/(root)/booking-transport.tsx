@@ -596,7 +596,7 @@ const BookingTransport = () => {
       );
 
       if (response.status === 201) {
-        showAlert('success', 'Booking berhasil disubmit');
+        showAlert('success', 'Booking submitted successfully');
         setTimeout(() => {
           router.replace('/(root)/(tabs)/my-booking');
         }, 2000);
@@ -606,9 +606,9 @@ const BookingTransport = () => {
     } catch (error) {
       console.error('Booking error:', error);
       if (error.response) {
-        showAlert('error', error.response.data.message || 'Gagal submit booking. Coba lagi.');
+        showAlert('error', error.response.data.message || 'Failed to submit booking. Please try again.');
       } else {
-        showAlert('error', 'Gagal submit booking. Coba lagi.');
+        showAlert('error', 'Failed to submit booking. Please try again.');
       }
     } finally {
       setLoading(false);
