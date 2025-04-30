@@ -887,7 +887,7 @@ const Home = () => {
                 index={index}
               />
             ))
-          ) : (
+          ) : ( 
             <EmptyState
               icon={activeTab === "Recent" ? "calendar-outline" : "checkmark-done-circle-outline"}
               title={`No ${activeTab} Bookings`}
@@ -896,7 +896,7 @@ const Home = () => {
                 : "You don't have any past bookings yet."
               }
             />
-          )}
+          )} 
 
           <View className="h-20" />
         </ScrollView>
