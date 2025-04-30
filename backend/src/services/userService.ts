@@ -3,7 +3,16 @@
 import User from '../models/User';
 import bcrypt from 'bcrypt';
 import { Op } from 'sequelize';
+import * as XLSX from 'xlsx';
+import { logger } from '../utils/logger';
+import fs from 'fs';
 
+interface ImportResultType {
+  totalProcessed: number;
+  successCount: number;
+  failedCount: number;
+  errors: Array<{ row: number; email: string; error: string }>;
+}
 interface CreateUserData {
   name: string;
   email: string;
@@ -23,6 +32,127 @@ interface UpdateProfileData {
 }
 
 class UserService {
+
+
+
+// Add this method to your UserService class
+
+  // Import users from Excel file
+  public static async importFromExcel(filePath: string): Promise<ImportResultType> {
+    // Baca file Excel
+    const workbook = XLSX.readFile(filePath);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    
+    // Konversi sheet ke JSON
+    const data = XLSX.utils.sheet_to_json(worksheet);
+    
+    // Inisialisasi hasil import
+    const results: ImportResultType = {
+      totalProcessed: data.length,
+      successCount: 0,
+      failedCount: 0,
+      errors: []
+    };
+    
+    // Jika tidak ada data
+    if (data.length === 0) {
+      results.errors.push({
+        row: 0,
+        email: 'N/A',
+        error: 'File tidak berisi data'
+      });
+      return results;
+    }
+    
+    // Validasi header kolom
+    const firstRow = data[0] as any;
+    const requiredColumns = ['name', 'email', 'password'];
+    const missingColumns = requiredColumns.filter(col => !(col in firstRow));
+    
+    if (missingColumns.length > 0) {
+      results.errors.push({
+        row: 1,
+        email: 'N/A',
+        error: `Kolom ${missingColumns.join(', ')} tidak ditemukan`
+      });
+      return results;
+    }
+    
+    // Process setiap baris data
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i] as any;
+      
+      try {
+        // Validasi kolom yang diperlukan
+        if (!row.name || !row.email || !row.password) {
+          results.failedCount++;
+          results.errors.push({
+            row: i + 2, // +2 untuk header row dan 0-indexing
+            email: row.email || 'N/A',
+            error: 'Kolom name, email, atau password tidak boleh kosong'
+          });
+          continue;
+        }
+        
+        // Validasi format email
+        if (!/\S+@\S+\.\S+/.test(row.email)) {
+          results.failedCount++;
+          results.errors.push({
+            row: i + 2,
+            email: row.email,
+            error: 'Format email tidak valid'
+          });
+          continue;
+        }
+        
+        // Validasi panjang password
+        if (row.password.length < 6) {
+          results.failedCount++;
+          results.errors.push({
+            row: i + 2,
+            email: row.email,
+            error: 'Password harus minimal 6 karakter'
+          });
+          continue;
+        }
+        
+        // Cek apakah email sudah ada
+        const existingUser = await User.findOne({ where: { email: row.email } });
+        if (existingUser) {
+          results.failedCount++;
+          results.errors.push({
+            row: i + 2,
+            email: row.email,
+            error: 'Email sudah terdaftar'
+          });
+          continue;
+        }
+        
+        // Buat user baru
+        await UserService.create({
+          name: row.name.trim(),
+          email: row.email.trim(),
+          password: row.password.trim(),
+          phone: row.phone ? row.phone.trim() : undefined
+        });
+        
+        results.successCount++;
+      } catch (error: any) {
+        results.failedCount++;
+        results.errors.push({
+          row: i + 2,
+          email: row.email || 'N/A',
+          error: error.message || 'Error tidak diketahui'
+        });
+        
+        // Log error untuk debugging
+        logger?.error(`Error saat import user row ${i+2}: ${error.message}`);
+      }
+    }
+    
+    return results;
+  }
   // Get all users with pagination and search
   public static async getAll(page: number, limit: number, search: string) {
     const offset = (page - 1) * limit;

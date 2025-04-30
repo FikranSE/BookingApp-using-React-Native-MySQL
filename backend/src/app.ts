@@ -1,31 +1,43 @@
-// src/app.ts
+// backend/src/app.ts
 import express, { Application } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import bodyParser from 'body-parser';
-import authRoutes from './routes/authRoutes'; // Route untuk User
-import adminAuthRoutes from './routes/adminAuthRoutes'; // Route untuk Admin
-import adminRoutes from './routes/adminRoutes'; // Route lainnya untuk Admin (jika ada)
+import authRoutes from './routes/authRoutes';
+import adminAuthRoutes from './routes/adminAuthRoutes';
+import adminRoutes from './routes/adminRoutes';
 import transportRoutes from './routes/transportRoutes';
 import roomRoutes from './routes/roomRoutes';
 import transportBookingRoutes from './routes/transportBookingRoutes';
 import roomBookingRoutes from './routes/roomBookingRoutes';
+import userRoutes from './routes/userRoutes';
 import { initModels } from './models';
 import sequelize from './config/db';
 import { adminAuthMiddleware } from './middlewares/adminAuthMiddleware';
-import userRoutes from './routes/userRoutes';
- 
+import { errorHandler } from './middlewares/errorHandler'; // Import error handler
+
 dotenv.config();
 
 const app: Application = express();
+
+// Middleware
 app.use(cors());
 app.use(express.json());
- 
- 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Static directories
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// Pastikan direktori uploads ada
+import fs from 'fs';
+const uploadDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Initialisasi models
 initModels();
 
 // Sinkronisasi database
@@ -47,10 +59,11 @@ app.use('/api/rooms', roomRoutes);
 app.use('/api/transport-bookings', transportBookingRoutes);
 app.use('/api/room-bookings', roomBookingRoutes);
 
-
 app.get('/', (req, res) => {
   res.send('API is running');
 });
 
-export default app;
+// Error handler middleware (Tempatkan ini sebagai middleware terakhir)
+app.use(errorHandler);
  
+export default app;  

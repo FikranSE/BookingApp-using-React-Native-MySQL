@@ -1,10 +1,74 @@
 // backend/src/controllers/userController.ts
 
 import { Request, Response } from 'express';
+
+import path from 'path';
+import fs from 'fs';
 import UserService from '../services/userService';
 
 class UserController {
-  // Get all users
+  
+public static async importFromExcel(req: Request, res: Response) {
+  try {
+    // Validasi ketersediaan file
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Tidak ada file yang diunggah' 
+      });
+    }
+
+    // Validasi ekstensi file
+    const fileExtension = path.extname(req.file.originalname).toLowerCase();
+    if (!['.xlsx', '.xls'].includes(fileExtension)) {
+      // Hapus file jika tidak valid
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ 
+        success: false,
+        error: 'Format file harus .xlsx atau .xls' 
+      });
+    }
+    
+    // Validasi ukuran file (max 5MB)
+    const fileSizeInMB = req.file.size / (1024 * 1024);
+    if (fileSizeInMB > 5) {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({
+        success: false,
+        error: 'Ukuran file terlalu besar. Maksimal 5MB'
+      });
+    }
+    
+    // Process file Excel dan import data pengguna
+    const importResults = await UserService.importFromExcel(req.file.path);
+    
+    // Hapus file temporary setelah selesai
+    fs.unlinkSync(req.file.path);
+    
+    // Response hasil import
+    return res.status(200).json({
+      success: true,
+      message: 'Berhasil mengimpor pengguna dari Excel',
+      data: {
+        totalProcessed: importResults.totalProcessed,
+        successCount: importResults.successCount,
+        failedCount: importResults.failedCount,
+        errors: importResults.errors
+      }
+    });
+  } catch (error: any) {
+    // Pastikan file temporary dihapus jika terjadi error
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    return res.status(500).json({ 
+      success: false,
+      error: error.message || 'Terjadi kesalahan saat mengimpor data'
+    });
+  }
+}
+
   public static async getAll(req: Request, res: Response) {
     try {
       const page = parseInt(req.query.page as string) || 1;

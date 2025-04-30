@@ -6,6 +6,8 @@ import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
 import Image from "next/image";
+import { Upload, FileText, Download } from "lucide-react";
+import * as XLSX from 'xlsx';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -59,6 +61,12 @@ const UserManagePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [authStatus, setAuthStatus] = useState<string>("Checking...");
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResults, setImportResults] = useState<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Add/Edit modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -79,6 +87,156 @@ const UserManagePage = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [userToDelete, setUserToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+   // Excel import methods
+   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    setFileError(null);
+    
+    if (!files || files.length === 0) {
+      setExcelFile(null);
+      return;
+    }
+    
+    const file = files[0];
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
+    
+    if (fileExt !== 'xlsx' && fileExt !== 'xls') {
+      setFileError('Please upload only Excel files (.xlsx or .xls)');
+      setExcelFile(null);
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      setFileError('File size should not exceed 5MB');
+      setExcelFile(null);
+      return;
+    }
+    
+    setExcelFile(file);
+  };
+  
+  const resetImportModal = () => {
+    setExcelFile(null);
+    setFileError(null);
+    setImportResults(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleOpenImportModal = () => {
+    resetImportModal();
+    setShowImportModal(true);
+  };
+  
+  const handleCloseImportModal = () => {
+    setShowImportModal(false);
+    setTimeout(() => resetImportModal(), 300);
+  };
+  
+  const generateExcelTemplate = () => {
+    // Create workbook and worksheet
+    const workbook = XLSX.utils.book_new();
+    
+    // Define sample data with headers
+    const data = [
+      {
+        name: 'John Doe',
+        email: 'john@example.com',
+        password: 'password123',
+        phone: '1234567890',
+      },
+      {
+        name: 'Jane Smith',
+        email: 'jane@example.com',
+        password: 'password456',
+        phone: '0987654321',
+      },
+    ];
+    
+    // Convert data to worksheet
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    
+    // Add comments/notes about required fields
+    const comments = {
+      A1: { a: 'Required. Full name of the user.' },
+      B1: { a: 'Required. Must be a valid email address.' },
+      C1: { a: 'Required. Minimum 6 characters.' },
+      D1: { a: 'Optional. Phone number, numeric only.' },
+    };
+    
+    if (!worksheet['!cols']) worksheet['!cols'] = [];
+    worksheet['!cols'] = [
+      { wch: 20 }, // Name
+      { wch: 25 }, // Email
+      { wch: 15 }, // Password
+      { wch: 15 }, // Phone
+    ];
+    
+    worksheet['!comments'] = comments;
+    
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Users Template');
+    
+    // Generate Excel file and download
+    XLSX.writeFile(workbook, 'user_import_template.xlsx');
+  };
+  
+  const handleImportExcel = async () => {
+    if (!excelFile) {
+      setFileError('Please select a file to import');
+      return;
+    }
+    
+    setIsImporting(true);
+    setImportResults(null);
+    
+    try {
+      const apiClient = createApiClient();
+      if (!apiClient) return;
+      
+      // Create form data
+      const formData = new FormData();
+      formData.append('excelFile', excelFile);
+      
+      // Send request
+      const response = await apiClient.post('/users/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      // Set results
+      setImportResults(response.data.data);
+      
+      // If successful, refresh user list
+      if (response.data.data.successCount > 0) {
+        fetchUsers();
+      }
+      
+      setStatusMessage({
+        type: 'success',
+        message: `Import completed: ${response.data.data.successCount} users added successfully`
+      });
+      
+      // Hide the success message after 3 seconds
+      setTimeout(() => {
+        setStatusMessage({ type: null, message: null });
+      }, 3000);
+    } catch (error) {
+      console.error('Error importing users:', error);
+      
+      let errorMessage = 'Failed to import users. Please try again.';
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
+      setFileError(errorMessage);
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   // Create a custom axios instance to avoid conflicts 
   const createApiClient = () => {
@@ -528,6 +686,14 @@ const UserManagePage = () => {
               <Plus size={18} className="mr-1" />
               <span className="font-medium">Add User</span>
             </button>
+            {/* Add Import Excel Button Here */}
+            <button 
+              onClick={handleOpenImportModal}
+              className="h-9 px-4 flex items-center justify-center rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+            >
+              <Upload size={18} className="mr-1" />
+              <span className="font-medium">Import Excel</span>
+            </button>
           </div>
         </div>
       </div>
@@ -756,7 +922,189 @@ const UserManagePage = () => {
           </div>
         </div>
       )}
+
       
+{showImportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-400 to-blue-500 p-5 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-3">
+                    <FileText size={20} />
+                  </div>
+                  <h2 className="text-xl font-bold">
+                    Import Users from Excel
+                  </h2>
+                </div>
+                <button
+                  onClick={handleCloseImportModal}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            
+            {/* Modal Body */}
+            <div className="overflow-y-auto p-6">
+              {/* File Selection */}
+              <div className="mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Excel File
+                  </label>
+                  <button
+                    onClick={generateExcelTemplate}
+                    className="text-xs text-blue-500 hover:text-blue-700 flex items-center"
+                  >
+                    <Download size={14} className="mr-1" />
+                    Download Template
+                  </button>
+                </div>
+                
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                  {excelFile ? (
+                    <div className="flex items-center justify-between bg-blue-50 p-3 rounded">
+                      <div className="flex items-center">
+                        <FileText size={20} className="text-blue-500 mr-2" />
+                        <div className="text-sm font-medium text-gray-700 truncate max-w-[200px]">
+                          {excelFile.name}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setExcelFile(null);
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = '';
+                          }
+                        }}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="py-4">
+                      <Upload size={36} className="mx-auto text-gray-300 mb-2" />
+                      <p className="text-sm text-gray-500 mb-2">
+                        Drag and drop or click to select
+                      </p>
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-4 py-2 bg-blue-100 text-blue-600 rounded-md text-sm font-medium hover:bg-blue-200"
+                      >
+                        Select Excel File
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx, .xls"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                </div>
+                
+                {fileError && (
+                  <p className="text-red-500 text-xs mt-2">{fileError}</p>
+                )}
+                
+                <div className="mt-3">
+                  <p className="text-xs text-gray-500">
+                    <span className="font-medium">Note:</span> Excel file should contain columns for name, email, password, and optionally phone. Only .xlsx and .xls formats are supported.
+                  </p>
+                </div>
+              </div>
+              
+              {/* Import Results */}
+              {importResults && (
+                <div className="mt-6 border rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 p-3 border-b">
+                    <h3 className="font-medium text-gray-700">Import Results</h3>
+                  </div>
+                  <div className="p-4">
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                      <div className="bg-blue-50 p-3 rounded-lg text-center">
+                        <p className="text-sm text-gray-500">Processed</p>
+                        <p className="text-xl font-semibold text-gray-700">{importResults.totalProcessed}</p>
+                      </div>
+                      <div className="bg-green-50 p-3 rounded-lg text-center">
+                        <p className="text-sm text-gray-500">Success</p>
+                        <p className="text-xl font-semibold text-green-600">{importResults.successCount}</p>
+                      </div>
+                      <div className="bg-red-50 p-3 rounded-lg text-center">
+                        <p className="text-sm text-gray-500">Failed</p>
+                        <p className="text-xl font-semibold text-red-600">{importResults.failedCount}</p>
+                      </div>
+                    </div>
+                    
+                    {importResults.failedCount > 0 && importResults.errors && (
+                      <div>
+                        <h4 className="font-medium text-gray-700 mb-2">Errors</h4>
+                        <div className="max-h-40 overflow-y-auto border rounded">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-3 py-2 text-xs font-medium text-gray-500 text-left">Row</th>
+                                <th className="px-3 py-2 text-xs font-medium text-gray-500 text-left">Email</th>
+                                <th className="px-3 py-2 text-xs font-medium text-gray-500 text-left">Error</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {importResults.errors.map((error, index) => (
+                                <tr key={index} className="hover:bg-gray-50">
+                                  <td className="px-3 py-2 text-xs text-gray-500">{error.row}</td>
+                                  <td className="px-3 py-2 text-xs text-gray-900">{error.email}</td>
+                                  <td className="px-3 py-2 text-xs text-red-500">{error.error}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-gray-200 flex justify-end space-x-2">
+              <button
+                type="button"
+                onClick={handleCloseImportModal}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                {importResults ? 'Close' : 'Cancel'}
+              </button>
+              {!importResults && (
+                <button
+                  type="button"
+                  onClick={handleImportExcel}
+                  disabled={!excelFile || isImporting}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                >
+                  {isImporting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={18} className="mr-2" />
+                      Import Users
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -830,6 +1178,7 @@ const UserManagePage = () => {
         </div>
       )}
     </div>
+    
   );
 };
 
