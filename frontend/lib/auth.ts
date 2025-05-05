@@ -14,7 +14,7 @@ export const tokenCache = {
       console.log(`Attempting to get token for key: ${key}`);
       const token = await SecureStore.getItemAsync(key);
       if (token) {
-        console.log('Token found in storage');
+        console.log('Token found in storage:', token);
         return token;
       }
       console.log('No token found in storage');

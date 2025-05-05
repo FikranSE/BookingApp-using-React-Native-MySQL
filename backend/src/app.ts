@@ -1,4 +1,3 @@
-// backend/src/app.ts
 import express, { Application } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -16,11 +15,35 @@ import { initModels } from './models';
 import sequelize from './config/db';
 import { adminAuthMiddleware } from './middlewares/adminAuthMiddleware';
 import { errorHandler } from './middlewares/errorHandler'; // Import error handler
-
+import { Expo } from 'expo-server-sdk';
 dotenv.config();
-
+import * as FirebaseService from './FirebaseService';
 const app: Application = express();
 
+const expo = new Expo();
+const jsonParser = bodyParser.json();
+const httpParser = bodyParser.urlencoded({ extended: false });
+
+app.post("/registerPushToken", jsonParser, async (req, res) => {
+  const userId = String(req.body.userId);
+  const token = String(req.body.token);
+  await FirebaseService.saveToken(userId, token);
+  res.status(200).send("success");
+});
+
+app.post(`/sample`, async (_, res) => {
+  const {token} = await FirebaseService.getToken("0001");
+  expo.sendPushNotificationsAsync([
+    {
+    to: token,
+    title: "Sinergi Informatika SI",
+    body: "Your Booking Has Been Confirmed",
+   },
+  ]);
+  res.status(200).send("success");
+});
+
+ 
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -49,6 +72,7 @@ sequelize.sync({ force: false }) // Ganti ke true jika ingin reset tabel
     console.error('Error creating database:', error);
   });
 
+
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes); // Routes untuk User
@@ -66,4 +90,4 @@ app.get('/', (req, res) => {
 // Error handler middleware (Tempatkan ini sebagai middleware terakhir)
 app.use(errorHandler);
  
-export default app;  
+export default app;

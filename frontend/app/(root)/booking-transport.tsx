@@ -26,7 +26,7 @@ const CustomAlert = ({
   onClose = () => {},
   autoClose = true,
   duration = 3000
-}) => {
+}) => { 
   const [isVisible, setIsVisible] = useState(visible);
 
   const SUCCESS_COLORS = {

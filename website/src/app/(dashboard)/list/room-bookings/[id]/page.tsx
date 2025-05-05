@@ -136,12 +136,11 @@ const SingleRoomBookingPage = () => {
     
     const apiClient = createApiClient();
     if (!apiClient) return;
-    
+  
     try {
-      // Get current admin ID from localStorage if available
       const adminInfo = localStorage.getItem("adminInfo");
       let approver_id = null;
-      
+  
       if (adminInfo) {
         try {
           const adminData = JSON.parse(adminInfo);
@@ -150,31 +149,46 @@ const SingleRoomBookingPage = () => {
           console.error("Error parsing admin info:", e);
         }
       }
-      
-      // Prepare update data
+  
+      // Prepare the booking update data
       const updateData = {
         status: newStatus,
         approver_id: approver_id,
-        approved_at: new Date().toISOString()
+        approved_at: new Date().toISOString(),
       };
-      
-      // Update booking
-      await apiClient.put(`/room-bookings/${bookingId}`, updateData);
-      
-      // Show success message
-      setStatusMessage({
-        type: 'success',
-        text: `Booking has been ${newStatus.toLowerCase()} successfully.`
-      });
-      
-      // Refresh booking data
-      fetchBookingData();
+  
+      console.log(`Sending update request for booking ${bookingId} with status ${newStatus}`);
+  
+      // Update booking status
+      const response = await apiClient.put(`/room-bookings/${bookingId}`, updateData);
+  
+      // Check response
+      if (response.status === 200) {
+        setStatusMessage({
+          type: 'success',
+          text: `Booking has been ${newStatus.toLowerCase()} successfully.${
+            response.data.emailSent ? ' Notification email sent.' : ''
+          }`
+        });
+  
+        fetchBookingData(); // Refresh booking data
+      } else {
+        setStatusMessage({
+          type: 'error',
+          text: `Failed to update booking. Server responded with status ${response.status}.`
+        });
+      }
     } catch (err) {
       console.error(`Error ${newStatus.toLowerCase()} booking:`, err);
       
+      // Extract detailed error message if available
+      const errorMessage = err.response?.data?.error || 
+                           err.response?.data?.message || 
+                           `Failed to ${newStatus.toLowerCase()} booking. Please try again.`;
+      
       setStatusMessage({
         type: 'error',
-        text: err.response?.data?.message || `Failed to ${newStatus.toLowerCase()} booking. Please try again.`
+        text: errorMessage
       });
     } finally {
       setStatusLoading(false);
@@ -318,7 +332,7 @@ const SingleRoomBookingPage = () => {
                 
                 {/* Organizer info */}
                 <div className="flex items-start mb-6 p-4 bg-sky-50 rounded-2xl">
-                  <div className="flex-shrink-0 w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
+                <div className="flex-shrink-0 w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
                     <User size={20} className="text-sky-500" />
                   </div>
                   <div className="ml-4">
@@ -326,6 +340,11 @@ const SingleRoomBookingPage = () => {
                     <p className="text-lg font-medium text-gray-800">
                       {booking.pic || "Not specified"}
                     </p>
+                    {booking.user_email && (
+                      <p className="text-sm text-gray-500 mt-1">
+                        {booking.user_email}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -393,6 +412,10 @@ const SingleRoomBookingPage = () => {
                   <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
                     <span className="text-gray-500">Person in Charge</span>
                     <span className="font-medium text-gray-800">{booking.pic || "Not specified"}</span>
+                  </li>
+                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                    <span className="text-gray-500">Email</span>
+                    <span className="font-medium text-gray-800 break-words">{booking.user_email || "Not specified"}</span>
                   </li>
                   <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
                     <span className="text-gray-500">Section</span>

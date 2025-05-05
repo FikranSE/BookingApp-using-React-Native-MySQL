@@ -158,23 +158,38 @@ const SingleTransportBookingPage = () => {
         approved_at: new Date().toISOString()
       };
       
+      console.log(`Sending update request for transport booking ${bookingId} with status ${newStatus}`);
+      
       // Update booking
-      await apiClient.put(`/transport-bookings/${bookingId}`, updateData);
+      const response = await apiClient.put(`/transport-bookings/${bookingId}`, updateData);
       
-      // Show success message
-      setStatusMessage({
-        type: 'success',
-        text: `Booking has been ${newStatus.toLowerCase()} successfully.`
-      });
-      
-      // Refresh booking data
-      fetchBookingData();
+      // Check response
+      if (response.status === 200) {
+        setStatusMessage({
+          type: 'success',
+          text: `Booking has been ${newStatus.toLowerCase()} successfully.${
+            response.data.emailSent ? ' Notification email sent.' : ''
+          }`
+        });
+        
+        fetchBookingData(); // Refresh booking data
+      } else {
+        setStatusMessage({
+          type: 'error',
+          text: `Failed to update booking. Server responded with status ${response.status}.`
+        });
+      }
     } catch (err) {
       console.error(`Error ${newStatus.toLowerCase()} booking:`, err);
       
+      // Extract detailed error message if available
+      const errorMessage = err.response?.data?.error || 
+                           err.response?.data?.message || 
+                           `Failed to ${newStatus.toLowerCase()} booking. Please try again.`;
+      
       setStatusMessage({
         type: 'error',
-        text: err.response?.data?.message || `Failed to ${newStatus.toLowerCase()} booking. Please try again.`
+        text: errorMessage
       });
     } finally {
       setStatusLoading(false);
@@ -339,6 +354,11 @@ const SingleTransportBookingPage = () => {
                     <p className="text-lg font-medium text-gray-800">
                       {booking.pic || "Not specified"}
                     </p>
+                    {booking.user_email && (
+                      <p className="text-sm text-gray-500 mt-1">
+                        {booking.user_email}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -412,6 +432,10 @@ const SingleTransportBookingPage = () => {
                     <span className="font-medium text-gray-800">{booking.pic || "Not specified"}</span>
                   </li>
                   <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                    <span className="text-gray-500">Email</span>
+                    <span className="font-medium text-gray-800 break-words">{booking.user_email || "Not specified"}</span>
+                  </li>
+                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
                     <span className="text-gray-500">Section</span>
                     <span className="font-medium text-gray-800">{booking.section || "Not specified"}</span>
                   </li>
@@ -480,22 +504,22 @@ const SingleTransportBookingPage = () => {
                 </div>
               </div>
             )}
-            
-            {/* Navigation links */}
-            <div>
-              <Link 
-                href="/list/transport-bookings" 
-                className="flex items-center text-sky-500 hover:text-sky-600 font-medium transition-colors"
-              >
-                <ArrowLeft size={16} className="mr-2" />
-                Back to Transport Bookings
-              </Link>
-            </div>
-          </div>
-        </div>
+      
+      {/* Navigation links */}
+      <div>
+        <Link 
+          href="/list/transport-bookings" 
+          className="flex items-center text-sky-500 hover:text-sky-600 font-medium transition-colors"
+        >
+          <ArrowLeft size={16} className="mr-2" />
+          Back to Transport Bookings
+        </Link>
       </div>
     </div>
-  );
+  </div>
+</div>
+</div>
+);
 };
 
 export default SingleTransportBookingPage;
