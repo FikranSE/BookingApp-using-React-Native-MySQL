@@ -13,6 +13,10 @@ import {
   Camera, AlertCircle, Users, Eye
 } from "lucide-react";
 
+// Base API URL configuration
+const API_BASE_URL = "https://j9d3hc82-3001.asse.devtunnels.ms";
+const API_ENDPOINT = `${API_BASE_URL}/api`;
+
 type Transport = {
   transport_id: number;
   vehicle_name: string;
@@ -54,6 +58,104 @@ const columns = [
   },
 ];
 
+// Enhanced image URL handling function
+const fixImageUrl = (imageUrl) => {
+  if (!imageUrl) return null;
+  
+  // Log the original URL for debugging
+  console.log(`Original image URL: ${imageUrl}`);
+  
+  let fixedUrl = imageUrl;
+  
+  // Handle local filesystem paths (should be in backend only)
+  if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
+    console.log(`Converting local path to API proxy: ${imageUrl}`);
+    return `/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+  }
+  
+  // Fix double slash issue in URLs
+  if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
+    fixedUrl = imageUrl.replace('//uploads', '/uploads');
+    console.log(`Fixed double slash: ${fixedUrl}`);
+  }
+  
+  // Ensure the URL has the correct protocol (https)
+  if (typeof fixedUrl === 'string' && fixedUrl.startsWith('http://')) {
+    fixedUrl = fixedUrl.replace('http://', 'https://');
+    console.log(`Fixed protocol: ${fixedUrl}`);
+  }
+  
+  // Add the server base URL if the image path is relative without a leading /
+  if (typeof fixedUrl === 'string' && 
+      !fixedUrl.startsWith('http') && 
+      !fixedUrl.startsWith('/') && 
+      !fixedUrl.startsWith('data:')) {
+    fixedUrl = `/${fixedUrl}`;
+    console.log(`Added leading slash: ${fixedUrl}`);
+  }
+  
+  // Handle server domain without protocol
+  if (typeof fixedUrl === 'string' && 
+      fixedUrl.includes('j9d3hc82-3001.asse.devtunnels.ms') && 
+      !fixedUrl.startsWith('http')) {
+    fixedUrl = `https://${fixedUrl}`;
+    console.log(`Added protocol to server URL: ${fixedUrl}`);
+  }
+  
+  // If URL is just a filename (without path), assume it's in uploads
+  if (typeof fixedUrl === 'string' && 
+      !fixedUrl.includes('/') && 
+      !fixedUrl.startsWith('data:')) {
+    fixedUrl = `/uploads/${fixedUrl}`;
+    console.log(`Added uploads path: ${fixedUrl}`);
+  }
+  
+  console.log(`Final fixed URL: ${fixedUrl}`);
+  return fixedUrl;
+};
+
+// Better placeholder image with SVG data URI
+const getPlaceholderImage = () => {
+  // Return a data URI SVG of a car icon as a guaranteed fallback
+  return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24' fill='none' stroke='%23cccccc' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2m2 4h12a2 2 0 0 0 2-2v-1H2v1c0 1.1.9 2 2 2ZM6 16v1m12-1v1'/%3E%3C/svg%3E";
+};
+
+// Reusable Transport Image component
+const TransportImage = ({ 
+  image, 
+  alt, 
+  className = "w-full h-full object-cover", 
+  fallbackIcon = null 
+}) => {
+  const [imgSrc, setImgSrc] = useState(fixImageUrl(image));
+  const [hasError, setHasError] = useState(false);
+  
+  const handleError = () => {
+    if (!hasError) {
+      console.log(`Error loading image: ${imgSrc}`);
+      setHasError(true);
+      setImgSrc(getPlaceholderImage());
+    }
+  };
+  
+  if (!image && !hasError) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        {fallbackIcon || <Car size={20} className="text-gray-300" />}
+      </div>
+    );
+  }
+  
+  return (
+    <img 
+      src={imgSrc}
+      alt={alt || "Transport"}
+      className={className}
+      onError={handleError}
+    />
+  );
+};
+
 const TransportManagePage = () => {
   const router = useRouter();
   const fileInputRef = useRef(null);
@@ -82,23 +184,6 @@ const TransportManagePage = () => {
   const [transportToDelete, setTransportToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Utility function to fix image URLs
-  const fixImageUrl = (imageUrl) => {
-    if (!imageUrl) return null;
-    
-    // Handle local filesystem paths
-    if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
-      return `/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
-    }
-    
-    // Fix double slash issue in URLs
-    if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
-      return imageUrl.replace('//uploads', '/uploads');
-    }
-    
-    return imageUrl;
-  };
-
   // Create a custom axios instance to avoid conflicts 
   const createApiClient = () => {
     // Get token from localStorage
@@ -113,9 +198,9 @@ const TransportManagePage = () => {
     
     setAuthStatus(`Token found (${token.substring(0, 10)}...)`);
     
-    // Create axios instance with auth header
+    // Create axios instance with auth header using API_ENDPOINT constant
     const apiClient = axios.create({
-      baseURL: "https://j9d3hc82-3001.asse.devtunnels.ms/api",
+      baseURL: API_ENDPOINT,
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -416,15 +501,7 @@ const TransportManagePage = () => {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
-  const getPlaceholderImage = () => {
-    // Use a more generic placeholder that's likely to exist in your project
-    // or one from the Room component that already works
-    return "/placeholder-room.jpg"; // If this exists in your project
-    // Alternatively, return a path to any image that definitely exists in your public folder
-    // Or return a data URI for a simple gray box as absolute fallback
-    // return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f0f0f0'/%3E%3Cpath d='M30,30 L70,70 M30,70 L70,30' stroke='%23cccccc' stroke-width='2'/%3E%3C/svg%3E";
-  };
-
+  // Updated renderRow function with TransportImage component
   const renderRow = (item: Transport) => (
     <tr
       key={item.transport_id}
@@ -432,21 +509,11 @@ const TransportManagePage = () => {
     >
       <td className="flex items-center gap-4 p-4">
         <div className="relative w-12 h-12 rounded-md overflow-hidden bg-gray-100">
-          {item.image ? (
-            <img 
-              src={fixImageUrl(item.image)} 
-              alt={item.vehicle_name}
-              className="absolute inset-0 w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).onerror = null;
-                (e.target as HTMLImageElement).src = getPlaceholderImage();
-              }}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <Car size={20} className="text-gray-300" />
-            </div>
-          )}
+          <TransportImage 
+            image={item.image} 
+            alt={item.vehicle_name}
+            fallbackIcon={<Car size={20} className="text-gray-300" />}
+          />
         </div>
         <div className="flex flex-col">
           <h3 className="font-semibold">{item.vehicle_name}</h3>
@@ -703,7 +770,7 @@ const TransportManagePage = () => {
                   )}
                 </div>
                 
-                {/* Image Upload */}
+                {/* Image Upload - Updated with TransportImage component */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Vehicle Image
@@ -719,151 +786,148 @@ const TransportManagePage = () => {
                   <div className="mt-2 aspect-video bg-gray-100 rounded-lg overflow-hidden relative mb-2 border border-gray-200">
                     {previewImage ? (
                       <img
-                        src={previewImage}
-                        alt="Vehicle preview"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : currentTransport && currentTransport.image ? (
-                      <img
-                        src={fixImageUrl(currentTransport.image)}
-                        alt={currentTransport.vehicle_name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).onerror = null;
-                          (e.target as HTMLImageElement).src = getPlaceholderImage();
-                        }}
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center h-full">
-                        <Car size={48} className="text-gray-300 mb-2" />
-                        <p className="text-gray-400 text-sm">No image selected</p>
-                      </div>
-                    )}
-                    
-                    <button
-                      type="button"
-                      onClick={triggerFileInput}
-                      className="absolute bottom-3 right-3 bg-blue-500 text-white rounded-lg p-2 hover:bg-blue-600 transition-colors"
-                    >
-                      <Camera size={20} />
-                    </button>
-                  </div>
-                  {formErrors.image && (
-                    <p className="text-red-500 text-xs mt-1">{formErrors.image}</p>
+                      src={previewImage}
+                      alt="Vehicle preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : currentTransport && currentTransport.image ? (
+                    <TransportImage
+                      image={currentTransport.image}
+                      alt={currentTransport.vehicle_name}
+                      fallbackIcon={<Car size={48} className="text-gray-300 mb-2" />}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <Car size={48} className="text-gray-300 mb-2" />
+                      <p className="text-gray-400 text-sm">No image selected</p>
+                    </div>
                   )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    Upload a JPEG or PNG image (max 5MB). Leave empty to keep the current image.
-                  </p>
+                  
+                  <button
+                    type="button"
+                    onClick={triggerFileInput}
+                    className="absolute bottom-3 right-3 bg-blue-500 text-white rounded-lg p-2 hover:bg-blue-600 transition-colors"
+                  >
+                    <Camera size={20} />
+                  </button>
                 </div>
-              </form>
+                {formErrors.image && (
+                  <p className="text-red-500 text-xs mt-1">{formErrors.image}</p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Upload a JPEG or PNG image (max 5MB). Leave empty to keep the current image.
+                </p>
+              </div>
+            </form>
+          </div>
+          
+          {/* Modal Footer */}
+          <div className="p-4 border-t border-gray-200 flex justify-end space-x-2">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSaving}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center"
+            >
+              {isSaving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save size={18} className="mr-2" />
+                  {isEditMode ? 'Update Transport' : 'Create Transport'}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    
+    {/* Delete Confirmation Modal */}
+    {showDeleteConfirm && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-red-500 to-red-600 p-5 text-white">
+            <div className="flex items-center">
+              <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-3">
+                <Trash2 size={20} />
+              </div>
+              <h2 className="text-xl font-bold">Confirm Deletion</h2>
             </div>
+          </div>
+          
+          {/* Body */}
+          <div className="p-6">
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete this transport? This action cannot be undone and all associated data will be permanently removed.
+            </p>
             
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-gray-200 flex justify-end space-x-2">
+            {/* Get transport details for the transport to be deleted */}
+            {transportToDelete && 
+              <div className="bg-gray-50 p-4 rounded-xl mb-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                    <Car size={24} className="text-gray-500" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="font-medium">
+                      {transports.find(transport => transport.transport_id === transportToDelete)?.vehicle_name || 'Unknown Transport'}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      ID: {transportToDelete}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            }
+            
+            <div className="flex justify-end space-x-3">
               <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setTransportToDelete(null);
+                }}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                disabled={isDeleting}
               >
                 Cancel
               </button>
               <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isSaving}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center"
+                onClick={handleDeleteTransport}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center"
               >
-                {isSaving ? (
+                {isDeleting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
-                    Saving...
+                    Deleting...
                   </>
                 ) : (
                   <>
-                    <Save size={18} className="mr-2" />
-                    {isEditMode ? 'Update Transport' : 'Create Transport'}
+                    <Trash2 size={18} className="mr-2" />
+                    Delete Transport
                   </>
                 )}
               </button>
             </div>
           </div>
         </div>
-      )}
-      
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-<div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-red-500 to-red-600 p-5 text-white">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-3">
-                  <Trash2 size={20} />
-                </div>
-                <h2 className="text-xl font-bold">Confirm Deletion</h2>
-              </div>
-            </div>
-            
-            {/* Body */}
-            <div className="p-6">
-              <p className="text-gray-700 mb-6">
-                Are you sure you want to delete this transport? This action cannot be undone and all associated data will be permanently removed.
-              </p>
-              
-              {/* Get transport details for the transport to be deleted */}
-              {transportToDelete && 
-                <div className="bg-gray-50 p-4 rounded-xl mb-6">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <Car size={24} className="text-gray-500" />
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="font-medium">
-                        {transports.find(transport => transport.transport_id === transportToDelete)?.vehicle_name || 'Unknown Transport'}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        ID: {transportToDelete}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              }
-              
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => {
-                    setShowDeleteConfirm(false);
-                    setTransportToDelete(null);
-                  }}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                  disabled={isDeleting}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteTransport}
-                  disabled={isDeleting}
-                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center"
-                >
-                  {isDeleting ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 size={18} className="mr-2" />
-                      Delete Transport
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+      </div>
+    )}
+  </div>
+);
 };
 
 export default TransportManagePage;
+                      

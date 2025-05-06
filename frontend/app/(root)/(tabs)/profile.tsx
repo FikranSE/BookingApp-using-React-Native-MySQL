@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from "react";
-import { Image, ScrollView, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
+import { Image, ScrollView, Text, TouchableOpacity, View, ActivityIndicator, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { icons } from "@/constants";
 import api from "@/lib/api";
@@ -10,12 +10,23 @@ const Profile = () => {
   const { logout } = useContext(AuthContext);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false); // State untuk mode edit
+  const [updatedUser, setUpdatedUser] = useState<any>({
+    name: '',
+    email: '',
+    phone: '',
+  });
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const response = await api.get('/auth/profile');
         setUser(response.data.user);
+        setUpdatedUser({
+          name: response.data.user.name,
+          email: response.data.user.email,
+          phone: response.data.user.phone,
+        });
       } catch (error) {
         console.error('Gagal mengambil profil:', error);
       } finally {
@@ -28,6 +39,22 @@ const Profile = () => {
   const handleSignOut = async () => {
     await logout();
     // Navigasi kembali ke layar login sudah di-handle oleh context
+  };
+
+  const handleEditProfile = async () => {
+    try {
+      const response = await api.put('https://j9d3hc82-3001.asse.devtunnels.ms/api/auth/edit-profile', {
+        id: user.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+      });
+      // Mengupdate state 'user' dengan data yang baru
+      setUser(response.data.data);
+      setIsEditing(false); // Menyembunyikan mode edit setelah berhasil disubmit
+    } catch (error) {
+      console.error('Gagal mengedit profil:', error);
+    }
   };
 
   // Fungsi untuk mendapatkan inisial dari email
@@ -86,79 +113,114 @@ const Profile = () => {
         {/* Divider */}
         <View className="h-px bg-gray-100 mx-6" />
         
-        
-        {/* Account Settings */}
-        <View className="px-6 pt-8">
-          <Text className="text-sm font-medium text-gray-500 mb-3">ACCOUNT</Text>
-          
-          <TouchableOpacity
-            onPress={() => router.push('/(root)/change-password')}
-            className="flex-row items-center justify-between py-4"
-          >
-            <View className="flex-row items-center">
-              <View className="w-8 h-8 rounded-full bg-sky-100 items-center justify-center mr-3">
-                <Image source={icons.password} className="w-4 h-4" style={{ tintColor: '#0ea5e9' }} />
-              </View>
-              <Text className="text-gray-800">Change Password</Text>
-            </View>
-            <Image
-              source={icons.arrowUp}
-              className="w-4 h-4"
-              style={{ transform: [{ rotate: '90deg' }], tintColor: '#94a3b8' }}
+        {/* Edit Profile Section */}
+        {isEditing ? (
+          <View className="px-6 pt-8">
+            <Text className="text-sm font-medium text-gray-500 mb-3">EDIT PROFILE</Text>
+
+            <TextInput
+              value={updatedUser.name}
+              onChangeText={(text) => setUpdatedUser({ ...updatedUser, name: text })}
+              placeholder="Name"
+              className="py-3 px-4 mb-4 border border-gray-300 rounded-lg shadow-md"
+              style={{ backgroundColor: '#f9fafb'}}
             />
-          </TouchableOpacity>
-          
-          <View className="h-px bg-gray-100" />
-          
-          {/* Support Options */}
-          <TouchableOpacity
-            onPress={() => router.push('/(root)/faq')}
-            className="flex-row items-center justify-between py-4"
-          >
-            <View className="flex-row items-center">
-              <View className="w-8 h-8 rounded-full bg-sky-100 items-center justify-center mr-3">
-                <Image source={icons.faq} className="w-4 h-4" style={{ tintColor: '#0ea5e9' }} />
-              </View>
-              <Text className="text-gray-800">FAQ</Text>
-            </View>
-            <Image
-              source={icons.arrowUp}
-              className="w-4 h-4"
-              style={{ transform: [{ rotate: '90deg' }], tintColor: '#94a3b8' }}
+            <TextInput
+              value={updatedUser.email}
+              onChangeText={(text) => setUpdatedUser({ ...updatedUser, email: text })}
+              placeholder="Email"
+              className="py-3 px-4 mb-4 border border-gray-300 rounded-lg shadow-md"
+              keyboardType="email-address"
+              style={{ backgroundColor: '#f9fafb'}}
             />
-          </TouchableOpacity>
-          
-          <View className="h-px bg-gray-100" />
-          
-          <TouchableOpacity 
-            className="flex-row items-center justify-between py-4"
-          >
-            <View className="flex-row items-center">
-              <View className="w-8 h-8 rounded-full bg-orange-100 items-center justify-center mr-3">
-                <Image source={icons.cs} className="w-4 h-4" style={{ tintColor: '#f97316' }} />
-              </View>
-              <Text className="text-gray-800">Customer Service</Text>
-            </View>
-            <Image
-              source={icons.arrowUp}
-              className="w-4 h-4"
-              style={{ transform: [{ rotate: '90deg' }], tintColor: '#94a3b8' }}
+            <TextInput
+              value={updatedUser.phone}
+              onChangeText={(text) => setUpdatedUser({ ...updatedUser, phone: text })}
+              placeholder="Phone"
+              className="py-3 px-4 mb-4 border border-gray-300 rounded-lg shadow-md"
+              keyboardType="phone-pad"
+              style={{ backgroundColor: '#f9fafb'}}
             />
-          </TouchableOpacity>
-        </View>
-        
+            <TouchableOpacity
+              onPress={handleEditProfile}
+              className="bg-sky-500 py-3 rounded-lg mb-4"
+            >
+              <Text className="text-white text-center font-medium">Save Changes</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setIsEditing(false)}
+              className="bg-gray-300 py-3 rounded-lg"
+            >
+              <Text className="text-center text-gray-800">Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          // Account Settings Section
+          <View className="px-6 pt-8">
+            <Text className="text-sm font-medium text-gray-500 mb-3">ACCOUNT</Text>
+            <TouchableOpacity
+              onPress={() => router.push('/(root)/change-password')}
+              className="flex-row items-center justify-between py-4"
+            >
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 rounded-full bg-sky-100 items-center justify-center mr-3">
+                  <Image source={icons.password} className="w-4 h-4" style={{ tintColor: '#0ea5e9' }} />
+                </View>
+                <Text className="text-gray-800">Change Password</Text>
+              </View>
+              <Image
+                source={icons.arrowUp}
+                className="w-4 h-4"
+                style={{ transform: [{ rotate: '90deg' }], tintColor: '#94a3b8' }}
+              />
+            </TouchableOpacity>
+
+            <View className="h-px bg-gray-100" />
+
+            <TouchableOpacity
+              onPress={() => router.push('/(root)/faq')}
+              className="flex-row items-center justify-between py-4"
+            >
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 rounded-full bg-sky-100 items-center justify-center mr-3">
+                  <Image source={icons.faq} className="w-4 h-4" style={{ tintColor: '#0ea5e9' }} />
+                </View>
+                <Text className="text-gray-800">FAQ</Text>
+              </View>
+              <Image
+                source={icons.arrowUp}
+                className="w-4 h-4"
+                style={{ transform: [{ rotate: '90deg' }], tintColor: '#94a3b8' }}
+              />
+            </TouchableOpacity>
+
+            <View className="h-px bg-gray-100" />
+            
+            <TouchableOpacity 
+              onPress={() => setIsEditing(true)}
+              className="flex-row items-center justify-between py-4"
+            >
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 rounded-full bg-orange-100 items-center justify-center mr-3">
+                  <Image source={icons.person} className="w-4 h-4" style={{ tintColor: '#f97316' }} />
+                </View>
+                <Text className="text-gray-800">Edit Profile</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Sign Out Button - Minimal Design */}
         <View className="px-6 mt-10">
           <TouchableOpacity 
-            onPress={handleSignOut} 
+            onPress={handleSignOut}  
             className="bg-white border border-gray-200 py-4 rounded-xl"
           >
             <Text className="text-center text-sky-500 font-medium">Sign Out</Text>
           </TouchableOpacity>
-        </View>
-        
+        </View> 
       </ScrollView>
-    </SafeAreaView>
+    </SafeAreaView> 
   );
 };
 

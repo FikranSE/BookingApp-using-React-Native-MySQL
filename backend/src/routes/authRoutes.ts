@@ -16,5 +16,7 @@ router.get('/profile', authMiddleware, (req, res) => {
 
 // Rute untuk mengganti password
 router.post('/change-password', authMiddleware, AuthController.changePassword);
+router.put('/edit-profile', authMiddleware, AuthController.editProfile);
+
 
 export default router;

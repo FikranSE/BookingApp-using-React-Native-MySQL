@@ -10,8 +10,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
   BedDouble, Plus, Edit, Trash2, X, Save, 
-  Camera, AlertCircle, Users, Eye
+  Camera, AlertCircle, Users, Eye, ImageOff
 } from "lucide-react";
+
+// Base API URL configuration
+const API_BASE_URL = "https://j9d3hc82-3001.asse.devtunnels.ms";
+const API_ENDPOINT = `${API_BASE_URL}/api`;
 
 type Room = {
   room_id: number;
@@ -62,6 +66,104 @@ const roomTypes = [
   "Big Room"
 ];
 
+// Enhanced image URL handling function
+const fixImageUrl = (imageUrl) => {
+  if (!imageUrl) return null;
+  
+  // Log the original URL for debugging
+  console.log(`Original image URL: ${imageUrl}`);
+  
+  let fixedUrl = imageUrl;
+  
+  // Handle local filesystem paths (should be in backend only)
+  if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
+    console.log(`Converting local path to API proxy: ${imageUrl}`);
+    return `/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+  }
+  
+  // Fix double slash issue in URLs
+  if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
+    fixedUrl = imageUrl.replace('//uploads', '/uploads');
+    console.log(`Fixed double slash: ${fixedUrl}`);
+  }
+  
+  // Ensure the URL has the correct protocol (https)
+  if (typeof fixedUrl === 'string' && fixedUrl.startsWith('http://')) {
+    fixedUrl = fixedUrl.replace('http://', 'https://');
+    console.log(`Fixed protocol: ${fixedUrl}`);
+  }
+  
+  // Add the server base URL if the image path is relative without a leading /
+  if (typeof fixedUrl === 'string' && 
+      !fixedUrl.startsWith('http') && 
+      !fixedUrl.startsWith('/') && 
+      !fixedUrl.startsWith('data:')) {
+    fixedUrl = `/${fixedUrl}`;
+    console.log(`Added leading slash: ${fixedUrl}`);
+  }
+  
+  // Handle server domain without protocol
+  if (typeof fixedUrl === 'string' && 
+      fixedUrl.includes('j9d3hc82-3001.asse.devtunnels.ms') && 
+      !fixedUrl.startsWith('http')) {
+    fixedUrl = `https://${fixedUrl}`;
+    console.log(`Added protocol to server URL: ${fixedUrl}`);
+  }
+  
+  // If URL is just a filename (without path), assume it's in uploads
+  if (typeof fixedUrl === 'string' && 
+      !fixedUrl.includes('/') && 
+      !fixedUrl.startsWith('data:')) {
+    fixedUrl = `/uploads/${fixedUrl}`;
+    console.log(`Added uploads path: ${fixedUrl}`);
+  }
+  
+  console.log(`Final fixed URL: ${fixedUrl}`);
+  return fixedUrl;
+};
+
+// Better placeholder image with SVG data URI
+const getPlaceholderImage = () => {
+  // Return a data URI SVG of a bed icon as a guaranteed fallback
+  return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24' fill='none' stroke='%23cccccc' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 4v16M22 4v16M2 8h20M2 16h20'/%3E%3Cpath d='M4 16V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8'/%3E%3C/svg%3E";
+};
+
+// Reusable Room Image component
+const RoomImage = ({ 
+  image, 
+  alt, 
+  className = "w-full h-full object-cover", 
+  fallbackIcon = null 
+}) => {
+  const [imgSrc, setImgSrc] = useState(fixImageUrl(image));
+  const [hasError, setHasError] = useState(false);
+  
+  const handleError = () => {
+    if (!hasError) {
+      console.log(`Error loading image: ${imgSrc}`);
+      setHasError(true);
+      setImgSrc(getPlaceholderImage());
+    }
+  };
+  
+  if (!image && !hasError) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        {fallbackIcon || <BedDouble size={20} className="text-gray-300" />}
+      </div>
+    );
+  }
+  
+  return (
+    <img 
+      src={imgSrc}
+      alt={alt || "Room"}
+      className={className}
+      onError={handleError}
+    />
+  );
+};
+
 const RoomManagePage = () => {
   const router = useRouter();
   const fileInputRef = useRef(null);
@@ -91,23 +193,6 @@ const RoomManagePage = () => {
   const [roomToDelete, setRoomToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Utility function to fix image URLs
-  const fixImageUrl = (imageUrl) => {
-    if (!imageUrl) return null;
-    
-    // Handle local filesystem paths
-    if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
-      return `/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
-    }
-    
-    // Fix double slash issue in URLs
-    if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
-      return imageUrl.replace('//uploads', '/uploads');
-    }
-    
-    return imageUrl;
-  };
-
   // Create a custom axios instance to avoid conflicts 
   const createApiClient = () => {
     // Get token from localStorage
@@ -122,9 +207,9 @@ const RoomManagePage = () => {
     
     setAuthStatus(`Token found (${token.substring(0, 10)}...)`);
     
-    // Create axios instance with auth header
+    // Create axios instance with auth header using API_ENDPOINT constant
     const apiClient = axios.create({
-      baseURL: "https://j9d3hc82-3001.asse.devtunnels.ms/api",
+      baseURL: API_ENDPOINT,
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -428,10 +513,7 @@ const RoomManagePage = () => {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
-  const getPlaceholderImage = () => {
-    return "/placeholder-room.jpg"; // Use a public image in your project
-  };
-
+  // Updated renderRow function with RoomImage component
   const renderRow = (item: Room) => (
     <tr
       key={item.room_id}
@@ -439,21 +521,11 @@ const RoomManagePage = () => {
     >
       <td className="flex items-center gap-4 p-4">
         <div className="relative w-12 h-12 rounded-md overflow-hidden bg-gray-100">
-          {item.image ? (
-            <img 
-              src={fixImageUrl(item.image)} 
-              alt={item.room_name}
-              className="absolute inset-0 w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).onerror = null;
-                (e.target as HTMLImageElement).src = getPlaceholderImage();
-              }}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <BedDouble size={20} className="text-gray-300" />
-            </div>
-          )}
+          <RoomImage 
+            image={item.image} 
+            alt={item.room_name}
+            fallbackIcon={<BedDouble size={20} className="text-gray-300" />}
+          />
         </div>
         <div className="flex flex-col">
           <h3 className="font-semibold">{item.room_name}</h3>
@@ -478,14 +550,14 @@ const RoomManagePage = () => {
           </Link>
           <button
             onClick={() => handleEditRoom(item)}
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaBlue text-white bg-orange-300 hover:bg-orange-500"
+            className="w-7 h-7 flex items-center justify-center rounded-full bg-orange-300 text-white hover:bg-orange-500"
             title="Edit Room"
           >
             <Edit size={14} />
           </button>
           <button
             onClick={() => handleDeleteClick(item.room_id)}
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaRed bg-red-300 text-white hover:bg-red-600"
+            className="w-7 h-7 flex items-center justify-center rounded-full bg-red-300 text-white hover:bg-red-500"
             title="Delete Room"
           >
             <Trash2 size={14} />
@@ -727,7 +799,7 @@ const RoomManagePage = () => {
                   />
                 </div>
                 
-                {/* Image Upload */}
+                {/* Image Upload - Updated with RoomImage component */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Room Image
@@ -748,14 +820,10 @@ const RoomManagePage = () => {
                         className="w-full h-full object-cover"
                       />
                     ) : currentRoom && currentRoom.image ? (
-                      <img
-                        src={fixImageUrl(currentRoom.image)}
+                      <RoomImage
+                        image={currentRoom.image}
                         alt={currentRoom.room_name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).onerror = null;
-                          (e.target as HTMLImageElement).src = getPlaceholderImage();
-                        }}
+                        fallbackIcon={<BedDouble size={48} className="text-gray-300 mb-2" />}
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center h-full">
@@ -810,7 +878,7 @@ const RoomManagePage = () => {
                 )}
               </button>
             </div>
-            </div>
+          </div>
         </div>
       )}
       

@@ -3,7 +3,10 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['localhost'],
+    domains: [
+      'j9d3hc82-3001.asse.devtunnels.ms',
+      'localhost',
+    ],
     remotePatterns: [
       {
         protocol: 'http',

@@ -2,6 +2,23 @@ import { Request, Response } from 'express';
 import AuthService from '../services/authService';
 
 class AuthController {
+
+  public static async editProfile(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.id; // Assuming the user ID is added to the request by an authentication middleware
+      const { name, email, phone, password } = req.body;
+
+      // Call the AuthService to update the user's profile
+      const result = await AuthService.editProfile(userId, { name, email, phone, password });
+
+      res.status(200).json({
+        message: 'Profil berhasil diperbarui',
+        data: result,
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
   // Handler untuk registrasi
   public static async register(req: Request, res: Response) {
     try {
