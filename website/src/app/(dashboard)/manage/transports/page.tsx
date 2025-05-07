@@ -575,7 +575,7 @@ const TransportManagePage = () => {
           </button>
           <button
             onClick={() => window.location.reload()}
-            className="text-blue-500 hover:underline text-xs"
+            className="text-sky-500 hover:underline text-xs"
           >
             Reload page
           </button>
@@ -607,15 +607,15 @@ const TransportManagePage = () => {
         <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
           <TableSearch />
           <div className="flex items-center gap-4 self-end">
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow">
+            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-sky-300">
               <Image src="/filter.png" alt="" width={14} height={14} />
             </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow">
+            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-sky-300">
               <Image src="/sort.png" alt="" width={14} height={14} />
             </button>
             <button 
               onClick={handleAddTransport}
-              className="h-9 px-4 flex items-center justify-center rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
+              className="h-9 px-4 flex items-center justify-center rounded-full bg-lamaYellow text-sm hover:bg-yellow-400 transition-colors"
             >
               <Plus size={18} className="mr-1" />
               <span className="font-medium">Add Transport</span>
@@ -628,7 +628,7 @@ const TransportManagePage = () => {
       {loading && (
         <div className="flex-1 flex items-center justify-center h-64">
           <div className="flex flex-col items-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mb-4"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sky-500 mb-4"></div>
             <p className="text-gray-600">Loading transports...</p>
           </div>
         </div>
@@ -660,7 +660,7 @@ const TransportManagePage = () => {
           <p className="text-gray-500 mb-6">Get started by adding your first transport.</p>
           <button 
             onClick={handleAddTransport}
-            className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center mx-auto"
+            className="px-6 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors flex items-center mx-auto"
           >
             <Plus size={18} className="mr-2" />
             Add New Transport
@@ -681,7 +681,7 @@ const TransportManagePage = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-2xl w-full max-h-[90vh] flex flex-col">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-blue-400 to-blue-500 p-5 text-white">
+            <div className="bg-gradient-to-r from-sky-400 to-sky-500 p-5 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-3">
@@ -713,7 +713,7 @@ const TransportManagePage = () => {
                     name="vehicle_name"
                     value={formData.vehicle_name}
                     onChange={handleInputChange}
-                    className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300 ${
+                    className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-sky-300 ${
                       formErrors.vehicle_name ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="Enter vehicle name"
@@ -733,7 +733,7 @@ const TransportManagePage = () => {
                     name="driver_name"
                     value={formData.driver_name}
                     onChange={handleInputChange}
-                    className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300 ${
+                    className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-sky-300 ${
                       formErrors.driver_name ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="Enter driver name"
@@ -756,7 +756,7 @@ const TransportManagePage = () => {
                       onChange={handleInputChange}
                       min="1"
                       max="100"
-                      className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300 ${
+                      className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-sky-300 ${
                         formErrors.capacity ? 'border-red-500' : 'border-gray-300'
                       }`}
                     />
@@ -806,7 +806,7 @@ const TransportManagePage = () => {
                   <button
                     type="button"
                     onClick={triggerFileInput}
-                    className="absolute bottom-3 right-3 bg-blue-500 text-white rounded-lg p-2 hover:bg-blue-600 transition-colors"
+                    className="absolute bottom-3 right-3 bg-sky-500 text-white rounded-lg p-2 hover:bg-sky-600 transition-colors"
                   >
                     <Camera size={20} />
                   </button>
@@ -834,7 +834,7 @@ const TransportManagePage = () => {
               type="button"
               onClick={handleSubmit}
               disabled={isSaving}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center"
+              className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors disabled:opacity-50 flex items-center"
             >
               {isSaving ? (
                 <>

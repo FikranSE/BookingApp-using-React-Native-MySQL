@@ -576,7 +576,7 @@ const UserManagePage = () => {
       className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
     >
       <td className="flex items-center gap-4 p-4">
-        <div className="relative w-12 h-12 rounded-full overflow-hidden bg-blue-100 flex items-center justify-center text-blue-500 font-semibold">
+        <div className="relative w-12 h-12 rounded-full overflow-hidden bg-sky-100 flex items-center justify-center text-sky-500 font-semibold">
           {getInitials(item.name)}
         </div>
         <div className="flex flex-col">
@@ -641,7 +641,7 @@ const UserManagePage = () => {
           </button>
           <button
             onClick={() => fetchUsers()}
-            className="text-blue-500 hover:underline text-xs"
+            className="text-sky-500 hover:underline text-xs"
           >
             Reload users
           </button>
@@ -673,15 +673,15 @@ const UserManagePage = () => {
         <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
           <TableSearch />
           <div className="flex items-center gap-4 self-end">
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow">
+            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-sky-300">
               <Image src="/filter.png" alt="" width={14} height={14} />
             </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow">
+            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-sky-300">
               <Image src="/sort.png" alt="" width={14} height={14} />
             </button>
             <button 
               onClick={handleAddUser}
-              className="h-9 px-4 flex items-center justify-center rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
+              className="h-9 px-4 flex items-center justify-center rounded-full bg-lamaYellow text-sm hover:bg-yellow-400 transition-colors"
             >
               <Plus size={18} className="mr-1" />
               <span className="font-medium">Add User</span>
@@ -689,7 +689,7 @@ const UserManagePage = () => {
             {/* Add Import Excel Button Here */}
             <button 
               onClick={handleOpenImportModal}
-              className="h-9 px-4 flex items-center justify-center rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+              className="h-9 px-4 flex items-center justify-center rounded-full bg-sky-500 text-white text-sm hover:bg-sky-600 transition-colors"
             >
               <Upload size={18} className="mr-1" />
               <span className="font-medium">Import Excel</span>
@@ -702,7 +702,7 @@ const UserManagePage = () => {
       {loading && (
         <div className="flex-1 flex items-center justify-center h-64">
           <div className="flex flex-col items-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mb-4"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sky-500 mb-4"></div>
             <p className="text-gray-600">Loading users...</p>
           </div>
         </div>
@@ -734,7 +734,7 @@ const UserManagePage = () => {
           <p className="text-gray-500 mb-6">Get started by adding your first user.</p>
           <button 
             onClick={handleAddUser}
-            className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center mx-auto"
+            className="px-6 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors flex items-center mx-auto"
           >
             <Plus size={18} className="mr-2" />
             Add New User
@@ -755,7 +755,7 @@ const UserManagePage = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full max-h-[90vh] flex flex-col">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-blue-400 to-blue-500 p-5 text-white">
+            <div className="bg-gradient-to-r from-sky-400 to-sky-500 p-5 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-3">
@@ -787,7 +787,7 @@ const UserManagePage = () => {
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300 ${
+                    className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-sky-300 ${
                       formErrors.name ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="Enter full name"
@@ -807,7 +807,7 @@ const UserManagePage = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300 ${
+                    className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-sky-300 ${
                       formErrors.email ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="Enter email address"
@@ -827,7 +827,7 @@ const UserManagePage = () => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
-                    className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300 ${
+                    className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-sky-300 ${
                       formErrors.phone ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="Enter phone number"
@@ -851,7 +851,7 @@ const UserManagePage = () => {
                       name="password"
                       value={formData.password}
                       onChange={handleInputChange}
-                      className={`w-full p-2 pl-9 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300 ${
+                      className={`w-full p-2 pl-9 border rounded-lg outline-none focus:ring-2 focus:ring-sky-300 ${
                         formErrors.password ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder={isEditMode ? "Leave blank to keep current password" : "Enter password"}
@@ -877,7 +877,7 @@ const UserManagePage = () => {
                       name="confirmPassword"
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
-                      className={`w-full p-2 pl-9 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300 ${
+                      className={`w-full p-2 pl-9 border rounded-lg outline-none focus:ring-2 focus:ring-sky-300 ${
                         formErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder={isEditMode ? "Confirm new password" : "Confirm password"}
@@ -904,7 +904,7 @@ const UserManagePage = () => {
                 type="button"
                 onClick={handleSubmit}
                 disabled={isSaving}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center"
+                className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors disabled:opacity-50 flex items-center"
               >
                 {isSaving ? (
                   <>
@@ -928,7 +928,7 @@ const UserManagePage = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full max-h-[90vh] flex flex-col">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-blue-400 to-blue-500 p-5 text-white">
+            <div className="bg-gradient-to-r from-sky-400 to-sky-500 p-5 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-3">
@@ -957,7 +957,7 @@ const UserManagePage = () => {
                   </label>
                   <button
                     onClick={generateExcelTemplate}
-                    className="text-xs text-blue-500 hover:text-blue-700 flex items-center"
+                    className="text-xs text-sky-500 hover:text-sky-700 flex items-center"
                   >
                     <Download size={14} className="mr-1" />
                     Download Template
@@ -966,9 +966,9 @@ const UserManagePage = () => {
                 
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
                   {excelFile ? (
-                    <div className="flex items-center justify-between bg-blue-50 p-3 rounded">
+                    <div className="flex items-center justify-between bg-sky-50 p-3 rounded">
                       <div className="flex items-center">
-                        <FileText size={20} className="text-blue-500 mr-2" />
+                        <FileText size={20} className="text-sky-500 mr-2" />
                         <div className="text-sm font-medium text-gray-700 truncate max-w-[200px]">
                           {excelFile.name}
                         </div>
@@ -993,7 +993,7 @@ const UserManagePage = () => {
                       </p>
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="px-4 py-2 bg-blue-100 text-blue-600 rounded-md text-sm font-medium hover:bg-blue-200"
+                        className="px-4 py-2 bg-sky-100 text-sky-600 rounded-md text-sm font-medium hover:bg-sky-200"
                       >
                         Select Excel File
                       </button>
@@ -1027,7 +1027,7 @@ const UserManagePage = () => {
                   </div>
                   <div className="p-4">
                     <div className="grid grid-cols-3 gap-4 mb-4">
-                      <div className="bg-blue-50 p-3 rounded-lg text-center">
+                      <div className="bg-sky-50 p-3 rounded-lg text-center">
                         <p className="text-sm text-gray-500">Processed</p>
                         <p className="text-xl font-semibold text-gray-700">{importResults.totalProcessed}</p>
                       </div>
@@ -1085,7 +1085,7 @@ const UserManagePage = () => {
                   type="button"
                   onClick={handleImportExcel}
                   disabled={!excelFile || isImporting}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                 >
                   {isImporting ? (
                     <>
@@ -1129,7 +1129,7 @@ const UserManagePage = () => {
               {userToDelete && 
                 <div className="bg-gray-50 p-4 rounded-xl mb-6">
                   <div className="flex items-center">
-                    <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-500 font-semibold">
+                    <div className="flex-shrink-0 w-12 h-12 bg-sky-100 rounded-full flex items-center justify-center text-sky-500 font-semibold">
                       {getInitials(users.find(user => user.id === userToDelete)?.name || 'Unknown User')}
                     </div>
                     <div className="ml-4">

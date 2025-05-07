@@ -1,9 +1,10 @@
 // src/routes/adminAuthRoutes.ts
 import express from 'express';
-import { adminLogin, adminRegister } from '../controllers/adminAuthController';
+import { adminLogin, adminRegister, editProfile } from '../controllers/adminAuthController';
 import { body } from 'express-validator';
 import rateLimit from 'express-rate-limit';
 import { validate } from '../middlewares/validateMiddleware';
+import { profileAuthMiddleware } from '../middlewares/adminAuthMiddleware';
 
 const router = express.Router();
 
@@ -38,6 +39,19 @@ router.post(
   ],
   validate,
   adminLogin
+);
+
+// UPDATED: Apply middleware to ensure admin_id is available for the profile update
+router.put(
+  '/profile',
+  profileAuthMiddleware, // Use the dedicated middleware for profile
+  [
+    body('username').optional().notEmpty().withMessage('Username tidak boleh kosong.'),
+    body('email').optional().isEmail().withMessage('Email tidak valid.'),
+    body('password').optional().isLength({ min: 6 }).withMessage('Password harus minimal 6 karakter.'),
+  ],
+  validate,
+  editProfile
 );
 
 export default router;
