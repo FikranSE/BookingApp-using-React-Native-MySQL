@@ -13,7 +13,7 @@ dotenv.config();
 const SERVER_URL = process.env.SERVER_URL || 'https://j9d3hc82-3001.asse.devtunnels.ms';
 
 // IMPORTANT: This path must match the one in app.js and multerConfig.ts
-const uploadsDir = path.join(__dirname, 'uploads');
+const uploadsDir = path.join(__dirname, '../utils/uploads');
 
 class TransportController {
   // Create Transport with image upload
@@ -22,7 +22,7 @@ class TransportController {
       if (err) {
         return res.status(400).json({ error: err.message });
       }
-
+  
       try {
         let imageUrl = null;
         
@@ -36,17 +36,35 @@ class TransportController {
             console.log(`Verified file exists at: ${req.file.path}`);
             
             // Make sure URL doesn't have double slashes
-            imageUrl = `${SERVER_URL}/uploads/${req.file.filename}`;
+            // Store the relative URL path in the database, not the full server URL
+            imageUrl = `/uploads/${req.file.filename}`;
             console.log(`Image URL created: ${imageUrl}`);
           } else {
             console.error(`WARNING: File does not exist at path: ${req.file.path}`);
             return res.status(500).json({ error: 'Failed to save image file' });
           }
         }
-
+  
         const transportData = { ...req.body, image: imageUrl };
         const transport = await TransportService.createTransport(transportData);
-        res.status(201).json(transport);
+        
+        // For the response, we can add the full URL
+        if (transport && transport.image) {
+          // Keep the original relative path in the database record
+          // But return the full URL in the API response
+          const fullImageUrl = `${SERVER_URL}${transport.image}`;
+          console.log(`Transport created with full image URL: ${fullImageUrl}`);
+          
+          // Create a new object with the full URL for the response
+          const responseTransport = {
+            ...transport.toJSON(),
+            image: fullImageUrl
+          };
+          
+          res.status(201).json(responseTransport);
+        } else {
+          res.status(201).json(transport);
+        }
       } catch (error: any) {
         // If there was an error and we uploaded a file, clean it up
         if (req.file && req.file.path) {
@@ -67,25 +85,29 @@ class TransportController {
     try {
       const transports = await TransportService.getAllTransports();
       
-      // Make sure all image URLs are properly formatted
+      // Make sure all image URLs are properly formatted with full server URL
       const formattedTransports = transports.map(transport => {
-        if (transport.image) {
+        const transportJson = transport.toJSON();
+        
+        if (transportJson.image) {
           // Check if image URL is already a full URL
-          if (!transport.image.startsWith('http')) {
-            transport.image = `${SERVER_URL}${transport.image.startsWith('/') ? '' : '/'}${transport.image}`;
+          if (!transportJson.image.startsWith('http')) {
+            transportJson.image = `${SERVER_URL}${transportJson.image.startsWith('/') ? '' : '/'}${transportJson.image}`;
           }
           
-          // Check if image file exists on server (for debugging)
+          // Debug: check if image file exists on server
           try {
-            const imageName = transport.image.split('/').pop();
-            const localPath = path.join(uploadsDir, imageName);
+            // Extract the filename from the path
+            const imageFilename = transportJson.image.split('/').pop();
+            // Construct the file path based on where the file should be
+            const localPath = path.join(uploadsDir, imageFilename);
             const exists = fs.existsSync(localPath);
-            console.log(`Image ${transport.image} exists on server: ${exists ? 'YES' : 'NO'}, local path: ${localPath}`);
+            console.log(`Image ${transportJson.image} exists on server: ${exists ? 'YES' : 'NO'}, local path: ${localPath}`);
           } catch (e) {
             console.error(`Error checking image existence: ${e.message}`);
           }
         }
-        return transport;
+        return transportJson;
       });
       
       res.status(200).json(formattedTransports);

@@ -4,13 +4,17 @@ import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
-import TableSearch from "@/components/TableSearch";
+import TableSearch from "@/components/TableSearch"; // This is our enhanced component
+import FilterDropdown from "@/components/FilterDropdown"; // Our new filter component
+import SortDropdown, { SortDirection } from "@/components/SortDropdown"; // Our new sort component
+import CapacityFilter from "@/components/CapacityFilter"; // Our capacity range filter
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
   BedDouble, Plus, Edit, Trash2, X, Save, 
-  Camera, AlertCircle, Users, Eye, ImageOff
+  Camera, AlertCircle, Users, Eye, ImageOff,
+  Filter as FilterIcon
 } from "lucide-react";
 
 // Base API URL configuration
@@ -70,7 +74,6 @@ const roomTypes = [
 const fixImageUrl = (imageUrl) => {
   if (!imageUrl) return null;
   
-  // Log the original URL for debugging
   console.log(`Original image URL: ${imageUrl}`);
   
   let fixedUrl = imageUrl;
@@ -93,29 +96,27 @@ const fixImageUrl = (imageUrl) => {
     console.log(`Fixed protocol: ${fixedUrl}`);
   }
   
+  // For absolute URLs that include the server domain, keep them as-is
+  if (typeof fixedUrl === 'string' && fixedUrl.startsWith('https://')) {
+    console.log(`Using absolute URL as-is: ${fixedUrl}`);
+    return fixedUrl;
+  }
+  
+  // For relative URLs starting with /uploads, prefix with API_BASE_URL
+  if (typeof fixedUrl === 'string' && fixedUrl.startsWith('/uploads')) {
+    fixedUrl = `${API_BASE_URL}${fixedUrl}`;
+    console.log(`Added API base URL to uploads path: ${fixedUrl}`);
+    return fixedUrl;
+  }
+  
   // Add the server base URL if the image path is relative without a leading /
   if (typeof fixedUrl === 'string' && 
       !fixedUrl.startsWith('http') && 
       !fixedUrl.startsWith('/') && 
       !fixedUrl.startsWith('data:')) {
-    fixedUrl = `/${fixedUrl}`;
-    console.log(`Added leading slash: ${fixedUrl}`);
-  }
-  
-  // Handle server domain without protocol
-  if (typeof fixedUrl === 'string' && 
-      fixedUrl.includes('j9d3hc82-3001.asse.devtunnels.ms') && 
-      !fixedUrl.startsWith('http')) {
-    fixedUrl = `https://${fixedUrl}`;
-    console.log(`Added protocol to server URL: ${fixedUrl}`);
-  }
-  
-  // If URL is just a filename (without path), assume it's in uploads
-  if (typeof fixedUrl === 'string' && 
-      !fixedUrl.includes('/') && 
-      !fixedUrl.startsWith('data:')) {
-    fixedUrl = `/uploads/${fixedUrl}`;
-    console.log(`Added uploads path: ${fixedUrl}`);
+    fixedUrl = `${API_BASE_URL}/uploads/${fixedUrl}`;
+    console.log(`Created full URL: ${fixedUrl}`);
+    return fixedUrl;
   }
   
   console.log(`Final fixed URL: ${fixedUrl}`);
@@ -193,6 +194,27 @@ const RoomManagePage = () => {
   const [roomToDelete, setRoomToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // New state for search, filter, and sort
+  const [searchText, setSearchText] = useState("");
+  const [typeFilters, setTypeFilters] = useState<string[]>([]);
+  const [capacityFilter, setCapacityFilter] = useState<{min: number, max: number} | null>(null);
+  const [sorting, setSorting] = useState<{field: string, direction: SortDirection} | null>(null);
+  const [filteredRooms, setFilteredRooms] = useState<Room[]>([]);
+  
+  // Prepare filter options
+  const typeFilterOptions = roomTypes.map(type => ({
+    id: type,
+    label: type
+  }));
+  
+  // Prepare sort options
+  const sortOptions = [
+    { id: "room_name", label: "Room Name" },
+    { id: "room_type", label: "Room Type" },
+    { id: "capacity", label: "Capacity" },
+    { id: "createdAt", label: "Date Created" }
+  ];
+
   // Create a custom axios instance to avoid conflicts 
   const createApiClient = () => {
     // Get token from localStorage
@@ -222,6 +244,65 @@ const RoomManagePage = () => {
   useEffect(() => {
     fetchRooms();
   }, [router]);
+
+  // Apply all filters and sort whenever the data or filter criteria change
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [rooms, searchText, typeFilters, capacityFilter, sorting]);
+
+  // Apply search, filters, and sorting to the rooms data
+  const applyFiltersAndSort = () => {
+    let result = [...rooms];
+    
+    // Apply search filter
+    if (searchText) {
+      const searchLower = searchText.toLowerCase();
+      result = result.filter(room => 
+        room.room_name.toLowerCase().includes(searchLower) ||
+        room.room_type.toLowerCase().includes(searchLower) ||
+        (room.facilities && room.facilities.toLowerCase().includes(searchLower)) ||
+        room.room_id.toString().includes(searchLower)
+      );
+    }
+    
+    // Apply room type filter
+    if (typeFilters.length > 0) {
+      result = result.filter(room => typeFilters.includes(room.room_type));
+    }
+    
+    // Apply capacity filter
+    if (capacityFilter) {
+      result = result.filter(room => 
+        room.capacity >= capacityFilter.min && room.capacity <= capacityFilter.max
+      );
+    }
+    
+    // Apply sorting
+    if (sorting) {
+      result.sort((a, b) => {
+        let valueA = a[sorting.field];
+        let valueB = b[sorting.field];
+        
+        // Handle string comparisons
+        if (typeof valueA === 'string') {
+          valueA = valueA.toLowerCase();
+          valueB = valueB.toLowerCase();
+        }
+        
+        // Handle date comparisons
+        if (sorting.field === 'createdAt' || sorting.field === 'updatedAt') {
+          valueA = new Date(valueA).getTime();
+          valueB = new Date(valueB).getTime();
+        }
+        
+        if (valueA < valueB) return sorting.direction === 'asc' ? -1 : 1;
+        if (valueA > valueB) return sorting.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    
+    setFilteredRooms(result);
+  };
 
   const fetchRooms = async () => {
     setLoading(true);
@@ -254,6 +335,31 @@ const RoomManagePage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle search input changes
+  const handleSearch = (value: string) => {
+    setSearchText(value);
+  };
+  
+  // Handle room type filter changes
+  const handleTypeFilterChange = (selected: string[]) => {
+    setTypeFilters(selected);
+  };
+  
+  // Handle capacity filter changes
+  const handleCapacityFilter = (min: number, max: number) => {
+    setCapacityFilter({ min, max });
+  };
+  
+  // Clear capacity filter
+  const clearCapacityFilter = () => {
+    setCapacityFilter(null);
+  };
+  
+  // Handle sorting changes
+  const handleSort = (field: string, direction: SortDirection) => {
+    setSorting({ field, direction });
   };
 
   // Open modal for creating a new room
@@ -567,6 +673,10 @@ const RoomManagePage = () => {
     </tr>
   );
 
+  // Calculate filter counts for display in UI
+  const activeFilterCount = (typeFilters.length > 0 ? 1 : 0) + 
+                           (capacityFilter ? 1 : 0);
+
   return (
     <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
       {/* Auth status (for debugging - remove in production) */}
@@ -617,14 +727,32 @@ const RoomManagePage = () => {
       <div className="flex items-center justify-between mb-6">
         <h1 className="hidden md:block text-lg font-semibold">Manage Rooms</h1>
         <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-          <TableSearch />
+          <TableSearch 
+            value={searchText} 
+            onSearch={handleSearch} 
+            placeholder="Search rooms..." 
+          />
           <div className="flex items-center gap-4 self-end">
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-sky-300">
-              <Image src="/filter.png" alt="" width={14} height={14} />
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-sky-300">
-              <Image src="/sort.png" alt="" width={14} height={14} />
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <FilterDropdown
+                title="Room Type"
+                options={typeFilterOptions}
+                selectedOptions={typeFilters}
+                onChange={handleTypeFilterChange}
+              />
+              <CapacityFilter
+                minValue={1}
+                maxValue={50}
+                onFilter={handleCapacityFilter}
+                isActive={capacityFilter !== null}
+                onClear={clearCapacityFilter}
+              />
+              <SortDropdown
+                options={sortOptions}
+                currentSort={sorting}
+                onSort={handleSort}
+              />
+            </div>
             <button 
               onClick={handleAddRoom}
               className="h-9 px-4 flex items-center justify-center text-sm rounded-full bg-lamaYellow hover:bg-yellow-400 transition-colors"
@@ -635,6 +763,48 @@ const RoomManagePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Active Filters */}
+      {activeFilterCount > 0 && (
+        <div className="mb-4 flex items-center">
+          <span className="text-sm text-gray-500 mr-2">Active filters:</span>
+          <div className="flex flex-wrap gap-2">
+            {typeFilters.length > 0 && (
+              <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
+                <span>Types: {typeFilters.length}</span>
+                <button 
+                  onClick={() => setTypeFilters([])} 
+                  className="ml-1 text-sky-500 hover:text-sky-700"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            {capacityFilter && (
+              <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
+                <span>Capacity: {capacityFilter.min}-{capacityFilter.max}</span>
+                <button 
+                  onClick={clearCapacityFilter} 
+                  className="ml-1 text-sky-500 hover:text-sky-700"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            <button 
+              onClick={() => {
+                setTypeFilters([]);
+                clearCapacityFilter();
+                setSorting(null);
+                setSearchText("");
+              }}
+              className="text-xs text-gray-500 hover:text-gray-700 underline"
+            >
+              Clear all
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Loading state */}
       {loading && (
@@ -680,10 +850,37 @@ const RoomManagePage = () => {
         </div>
       )}
 
+      {/* No Results After Filtering */}
+      {!loading && !error && rooms.length > 0 && filteredRooms.length === 0 && (
+        <div className="bg-gray-50 rounded-xl p-10 text-center">
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center">
+              <FilterIcon size={32} className="text-gray-300" />
+            </div>
+          </div>
+          <h3 className="font-bold text-lg mb-2">No Matching Rooms</h3>
+          <p className="text-gray-500 mb-6">No rooms match your current search or filters.</p>
+          <button 
+            onClick={() => {
+              setTypeFilters([]);
+              clearCapacityFilter();
+              setSorting(null);
+              setSearchText("");
+            }}
+            className="px-6 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors flex items-center mx-auto"
+          >
+            Clear All Filters
+          </button>
+        </div>
+      )}
+
       {/* Data table */}
-      {!loading && !error && rooms.length > 0 && (
+      {!loading && !error && filteredRooms.length > 0 && (
         <>
-          <Table columns={columns} renderRow={renderRow} data={rooms} />
+          <div className="text-xs text-gray-500 mb-2">
+            Showing {filteredRooms.length} of {rooms.length} rooms
+          </div>
+          <Table columns={columns} renderRow={renderRow} data={filteredRooms} />
           <Pagination />
         </>
       )}

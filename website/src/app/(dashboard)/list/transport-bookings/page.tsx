@@ -6,14 +6,17 @@ import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
+import BookingStatusFilter from "@/components/BookingStatusFilter";
+import DateRangeFilter from "@/components/DateRangeFilter";
+import BookingSortDropdown from "@/components/BookingSortDropdown";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, Trash2, Car } from "lucide-react"; // Import necessary icons
+import { 
+  Eye, Trash2, Car, MapPin, Calendar, CheckCircle, XCircle, Clock,
+  Filter as FilterIcon, X, ArrowRight
+} from "lucide-react";
 
-// This code implements the updated delete confirmation for both TransportBookingListPage and RoomBookingListPage
-
-// For TransportBookingListPage:
 type TransportBooking = {
   booking_id: number;
   user_id: number;
@@ -34,6 +37,26 @@ type TransportBooking = {
   updatedAt: string;
 };
 
+type SortDirection = 'asc' | 'desc';
+
+type DateFilter = {
+  startDate: string | null;
+  endDate: string | null;
+};
+
+// Columns definition
+const columns = [
+  { header: "Booking ID", accessor: "booking_id" },
+  { header: "PIC", accessor: "pic" },
+  { header: "Agenda", accessor: "agenda", className: "hidden md:table-cell" },
+  { header: "Start Time", accessor: "start_time", className: "hidden md:table-cell" },
+  { header: "End Time", accessor: "end_time", className: "hidden lg:table-cell" },
+  { header: "Transport ID", accessor: "transport_id", className: "hidden lg:table-cell" },
+  { header: "Destination", accessor: "destination", className: "hidden md:table-cell" },
+  { header: "Status", accessor: "status", className: "hidden md:table-cell" },
+  { header: "Actions", accessor: "action" },
+];
+
 const TransportBookingListPage = () => {
   const router = useRouter();
   const [transportBookings, setTransportBookings] = useState<TransportBooking[]>([]);
@@ -45,6 +68,24 @@ const TransportBookingListPage = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [bookingToDelete, setBookingToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // New state for search, filter, and sort
+  const [searchText, setSearchText] = useState("");
+  const [statusFilters, setStatusFilters] = useState<string[]>([]);
+  const [dateFilter, setDateFilter] = useState<DateFilter>({ startDate: null, endDate: null });
+  const [sorting, setSorting] = useState<{ field: string; direction: SortDirection } | null>(null);
+  const [filteredBookings, setFilteredBookings] = useState<TransportBooking[]>([]);
+  const [destinationFilter, setDestinationFilter] = useState<string>("");
+
+  // Sort options
+  const sortOptions = [
+    { id: "booking_id", label: "Booking ID" },
+    { id: "booking_date", label: "Booking Date" },
+    { id: "agenda", label: "Agenda" },
+    { id: "start_time", label: "Start Time" },
+    { id: "status", label: "Status" },
+    { id: "destination", label: "Destination" }
+  ];
 
   // Create a custom axios instance to avoid conflicts 
   const createApiClient = () => {
@@ -71,45 +112,160 @@ const TransportBookingListPage = () => {
     return apiClient;
   };
 
+  // Apply search, filters, and sorting
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [transportBookings, searchText, statusFilters, dateFilter, sorting, destinationFilter]);
+
   // Fetch data on component mount
   useEffect(() => {
-    const fetchTransportBookings = async () => {
-      setLoading(true);
-      setError(null);
-      
-      const apiClient = createApiClient();
-      if (!apiClient) return;
-      
-      try {
-        console.log("Fetching transport bookings...");
-        const debugHeaders = apiClient.defaults.headers;
-        console.log("Request headers:", debugHeaders);
+    fetchTransportBookings();
+  }, []);
+
+  // Apply all filters and sorting
+  const applyFiltersAndSort = () => {
+    let result = [...transportBookings];
+    
+    // Apply search filter
+    if (searchText) {
+      const searchLower = searchText.toLowerCase();
+      result = result.filter(booking => 
+        booking.booking_id.toString().includes(searchLower) ||
+        booking.agenda.toLowerCase().includes(searchLower) ||
+        booking.pic.toLowerCase().includes(searchLower) ||
+        booking.section.toLowerCase().includes(searchLower) ||
+        booking.destination.toLowerCase().includes(searchLower) ||
+        booking.transport_id.toString().includes(searchLower)
+      );
+    }
+    
+    // Apply status filter
+    if (statusFilters.length > 0) {
+      result = result.filter(booking => 
+        statusFilters.includes(booking.status.toLowerCase())
+      );
+    }
+    
+    // Apply date filter
+    if (dateFilter.startDate || dateFilter.endDate) {
+      result = result.filter(booking => {
+        const bookingDate = new Date(booking.booking_date);
         
-        const response = await apiClient.get("/transport-bookings");
-        console.log("Transport bookings fetched successfully:", response.data);
-        setTransportBookings(response.data);
-        setAuthStatus("Authenticated and data loaded");
-      } catch (error: any) {
-        console.error("Error fetching transport bookings:", error);
-        
-        if (error.response?.status === 401) {
-          setAuthStatus("Authentication failed (401) - token may be invalid");
-          localStorage.removeItem("adminToken");
-          router.push("/sign-in");
-          return;
+        if (dateFilter.startDate && dateFilter.endDate) {
+          const startDate = new Date(dateFilter.startDate);
+          const endDate = new Date(dateFilter.endDate);
+          return bookingDate >= startDate && bookingDate <= endDate;
+        } else if (dateFilter.startDate) {
+          const startDate = new Date(dateFilter.startDate);
+          return bookingDate >= startDate;
+        } else if (dateFilter.endDate) {
+          const endDate = new Date(dateFilter.endDate);
+          return bookingDate <= endDate;
         }
         
-        setError(
-          error.response?.data?.message || 
-          "Unable to load transport bookings. Please try again later."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
+        return true;
+      });
+    }
+    
+    // Apply destination filter (if any)
+    if (destinationFilter) {
+      result = result.filter(booking => 
+        booking.destination.toLowerCase().includes(destinationFilter.toLowerCase())
+      );
+    }
+    
+    // Apply sorting
+    if (sorting) {
+      result.sort((a, b) => {
+        let valueA = a[sorting.field];
+        let valueB = b[sorting.field];
+        
+        // Special handling for dates and times
+        if (sorting.field === 'booking_date' || sorting.field === 'createdAt' || sorting.field === 'updatedAt') {
+          valueA = new Date(valueA).getTime();
+          valueB = new Date(valueB).getTime();
+        } else if (sorting.field === 'start_time' || sorting.field === 'end_time') {
+          valueA = valueA.replace(':', '');
+          valueB = valueB.replace(':', '');
+        } else if (typeof valueA === 'string') {
+          valueA = valueA.toLowerCase();
+          valueB = valueB.toLowerCase();
+        }
+        
+        if (valueA < valueB) return sorting.direction === 'asc' ? -1 : 1;
+        if (valueA > valueB) return sorting.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    
+    setFilteredBookings(result);
+  };
 
-    fetchTransportBookings();
-  }, [router]);
+  const fetchTransportBookings = async () => {
+    setLoading(true);
+    setError(null);
+    
+    const apiClient = createApiClient();
+    if (!apiClient) return;
+    
+    try {
+      console.log("Fetching transport bookings...");
+      const response = await apiClient.get("/transport-bookings");
+      console.log("Transport bookings fetched successfully:", response.data);
+      setTransportBookings(response.data);
+      setAuthStatus("Authenticated and data loaded");
+    } catch (error: any) {
+      console.error("Error fetching transport bookings:", error);
+      
+      if (error.response?.status === 401) {
+        setAuthStatus("Authentication failed (401) - token may be invalid");
+        localStorage.removeItem("adminToken");
+        router.push("/sign-in");
+        return;
+      }
+      
+      setError(
+        error.response?.data?.message || 
+        "Unable to load transport bookings. Please try again later."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle search input changes
+  const handleSearch = (value: string) => {
+    setSearchText(value);
+  };
+
+  // Handle status filter changes
+  const handleStatusChange = (selected: string[]) => {
+    setStatusFilters(selected);
+  };
+
+  // Handle date filter changes
+  const handleDateChange = (dates: DateFilter) => {
+    setDateFilter(dates);
+  };
+
+  // Handle destination filter
+  const handleDestinationFilter = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDestinationFilter(e.target.value);
+  };
+
+  // Handle sorting changes
+  const handleSort = (field: string, direction: SortDirection) => {
+    setSorting({ field, direction });
+  };
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSearchText("");
+    setStatusFilters([]);
+    setDateFilter({ startDate: null, endDate: null });
+    setDestinationFilter("");
+    setSorting(null);
+  };
 
   // Format time to 12-hour format
   const formatTime = (timeString: string) => {
@@ -119,6 +275,15 @@ const TransportBookingListPage = () => {
     date.setMinutes(parseInt(minutes));
     
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
   };
 
   // Handle delete
@@ -166,20 +331,26 @@ const TransportBookingListPage = () => {
     }
   };
 
-  // Columns definition
-  const columns = [
-    { header: "Booking ID", accessor: "booking_id" },
-    { header: "PIC", accessor: "pic" },
-    { header: "Agenda", accessor: "agenda", className: "hidden md:table-cell" },
-    { header: "Start Time", accessor: "start_time", className: "hidden md:table-cell" },
-    { header: "End Time", accessor: "end_time", className: "hidden lg:table-cell" },
-    { header: "Transport ID", accessor: "transport_id", className: "hidden lg:table-cell" },
-    { header: "Destination", accessor: "destination", className: "hidden md:table-cell" },
-    { header: "Status", accessor: "status", className: "hidden md:table-cell" },
-    { header: "Actions", accessor: "action" },
-  ];
+  // Get appropriate status icon
+  const getStatusIcon = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return <CheckCircle size={14} className="mr-1 text-green-500" />;
+      case 'rejected':
+        return <XCircle size={14} className="mr-1 text-red-500" />;
+      case 'pending':
+        return <Clock size={14} className="mr-1 text-yellow-500" />;
+      default:
+        return null;
+    }
+  };
 
-  // Modified renderRow to include agenda field
+  // Calculate active filters count
+  const activeFilterCount = (statusFilters.length > 0 ? 1 : 0) + 
+                           ((dateFilter.startDate || dateFilter.endDate) ? 1 : 0) +
+                           (destinationFilter ? 1 : 0);
+
+  // Modified renderRow to include enhanced status and destination
   const renderRow = (item: TransportBooking) => (
     <tr
       key={item.booking_id}
@@ -191,9 +362,15 @@ const TransportBookingListPage = () => {
       <td className="hidden md:table-cell p-4">{formatTime(item.start_time)}</td>
       <td className="hidden lg:table-cell p-4">{formatTime(item.end_time)}</td>
       <td className="hidden lg:table-cell p-4">{item.transport_id}</td>
-      <td className="hidden md:table-cell p-4">{item.destination}</td>
       <td className="hidden md:table-cell p-4">
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
+        <div className="flex items-center">
+          <MapPin size={14} className="mr-1 text-gray-400" />
+          {item.destination}
+        </div>
+      </td>
+      <td className="hidden md:table-cell p-4">
+        <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center w-fit ${getStatusColor(item.status)}`}>
+          {getStatusIcon(item.status)}
           {item.status}
         </span>
       </td>
@@ -204,7 +381,6 @@ const TransportBookingListPage = () => {
             <Eye size={16} />
             </button>
           </Link>
-          {/* Replace FormModal with delete button */}
           <button 
             onClick={() => {
               setBookingToDelete(item.booking_id);
@@ -247,21 +423,115 @@ const TransportBookingListPage = () => {
       </div>
 
       {/* TOP */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="hidden md:block text-lg font-semibold">Transport Bookings</h1>
         <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-          <TableSearch />
+          <TableSearch 
+            value={searchText} 
+            onSearch={handleSearch} 
+            placeholder="Search bookings..."
+          />
           <div className="flex items-center gap-4 self-end">
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-sky-300">
-              <Image src="/filter.png" alt="" width={14} height={14} />
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-sky-300">
-              <Image src="/sort.png" alt="" width={14} height={14} />
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <BookingStatusFilter
+                selectedStatuses={statusFilters}
+                onStatusChange={handleStatusChange}
+              />
+              <DateRangeFilter
+                dateFilter={dateFilter}
+                onDateChange={handleDateChange}
+              />
+              <BookingSortDropdown
+                options={sortOptions}
+                currentSort={sorting}
+                onSort={handleSort}
+              />
+            </div>
             <FormModal table="transport-booking" type="create" />
           </div>
         </div>
       </div>
+
+      {/* Destination Filter */}
+      <div className="mb-4">
+        <div className="max-w-xs">
+          <label htmlFor="destinationFilter" className="block text-sm font-medium text-gray-700 mb-1">
+            Filter by Destination
+          </label>
+          <div className="relative">
+            <MapPin size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              id="destinationFilter"
+              value={destinationFilter}
+              onChange={handleDestinationFilter}
+              placeholder="Enter destination"
+              className="pl-9 pr-3 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-300 text-sm"
+            />
+            {destinationFilter && (
+              <button 
+                onClick={() => setDestinationFilter("")}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {/* Active Filters */}
+      {activeFilterCount > 0 && (
+        <div className="mb-4 flex items-center">
+          <span className="text-sm text-gray-500 mr-2">Active filters:</span>
+          <div className="flex flex-wrap gap-2">
+            {statusFilters.length > 0 && (
+              <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
+                <span>Status: {statusFilters.length} selected</span>
+                <button 
+                  onClick={() => setStatusFilters([])} 
+                  className="ml-1 text-sky-500 hover:text-sky-700"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            {(dateFilter.startDate || dateFilter.endDate) && (
+              <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
+                <Calendar size={14} className="mr-1" />
+                <span>
+                  {dateFilter.startDate ? formatDate(dateFilter.startDate) : '...'}
+                  {dateFilter.endDate ? ` - ${formatDate(dateFilter.endDate)}` : ''}
+                </span>
+                <button 
+                  onClick={() => setDateFilter({ startDate: null, endDate: null })} 
+                  className="ml-1 text-sky-500 hover:text-sky-700"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            {destinationFilter && (
+              <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
+                <MapPin size={14} className="mr-1" />
+                <span>Destination: {destinationFilter}</span>
+                <button 
+                  onClick={() => setDestinationFilter("")} 
+                  className="ml-1 text-sky-500 hover:text-sky-700"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            <button 
+              onClick={clearAllFilters}
+              className="text-xs text-gray-500 hover:text-gray-700 underline"
+            >
+              Clear all
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Loading state */}
       {loading && (
@@ -289,21 +559,44 @@ const TransportBookingListPage = () => {
 
       {/* Empty state */}
       {!loading && !error && transportBookings.length === 0 && (
-        <div className="text-center py-10">
-          <p className="text-gray-500">No transport bookings found.</p>
+        <div className="bg-gray-50 rounded-xl p-10 text-center">
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center">
+              <Car size={32} className="text-gray-300" />
+            </div>
+          </div>
+          <h3 className="font-bold text-lg mb-2">No Transport Bookings Found</h3>
+          <p className="text-gray-500 mb-6">No transport bookings have been created yet.</p>
+          <FormModal table="transport-booking" type="create" buttonLabel="Create Transport Booking" buttonStyle="primary" />
+        </div>
+      )}
+
+      {/* No Results After Filtering */}
+      {!loading && !error && transportBookings.length > 0 && filteredBookings.length === 0 && (
+        <div className="bg-gray-50 rounded-xl p-10 text-center">
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center">
+              <FilterIcon size={32} className="text-gray-300" />
+            </div>
+          </div>
+          <h3 className="font-bold text-lg mb-2">No Matching Bookings</h3>
+          <p className="text-gray-500 mb-6">No transport bookings match your current search or filters.</p>
           <button 
-            onClick={() => window.location.reload()}
-            className="mt-3 px-4 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100"
+            onClick={clearAllFilters}
+            className="px-6 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors flex items-center mx-auto"
           >
-            Refresh
+            Clear All Filters
           </button>
         </div>
       )}
 
       {/* Data table */}
-      {!loading && !error && transportBookings.length > 0 && (
+      {!loading && !error && filteredBookings.length > 0 && (
         <>
-          <Table columns={columns} renderRow={renderRow} data={transportBookings} />
+          <div className="text-xs text-gray-500 mb-2">
+            Showing {filteredBookings.length} of {transportBookings.length} transport bookings
+          </div>
+          <Table columns={columns} renderRow={renderRow} data={filteredBookings} />
           <Pagination />
         </>
       )}
@@ -339,9 +632,15 @@ const TransportBookingListPage = () => {
                       <h3 className="font-medium">
                         Transport Booking #{bookingToDelete}
                       </h3>
-                      <p className="text-sm text-gray-500">
-                        {transportBookings.find(booking => booking.booking_id === bookingToDelete)?.agenda || 'Unknown Booking'}
-                      </p>
+                      <div className="text-sm text-gray-500 flex flex-col gap-1 mt-1">
+                        <p>{transportBookings.find(booking => booking.booking_id === bookingToDelete)?.agenda || 'Unknown Booking'}</p>
+                        {transportBookings.find(booking => booking.booking_id === bookingToDelete)?.destination && (
+                          <div className="flex items-center text-xs">
+                            <MapPin size={12} className="mr-1" />
+                            {transportBookings.find(booking => booking.booking_id === bookingToDelete)?.destination}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

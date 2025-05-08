@@ -4,13 +4,17 @@ import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
-import TableSearch from "@/components/TableSearch";
+import TableSearch from "@/components/TableSearch"; // This is our enhanced component
+import FilterDropdown from "@/components/FilterDropdown"; // Our new filter component
+import SortDropdown, { SortDirection } from "@/components/SortDropdown"; // Our new sort component
+import CapacityFilter from "@/components/CapacityFilter"; // Our capacity range filter
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
   Car, Plus, Edit, Trash2, X, Save, 
-  Camera, AlertCircle, Users, Eye
+  Camera, AlertCircle, Users, Eye,
+  Filter as FilterIcon
 } from "lucide-react";
 
 // Base API URL configuration
@@ -62,7 +66,6 @@ const columns = [
 const fixImageUrl = (imageUrl) => {
   if (!imageUrl) return null;
   
-  // Log the original URL for debugging
   console.log(`Original image URL: ${imageUrl}`);
   
   let fixedUrl = imageUrl;
@@ -85,29 +88,27 @@ const fixImageUrl = (imageUrl) => {
     console.log(`Fixed protocol: ${fixedUrl}`);
   }
   
+  // For absolute URLs that include the server domain, keep them as-is
+  if (typeof fixedUrl === 'string' && fixedUrl.startsWith('https://')) {
+    console.log(`Using absolute URL as-is: ${fixedUrl}`);
+    return fixedUrl;
+  }
+  
+  // For relative URLs starting with /uploads, prefix with API_BASE_URL
+  if (typeof fixedUrl === 'string' && fixedUrl.startsWith('/uploads')) {
+    fixedUrl = `${API_BASE_URL}${fixedUrl}`;
+    console.log(`Added API base URL to uploads path: ${fixedUrl}`);
+    return fixedUrl;
+  }
+  
   // Add the server base URL if the image path is relative without a leading /
   if (typeof fixedUrl === 'string' && 
       !fixedUrl.startsWith('http') && 
       !fixedUrl.startsWith('/') && 
       !fixedUrl.startsWith('data:')) {
-    fixedUrl = `/${fixedUrl}`;
-    console.log(`Added leading slash: ${fixedUrl}`);
-  }
-  
-  // Handle server domain without protocol
-  if (typeof fixedUrl === 'string' && 
-      fixedUrl.includes('j9d3hc82-3001.asse.devtunnels.ms') && 
-      !fixedUrl.startsWith('http')) {
-    fixedUrl = `https://${fixedUrl}`;
-    console.log(`Added protocol to server URL: ${fixedUrl}`);
-  }
-  
-  // If URL is just a filename (without path), assume it's in uploads
-  if (typeof fixedUrl === 'string' && 
-      !fixedUrl.includes('/') && 
-      !fixedUrl.startsWith('data:')) {
-    fixedUrl = `/uploads/${fixedUrl}`;
-    console.log(`Added uploads path: ${fixedUrl}`);
+    fixedUrl = `${API_BASE_URL}/uploads/${fixedUrl}`;
+    console.log(`Created full URL: ${fixedUrl}`);
+    return fixedUrl;
   }
   
   console.log(`Final fixed URL: ${fixedUrl}`);
@@ -127,15 +128,23 @@ const TransportImage = ({
   className = "w-full h-full object-cover", 
   fallbackIcon = null 
 }) => {
-  const [imgSrc, setImgSrc] = useState(fixImageUrl(image));
+  const [imgSrc, setImgSrc] = useState(() => {
+    const fixed = fixImageUrl(image);
+    console.log(`TransportImage initial imgSrc: ${fixed} (from ${image})`);
+    return fixed;
+  });
   const [hasError, setHasError] = useState(false);
   
+  // Debug log on component mount
+  useEffect(() => {
+    console.log(`TransportImage rendering for image: ${image}`);
+    console.log(`Processed URL: ${imgSrc}`);
+  }, [image, imgSrc]);
+  
   const handleError = () => {
-    if (!hasError) {
-      console.log(`Error loading image: ${imgSrc}`);
-      setHasError(true);
-      setImgSrc(getPlaceholderImage());
-    }
+    console.error(`Error loading image: ${imgSrc} (original: ${image})`);
+    setHasError(true);
+    setImgSrc(getPlaceholderImage());
   };
   
   if (!image && !hasError) {
@@ -184,6 +193,21 @@ const TransportManagePage = () => {
   const [transportToDelete, setTransportToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // New state for search, filter, and sort
+  const [searchText, setSearchText] = useState("");
+  const [driverFilters, setDriverFilters] = useState<string[]>([]);
+  const [capacityFilter, setCapacityFilter] = useState<{min: number, max: number} | null>(null);
+  const [sorting, setSorting] = useState<{field: string, direction: SortDirection} | null>(null);
+  const [filteredTransports, setFilteredTransports] = useState<Transport[]>([]);
+  
+  // Prepare sort options
+  const sortOptions = [
+    { id: "vehicle_name", label: "Vehicle Name" },
+    { id: "driver_name", label: "Driver Name" },
+    { id: "capacity", label: "Capacity" },
+    { id: "createdAt", label: "Date Created" }
+  ];
+
   // Create a custom axios instance to avoid conflicts 
   const createApiClient = () => {
     // Get token from localStorage
@@ -213,6 +237,86 @@ const TransportManagePage = () => {
   useEffect(() => {
     fetchTransports();
   }, [router]);
+
+  // Generate driver filter options from the transport data
+  useEffect(() => {
+    if (transports.length > 0) {
+      // Get unique driver names
+      const uniqueDrivers = [...new Set(transports.map(t => t.driver_name))];
+      
+      // Sort alphabetically
+      uniqueDrivers.sort();
+      
+      // Convert to filter options
+      const driverOptions = uniqueDrivers.map(driver => ({
+        id: driver,
+        label: driver
+      }));
+      
+      setDriverFilterOptions(driverOptions);
+    }
+  }, [transports]);
+
+  // Apply all filters and sort whenever the data or filter criteria change
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [transports, searchText, driverFilters, capacityFilter, sorting]);
+
+  // State for driver filter options
+  const [driverFilterOptions, setDriverFilterOptions] = useState([]);
+
+  // Apply search, filters, and sorting to the transports data
+  const applyFiltersAndSort = () => {
+    let result = [...transports];
+    
+    // Apply search filter
+    if (searchText) {
+      const searchLower = searchText.toLowerCase();
+      result = result.filter(transport => 
+        transport.vehicle_name.toLowerCase().includes(searchLower) ||
+        transport.driver_name.toLowerCase().includes(searchLower) ||
+        transport.transport_id.toString().includes(searchLower)
+      );
+    }
+    
+    // Apply driver filter
+    if (driverFilters.length > 0) {
+      result = result.filter(transport => driverFilters.includes(transport.driver_name));
+    }
+    
+    // Apply capacity filter
+    if (capacityFilter) {
+      result = result.filter(transport => 
+        transport.capacity >= capacityFilter.min && transport.capacity <= capacityFilter.max
+      );
+    }
+    
+    // Apply sorting
+    if (sorting) {
+      result.sort((a, b) => {
+        let valueA = a[sorting.field];
+        let valueB = b[sorting.field];
+        
+        // Handle string comparisons
+        if (typeof valueA === 'string') {
+          valueA = valueA.toLowerCase();
+          valueB = valueB.toLowerCase();
+        }
+        
+        // Handle date comparisons
+        if (sorting.field === 'createdAt' || sorting.field === 'updatedAt') {
+          valueA = new Date(valueA).getTime();
+          valueB = new Date(valueB).getTime();
+        }
+        
+        if (valueA < valueB) return sorting.direction === 'asc' ? -1 : 1;
+        if (valueA > valueB) return sorting.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    
+    setFilteredTransports(result);
+  };
 
   const fetchTransports = async () => {
     setLoading(true);
@@ -245,6 +349,31 @@ const TransportManagePage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle search input changes
+  const handleSearch = (value: string) => {
+    setSearchText(value);
+  };
+  
+  // Handle driver filter changes
+  const handleDriverFilterChange = (selected: string[]) => {
+    setDriverFilters(selected);
+  };
+  
+  // Handle capacity filter changes
+  const handleCapacityFilter = (min: number, max: number) => {
+    setCapacityFilter({ min, max });
+  };
+  
+  // Clear capacity filter
+  const clearCapacityFilter = () => {
+    setCapacityFilter(null);
+  };
+  
+  // Handle sorting changes
+  const handleSort = (field: string, direction: SortDirection) => {
+    setSorting({ field, direction });
   };
 
   // Open modal for creating a new transport
@@ -555,6 +684,10 @@ const TransportManagePage = () => {
     </tr>
   );
 
+  // Calculate filter counts for display in UI
+  const activeFilterCount = (driverFilters.length > 0 ? 1 : 0) + 
+                           (capacityFilter ? 1 : 0);
+
   return (
     <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
       {/* Auth status (for debugging - remove in production) */}
@@ -605,14 +738,34 @@ const TransportManagePage = () => {
       <div className="flex items-center justify-between mb-6">
         <h1 className="hidden md:block text-lg font-semibold">Manage Transports</h1>
         <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-          <TableSearch />
+          <TableSearch 
+            value={searchText} 
+            onSearch={handleSearch} 
+            placeholder="Search transports..." 
+          />
           <div className="flex items-center gap-4 self-end">
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-sky-300">
-              <Image src="/filter.png" alt="" width={14} height={14} />
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-sky-300">
-              <Image src="/sort.png" alt="" width={14} height={14} />
-            </button>
+            <div className="flex flex-wrap gap-2">
+              {driverFilterOptions.length > 0 && (
+                <FilterDropdown
+                  title="Driver"
+                  options={driverFilterOptions}
+                  selectedOptions={driverFilters}
+                  onChange={handleDriverFilterChange}
+                />
+              )}
+              <CapacityFilter
+                minValue={1}
+                maxValue={50}
+                onFilter={handleCapacityFilter}
+                isActive={capacityFilter !== null}
+                onClear={clearCapacityFilter}
+              />
+              <SortDropdown
+                options={sortOptions}
+                currentSort={sorting}
+                onSort={handleSort}
+              />
+            </div>
             <button 
               onClick={handleAddTransport}
               className="h-9 px-4 flex items-center justify-center rounded-full bg-lamaYellow text-sm hover:bg-yellow-400 transition-colors"
@@ -623,6 +776,48 @@ const TransportManagePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Active Filters */}
+      {activeFilterCount > 0 && (
+        <div className="mb-4 flex items-center">
+          <span className="text-sm text-gray-500 mr-2">Active filters:</span>
+          <div className="flex flex-wrap gap-2">
+            {driverFilters.length > 0 && (
+              <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
+                <span>Drivers: {driverFilters.length}</span>
+                <button 
+                  onClick={() => setDriverFilters([])} 
+                  className="ml-1 text-sky-500 hover:text-sky-700"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            {capacityFilter && (
+              <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
+                <span>Capacity: {capacityFilter.min}-{capacityFilter.max}</span>
+                <button 
+                  onClick={clearCapacityFilter} 
+                  className="ml-1 text-sky-500 hover:text-sky-700"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            <button 
+              onClick={() => {
+                setDriverFilters([]);
+                clearCapacityFilter();
+                setSorting(null);
+                setSearchText("");
+              }}
+              className="text-xs text-gray-500 hover:text-gray-700 underline"
+            >
+              Clear all
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Loading state */}
       {loading && (
@@ -668,10 +863,37 @@ const TransportManagePage = () => {
         </div>
       )}
 
+      {/* No Results After Filtering */}
+      {!loading && !error && transports.length > 0 && filteredTransports.length === 0 && (
+        <div className="bg-gray-50 rounded-xl p-10 text-center">
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center">
+              <FilterIcon size={32} className="text-gray-300" />
+            </div>
+          </div>
+          <h3 className="font-bold text-lg mb-2">No Matching Transports</h3>
+          <p className="text-gray-500 mb-6">No transports match your current search or filters.</p>
+          <button 
+            onClick={() => {
+              setDriverFilters([]);
+              clearCapacityFilter();
+              setSorting(null);
+              setSearchText("");
+            }}
+            className="px-6 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors flex items-center mx-auto"
+          >
+            Clear All Filters
+          </button>
+        </div>
+      )}
+
       {/* Data table */}
-      {!loading && !error && transports.length > 0 && (
+      {!loading && !error && filteredTransports.length > 0 && (
         <>
-          <Table columns={columns} renderRow={renderRow} data={transports} />
+          <div className="text-xs text-gray-500 mb-2">
+            Showing {filteredTransports.length} of {transports.length} transports
+          </div>
+          <Table columns={columns} renderRow={renderRow} data={filteredTransports} />
           <Pagination />
         </>
       )}
@@ -786,148 +1008,147 @@ const TransportManagePage = () => {
                   <div className="mt-2 aspect-video bg-gray-100 rounded-lg overflow-hidden relative mb-2 border border-gray-200">
                     {previewImage ? (
                       <img
-                      src={previewImage}
-                      alt="Vehicle preview"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : currentTransport && currentTransport.image ? (
-                    <TransportImage
-                      image={currentTransport.image}
-                      alt={currentTransport.vehicle_name}
-                      fallbackIcon={<Car size={48} className="text-gray-300 mb-2" />}
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full">
-                      <Car size={48} className="text-gray-300 mb-2" />
-                      <p className="text-gray-400 text-sm">No image selected</p>
-                    </div>
+                        src={previewImage}
+                        alt="Vehicle preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : currentTransport && currentTransport.image ? (
+                      <TransportImage
+                        image={currentTransport.image}
+                        alt={currentTransport.vehicle_name}
+                        fallbackIcon={<Car size={48} className="text-gray-300 mb-2" />}
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full">
+                        <Car size={48} className="text-gray-300 mb-2" />
+                        <p className="text-gray-400 text-sm">No image selected</p>
+                      </div>
+                    )}
+                    
+                    <button
+                      type="button"
+                      onClick={triggerFileInput}
+                      className="absolute bottom-3 right-3 bg-sky-500 text-white rounded-lg p-2 hover:bg-sky-600 transition-colors"
+                    >
+                      <Camera size={20} />
+                    </button>
+                  </div>
+                  {formErrors.image && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.image}</p>
                   )}
-                  
-                  <button
-                    type="button"
-                    onClick={triggerFileInput}
-                    className="absolute bottom-3 right-3 bg-sky-500 text-white rounded-lg p-2 hover:bg-sky-600 transition-colors"
-                  >
-                    <Camera size={20} />
-                  </button>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Upload a JPEG or PNG image (max 5MB). Leave empty to keep the current image.
+                  </p>
                 </div>
-                {formErrors.image && (
-                  <p className="text-red-500 text-xs mt-1">{formErrors.image}</p>
-                )}
-                <p className="text-xs text-gray-500 mt-1">
-                  Upload a JPEG or PNG image (max 5MB). Leave empty to keep the current image.
-                </p>
-              </div>
-            </form>
-          </div>
-          
-          {/* Modal Footer */}
-          <div className="p-4 border-t border-gray-200 flex justify-end space-x-2">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSaving}
-              className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors disabled:opacity-50 flex items-center"
-            >
-              {isSaving ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save size={18} className="mr-2" />
-                  {isEditMode ? 'Update Transport' : 'Create Transport'}
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-    
-    {/* Delete Confirmation Modal */}
-    {showDeleteConfirm && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-red-500 to-red-600 p-5 text-white">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-3">
-                <Trash2 size={20} />
-              </div>
-              <h2 className="text-xl font-bold">Confirm Deletion</h2>
+              </form>
             </div>
-          </div>
-          
-          {/* Body */}
-          <div className="p-6">
-            <p className="text-gray-700 mb-6">
-              Are you sure you want to delete this transport? This action cannot be undone and all associated data will be permanently removed.
-            </p>
             
-            {/* Get transport details for the transport to be deleted */}
-            {transportToDelete && 
-              <div className="bg-gray-50 p-4 rounded-xl mb-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                    <Car size={24} className="text-gray-500" />
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="font-medium">
-                      {transports.find(transport => transport.transport_id === transportToDelete)?.vehicle_name || 'Unknown Transport'}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      ID: {transportToDelete}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            }
-            
-            <div className="flex justify-end space-x-3">
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-gray-200 flex justify-end space-x-2">
               <button
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  setTransportToDelete(null);
-                }}
+                type="button"
+                onClick={() => setIsModalOpen(false)}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                disabled={isDeleting}
               >
                 Cancel
               </button>
               <button
-                onClick={handleDeleteTransport}
-                disabled={isDeleting}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center"
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSaving}
+                className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors disabled:opacity-50 flex items-center"
               >
-                {isDeleting ? (
+                {isSaving ? (
                   <>
                     <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
-                    Deleting...
+                    Saving...
                   </>
                 ) : (
                   <>
-                    <Trash2 size={18} className="mr-2" />
-                    Delete Transport
+                    <Save size={18} className="mr-2" />
+                    {isEditMode ? 'Update Transport' : 'Create Transport'}
                   </>
                 )}
               </button>
             </div>
           </div>
         </div>
-      </div>
-    )}
-  </div>
-);
+      )}
+      
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-500 to-red-600 p-5 text-white">
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-3">
+                  <Trash2 size={20} />
+                </div>
+                <h2 className="text-xl font-bold">Confirm Deletion</h2>
+              </div>
+            </div>
+            
+            {/* Body */}
+            <div className="p-6">
+              <p className="text-gray-700 mb-6">
+                Are you sure you want to delete this transport? This action cannot be undone and all associated data will be permanently removed.
+              </p>
+              
+              {/* Get transport details for the transport to be deleted */}
+              {transportToDelete && 
+                <div className="bg-gray-50 p-4 rounded-xl mb-6">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <Car size={24} className="text-gray-500" />
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="font-medium">
+                        {transports.find(transport => transport.transport_id === transportToDelete)?.vehicle_name || 'Unknown Transport'}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        ID: {transportToDelete}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              }
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setTransportToDelete(null);
+                  }}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteTransport}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={18} className="mr-2" />
+                      Delete Transport
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default TransportManagePage;
-                      

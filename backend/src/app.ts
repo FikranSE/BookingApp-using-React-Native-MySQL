@@ -29,8 +29,8 @@ console.log(`Server URL set to: ${SERVER_URL}`);
 const app: Application = express();
 
 // Define the uploads directory - IMPORTANT: This must match the path in multerConfig.ts
-const uploadsDir = path.join(__dirname, 'uploads');
-console.log(`Uploads directory path: ${uploadsDir}`);
+const uploadsDir = path.join(__dirname, 'utils', 'uploads');
+console.log(`Static files directory configured at: ${uploadsDir}`);
 
 // Basic middleware setup
 app.use(cors());

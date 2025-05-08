@@ -13,7 +13,7 @@ dotenv.config();
 const SERVER_URL = process.env.SERVER_URL || 'https://j9d3hc82-3001.asse.devtunnels.ms';
 
 // Use the same uploads directory path as in app.js and multerConfig.ts
-const uploadsDir = path.join(__dirname, 'uploads');
+const uploadsDir = path.join(__dirname, '../utils/uploads');
 
 class RoomController {
   // Create Room with image upload

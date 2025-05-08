@@ -4,15 +4,18 @@ import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
-import TableSearch from "@/components/TableSearch";
+import TableSearch from "@/components/TableSearch"; // Enhanced search component
+import FilterDropdown from "@/components/FilterDropdown"; // Filter component
+import SortDropdown, { SortDirection } from "@/components/SortDropdown"; // Sort component
 import Image from "next/image";
-import { Upload, FileText, Download } from "lucide-react";
+import { Upload, FileText, Download, MailQuestion, Mail, AtSign } from "lucide-react";
 import * as XLSX from 'xlsx';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
   User, Plus, Edit, Trash2, X, Save, 
-  AlertCircle, Users, Eye, Mail, Phone, Lock
+  AlertCircle, Users, Eye, Mail as MailIcon, Phone, Lock,
+  Calendar, Filter as FilterIcon
 } from "lucide-react";
 
 type User = {
@@ -88,8 +91,30 @@ const UserManagePage = () => {
   const [userToDelete, setUserToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-   // Excel import methods
-   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // New state for search, filter, and sort
+  const [searchText, setSearchText] = useState("");
+  const [emailDomainFilters, setEmailDomainFilters] = useState<string[]>([]);
+  const [hasPhoneFilter, setHasPhoneFilter] = useState<string[]>([]);
+  const [sorting, setSorting] = useState<{field: string, direction: SortDirection} | null>(null);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [emailDomainOptions, setEmailDomainOptions] = useState<{id: string, label: string}[]>([]);
+
+  // Phone filter options
+  const phoneFilterOptions = [
+    { id: "has-phone", label: "Has Phone Number" },
+    { id: "no-phone", label: "No Phone Number" }
+  ];
+
+  // Prepare sort options
+  const sortOptions = [
+    { id: "name", label: "Name" },
+    { id: "email", label: "Email" },
+    { id: "createdAt", label: "Date Created" },
+    { id: "id", label: "User ID" }
+  ];
+
+  // Excel import methods
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     setFileError(null);
     
@@ -263,6 +288,96 @@ const UserManagePage = () => {
     return apiClient;
   };
 
+  // Extract email domains from user data
+  useEffect(() => {
+    if (users.length > 0) {
+      // Extract domains from email addresses
+      const domains = users
+        .map(user => {
+          if (!user.email) return null;
+          const parts = user.email.split('@');
+          return parts.length === 2 ? parts[1] : null;
+        })
+        .filter(domain => domain !== null);
+      
+      // Get unique domains and sort them
+      const uniqueDomains = [...new Set(domains)].sort();
+      
+      // Convert to filter options format
+      const domainOptions = uniqueDomains.map(domain => ({
+        id: domain,
+        label: domain
+      }));
+      
+      setEmailDomainOptions(domainOptions);
+    }
+  }, [users]);
+
+  // Apply filters and sort whenever the data or filter criteria change
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [users, searchText, emailDomainFilters, hasPhoneFilter, sorting]);
+
+  // Apply search, filters, and sorting to the users data
+  const applyFiltersAndSort = () => {
+    let result = [...users];
+    
+    // Apply search filter
+    if (searchText) {
+      const searchLower = searchText.toLowerCase();
+      result = result.filter(user => 
+        (user.name && user.name.toLowerCase().includes(searchLower)) ||
+        (user.email && user.email.toLowerCase().includes(searchLower)) ||
+        (user.phone && user.phone.includes(searchLower)) ||
+        user.id.toString().includes(searchLower)
+      );
+    }
+    
+    // Apply email domain filter
+    if (emailDomainFilters.length > 0) {
+      result = result.filter(user => {
+        if (!user.email) return false;
+        const parts = user.email.split('@');
+        return parts.length === 2 && emailDomainFilters.includes(parts[1]);
+      });
+    }
+    
+    // Apply phone filter
+    if (hasPhoneFilter.length > 0) {
+      if (hasPhoneFilter.includes('has-phone')) {
+        result = result.filter(user => user.phone && user.phone.trim() !== '');
+      } else if (hasPhoneFilter.includes('no-phone')) {
+        result = result.filter(user => !user.phone || user.phone.trim() === '');
+      }
+    }
+    
+    // Apply sorting
+    if (sorting) {
+      result.sort((a, b) => {
+        let valueA = a[sorting.field];
+        let valueB = b[sorting.field];
+        
+        // Handle string comparisons
+        if (typeof valueA === 'string') {
+          valueA = valueA.toLowerCase();
+          valueB = valueB.toLowerCase();
+        }
+        
+        // Handle date comparisons
+        if (sorting.field === 'createdAt' || sorting.field === 'updatedAt') {
+          valueA = new Date(valueA).getTime();
+          valueB = new Date(valueB).getTime();
+        }
+        
+        if (valueA < valueB) return sorting.direction === 'asc' ? -1 : 1;
+        if (valueA > valueB) return sorting.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    
+    setFilteredUsers(result);
+  };
+
   // Fetch data on component mount
   useEffect(() => {
     fetchUsers();
@@ -323,6 +438,26 @@ const UserManagePage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle search input changes
+  const handleSearch = (value: string) => {
+    setSearchText(value);
+  };
+  
+  // Handle email domain filter changes
+  const handleEmailDomainFilterChange = (selected: string[]) => {
+    setEmailDomainFilters(selected);
+  };
+  
+  // Handle phone filter changes
+  const handlePhoneFilterChange = (selected: string[]) => {
+    setHasPhoneFilter(selected);
+  };
+  
+  // Handle sorting changes
+  const handleSort = (field: string, direction: SortDirection) => {
+    setSorting({ field, direction });
   };
 
   // Open modal for creating a new user
@@ -570,6 +705,10 @@ const UserManagePage = () => {
       .substring(0, 2);
   };
 
+  // Calculate filter counts
+  const activeFilterCount = (emailDomainFilters.length > 0 ? 1 : 0) + 
+                           (hasPhoneFilter.length > 0 ? 1 : 0);
+
   const renderRow = (item: User) => (
     <tr
       key={item.id}
@@ -582,7 +721,7 @@ const UserManagePage = () => {
         <div className="flex flex-col">
           <h3 className="font-semibold">{item.name}</h3>
           <p className="text-xs text-gray-500">
-            <Mail size={12} className="inline mr-1" />
+            <MailIcon size={12} className="inline mr-1" />
             {item.email}
           </p>
           <p className="text-xs text-gray-500">
@@ -671,14 +810,33 @@ const UserManagePage = () => {
       <div className="flex items-center justify-between mb-6">
         <h1 className="hidden md:block text-lg font-semibold">Manage Users</h1>
         <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-          <TableSearch />
+          <TableSearch 
+            value={searchText} 
+            onSearch={handleSearch} 
+            placeholder="Search users..."
+          />
           <div className="flex items-center gap-4 self-end">
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-sky-300">
-              <Image src="/filter.png" alt="" width={14} height={14} />
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-sky-300">
-              <Image src="/sort.png" alt="" width={14} height={14} />
-            </button>
+            <div className="flex flex-wrap gap-2">
+              {emailDomainOptions.length > 0 && (
+                <FilterDropdown
+                  title="Email Domain"
+                  options={emailDomainOptions}
+                  selectedOptions={emailDomainFilters}
+                  onChange={handleEmailDomainFilterChange}
+                />
+              )}
+              <FilterDropdown
+                title="Phone"
+                options={phoneFilterOptions}
+                selectedOptions={hasPhoneFilter}
+                onChange={handlePhoneFilterChange}
+              />
+              <SortDropdown
+                options={sortOptions}
+                currentSort={sorting}
+                onSort={handleSort}
+              />
+            </div>
             <button 
               onClick={handleAddUser}
               className="h-9 px-4 flex items-center justify-center rounded-full bg-lamaYellow text-sm hover:bg-yellow-400 transition-colors"
@@ -697,6 +855,52 @@ const UserManagePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Active Filters */}
+      {activeFilterCount > 0 && (
+        <div className="mb-4 flex items-center">
+          <span className="text-sm text-gray-500 mr-2">Active filters:</span>
+          <div className="flex flex-wrap gap-2">
+            {emailDomainFilters.length > 0 && (
+              <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
+                <AtSign size={14} className="mr-1" />
+                <span>Domains: {emailDomainFilters.length}</span>
+                <button 
+                  onClick={() => setEmailDomainFilters([])} 
+                  className="ml-1 text-sky-500 hover:text-sky-700"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            {hasPhoneFilter.length > 0 && (
+              <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
+                <Phone size={14} className="mr-1" />
+                <span>
+                  {hasPhoneFilter.includes('has-phone') ? 'Has Phone' : 'No Phone'}
+                </span>
+                <button 
+                  onClick={() => setHasPhoneFilter([])} 
+                  className="ml-1 text-sky-500 hover:text-sky-700"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            <button 
+              onClick={() => {
+                setEmailDomainFilters([]);
+                setHasPhoneFilter([]);
+                setSorting(null);
+                setSearchText("");
+              }}
+              className="text-xs text-gray-500 hover:text-gray-700 underline"
+            >
+              Clear all
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Loading state */}
       {loading && (
@@ -742,10 +946,37 @@ const UserManagePage = () => {
         </div>
       )}
 
+      {/* No Results After Filtering */}
+      {!loading && !error && users.length > 0 && filteredUsers.length === 0 && (
+        <div className="bg-gray-50 rounded-xl p-10 text-center">
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center">
+              <FilterIcon size={32} className="text-gray-300" />
+            </div>
+          </div>
+          <h3 className="font-bold text-lg mb-2">No Matching Users</h3>
+          <p className="text-gray-500 mb-6">No users match your current search or filters.</p>
+          <button 
+            onClick={() => {
+              setEmailDomainFilters([]);
+              setHasPhoneFilter([]);
+              setSorting(null);
+              setSearchText("");
+            }}
+            className="px-6 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors flex items-center mx-auto"
+          >
+            Clear All Filters
+          </button>
+        </div>
+      )}
+
       {/* Data table */}
-      {!loading && !error && users.length > 0 && (
+      {!loading && !error && filteredUsers.length > 0 && (
         <>
-          <Table columns={columns} renderRow={renderRow} data={users} />
+          <div className="text-xs text-gray-500 mb-2">
+            Showing {filteredUsers.length} of {users.length} users
+          </div>
+          <Table columns={columns} renderRow={renderRow} data={filteredUsers} />
           <Pagination />
         </>
       )}
@@ -923,8 +1154,8 @@ const UserManagePage = () => {
         </div>
       )}
 
-      
-{showImportModal && (
+      {/* Import Excel Modal */}
+      {showImportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full max-h-[90vh] flex flex-col">
             {/* Modal Header */}

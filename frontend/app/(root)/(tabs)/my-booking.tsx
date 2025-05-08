@@ -664,7 +664,7 @@ const MyBooking = () => {
   
     return (
       <TouchableOpacity
-        className="bg-white rounded-xl mt-4 mx-4 overflow-hidden shadow-sm"
+        className="bg-white mt-4 mx-4 rounded-2xl mb-4 overflow-hidden shadow-sm border border-sky-50"
         onPress={handlePress}
       >
         <View className="flex-row p-2">
@@ -749,7 +749,7 @@ const MyBooking = () => {
     filterOptions.status !== "ALL";
 
   return (
-    <SafeAreaView className="flex-1 pb-20 bg-sky-50">
+    <SafeAreaView className="flex-1 pb-20 bg-white">
       {/* Filter Modal */}
       <FilterModal />
       
