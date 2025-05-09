@@ -620,14 +620,28 @@ const DashboardPage = () => {
       
       // Get recent room bookings (sort by date and take latest 5)
       const sortedRoomBookings = [...roomBookings].sort((a, b) => {
-        return new Date(b.booking_date || 0) - new Date(a.booking_date || 0);
+        return new Date(b.booking_date || 0).getTime() - new Date(a.booking_date || 0).getTime();
       });
       
-      // Map room booking data to include room details
+      // Map room booking data to include room details and update expired status
       const enhancedRoomBookings = sortedRoomBookings.slice(0, 5).map(booking => {
         const roomInfo = mappedRooms.find(r => r.id == (booking.room_id || booking.room?.id));
+        
+        // Check if booking is expired
+        const now = new Date();
+        const bookingDate = new Date(booking.booking_date);
+        const [endHours, endMinutes] = booking.end_time.split(':');
+        bookingDate.setHours(parseInt(endHours), parseInt(endMinutes));
+        
+        // Update status to expired if booking is pending and has passed
+        let updatedStatus = booking.status;
+        if (booking.status?.toLowerCase() === 'pending' && now > bookingDate) {
+          updatedStatus = 'expired';
+        }
+        
         return {
           ...booking,
+          status: updatedStatus,
           room_details: roomInfo || null
         };
       });
@@ -636,14 +650,28 @@ const DashboardPage = () => {
       
       // Get recent transport bookings (sort by date and take latest 5)
       const sortedTransportBookings = [...transportBookings].sort((a, b) => {
-        return new Date(b.booking_date || 0) - new Date(a.booking_date || 0);
+        return new Date(b.booking_date || 0).getTime() - new Date(a.booking_date || 0).getTime();
       });
       
-      // Map transport booking data to include transport details
+      // Map transport booking data to include transport details and update expired status
       const enhancedTransportBookings = sortedTransportBookings.slice(0, 5).map(booking => {
         const transportInfo = mappedTransports.find(t => t.id == (booking.transport_id || booking.transport?.id));
+        
+        // Check if booking is expired
+        const now = new Date();
+        const bookingDate = new Date(booking.booking_date);
+        const [endHours, endMinutes] = booking.end_time.split(':');
+        bookingDate.setHours(parseInt(endHours), parseInt(endMinutes));
+        
+        // Update status to expired if booking is pending and has passed
+        let updatedStatus = booking.status;
+        if (booking.status?.toLowerCase() === 'pending' && now > bookingDate) {
+          updatedStatus = 'expired';
+        }
+        
         return {
           ...booking,
+          status: updatedStatus,
           transport_details: transportInfo || null
         };
       });
@@ -828,16 +856,6 @@ const DashboardPage = () => {
           {/* Calendar view options */}
           <div className="inline-flex bg-white rounded-md shadow-sm border border-sky-100 overflow-hidden">
             <button 
-              onClick={() => toolbar.onView('month')}
-              className={`px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
-                toolbar.view === 'month' 
-                  ? 'bg-sky-500 text-white' 
-                  : 'text-gray-600 hover:bg-sky-50'
-              }`}
-            >
-              Month
-            </button>
-            <button 
               onClick={() => toolbar.onView('week')}
               className={`px-3 py-1.5 text-sm font-medium border-l border-r border-sky-100 transition-all duration-200 ${
                 toolbar.view === 'week' 
@@ -845,17 +863,7 @@ const DashboardPage = () => {
                   : 'text-gray-600 hover:bg-sky-50'
               }`}
             >
-              Week
-            </button>
-            <button 
-              onClick={() => toolbar.onView('day')}
-              className={`px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
-                toolbar.view === 'day' 
-                  ? 'bg-sky-500 text-white' 
-                  : 'text-gray-600 hover:bg-sky-50'
-              }`}
-            >
-              Day
+              detail
             </button>
           </div>
           
@@ -973,42 +981,18 @@ const DashboardPage = () => {
   return (
     <div className="min-h-screen ">
       <div className="container mx-auto px-4 py-8">
-        
-        {/* Time Range Filter */}
-        <div className="mb-6">
-          <div className="inline-flex bg-white rounded-md shadow-sm border border-sky-100">
-            <button 
-              onClick={() => setTimeRange('week')}
-              className={`px-4 py-2 text-sm font-medium rounded-l-md ${
-                timeRange === 'week' 
-                  ? 'bg-sky-500 text-white' 
-                  : 'text-gray-600 hover:bg-sky-50'
-              }`}
-            >
-              Week
-            </button>
-            <button 
-              onClick={() => setTimeRange('month')}
-              className={`px-4 py-2 text-sm font-medium ${
-                timeRange === 'month' 
-                  ? 'bg-sky-500 text-white' 
-                  : 'text-gray-600 hover:bg-sky-50'
-              }`}
-            >
-              Month
-            </button>
-            <button 
-              onClick={() => setTimeRange('year')}
-              className={`px-4 py-2 text-sm font-medium rounded-r-md ${
-                timeRange === 'year' 
-                  ? 'bg-sky-500 text-white' 
-                  : 'text-gray-600 hover:bg-sky-50'
-              }`}
-            >
-              Year
-            </button>
-          </div>
-        </div>
+        {/* Today's Date */}
+        <div className="bg-white rounded-lg shadow-sm border mb-4 border-sky-100 overflow-hidden">
+              <div className="p-6">
+                <div className="flex items-center">
+                  <Calendar size={20} className="text-sky-500 mr-2" />
+                  <h3 className="font-medium text-sky-800">Today</h3>
+                </div>
+                <p className="text-gray-600 mt-2">
+                  {new Date().toLocaleDateString(undefined, {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}
+                </p>
+              </div>
+            </div>
         
         {/* Calendar View */}
         <div className="mb-8 bg-white p-6 rounded-lg shadow-sm border border-sky-100">
@@ -1206,9 +1190,46 @@ const DashboardPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Time Range Filter */}
+        <div className="mb-6">
+          <div className="inline-flex bg-white rounded-md shadow-sm border border-sky-100">
+            <button 
+              onClick={() => setTimeRange('week')}
+              className={`px-4 py-2 text-sm font-medium rounded-l-md ${
+                timeRange === 'week' 
+                  ? 'bg-sky-500 text-white' 
+                  : 'text-gray-600 hover:bg-sky-50'
+              }`}
+            >
+              Week
+            </button>
+            <button 
+              onClick={() => setTimeRange('month')}
+              className={`px-4 py-2 text-sm font-medium ${
+                timeRange === 'month' 
+                  ? 'bg-sky-500 text-white' 
+                  : 'text-gray-600 hover:bg-sky-50'
+              }`}
+            >
+              Month
+            </button>
+            <button 
+              onClick={() => setTimeRange('year')}
+              className={`px-4 py-2 text-sm font-medium rounded-r-md ${
+                timeRange === 'year' 
+                  ? 'bg-sky-500 text-white' 
+                  : 'text-gray-600 hover:bg-sky-50'
+              }`}
+            >
+              Year
+            </button>
+          </div>
+        </div>
+        
         
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           {/* Total Resources */}
           <div className="bg-white p-6 rounded-lg shadow-sm border border-sky-100">
             <div className="flex items-center justify-between mb-4">
@@ -1266,24 +1287,7 @@ const DashboardPage = () => {
               <span>Transports: {stats.transportBookings.pending}</span>
             </div>
           </div>
-          
-          {/* Available Resources */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-sky-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-sky-50 p-3 rounded-md">
-                <CheckCircle size={20} className="text-sky-500" />
-              </div>
-              <div className="text-xs font-medium text-gray-500">Ready for Booking</div>
-            </div>
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Available Resources</h3>
-            <div className="text-2xl font-bold text-sky-800">{stats.rooms.available + stats.transports.available}</div>
-            <div className="mt-2 text-xs text-gray-500 flex items-center">
-              <div className="w-1 h-1 rounded-full bg-sky-300 mr-1"></div>
-              <span>Rooms: {stats.rooms.available}</span>
-              <div className="w-1 h-1 rounded-full bg-sky-300 ml-2 mr-1"></div>
-              <span>Transports: {stats.transports.available}</span>
-            </div>
-          </div>
+        
         </div>
         
         {/* Status Overview */}
@@ -1620,18 +1624,7 @@ const DashboardPage = () => {
               </div>
             </div>
             
-            {/* Today's Date */}
-            <div className="bg-white rounded-lg shadow-sm border border-sky-100 overflow-hidden">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <Calendar size={20} className="text-sky-500 mr-2" />
-                  <h3 className="font-medium text-sky-800">Today</h3>
-                </div>
-                <p className="text-gray-600 mt-2">
-                  {new Date().toLocaleDateString(undefined, {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}
-                </p>
-              </div>
-            </div>
+            
           </div>
         </div>
       </div>

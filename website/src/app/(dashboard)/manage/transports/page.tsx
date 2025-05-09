@@ -654,7 +654,6 @@ const TransportManagePage = () => {
           </p>
         </div>
       </td>
-      <td className="hidden md:table-cell">{item.transport_id}</td>
       <td className="hidden md:table-cell">{item.vehicle_name}</td>
       <td className="hidden md:table-cell">{item.driver_name}</td>
       <td className="hidden lg:table-cell">{item.capacity}</td>
@@ -665,13 +664,6 @@ const TransportManagePage = () => {
             <Eye size={14} />
             </button>
           </Link>
-          <button
-            onClick={() => handleEditTransport(item)}
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-orange-300 text-white hover:bg-orange-500"
-            title="Edit Transport"
-          >
-            <Edit size={14} />
-          </button>
           <button
             onClick={() => handleDeleteClick(item.transport_id)}
             className="w-7 h-7 flex items-center justify-center rounded-full bg-red-300 text-white hover:bg-red-500"
@@ -886,7 +878,6 @@ const TransportManagePage = () => {
                   <thead className="bg-sky-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Info</th>
-                      <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Transport ID</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Vehicle Name</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Driver</th>
                       <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Capacity</th>
@@ -916,7 +907,6 @@ const TransportManagePage = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.transport_id}</td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.vehicle_name}</td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.driver_name}</td>
                         <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.capacity}</td>
@@ -927,13 +917,6 @@ const TransportManagePage = () => {
                                 <Eye size={14} />
                               </button>
                             </Link>
-                            <button
-                              onClick={() => handleEditTransport(item)}
-                              className="w-7 h-7 flex items-center justify-center rounded-full bg-orange-100 text-orange-600 hover:bg-orange-200 transition-colors"
-                              title="Edit Transport"
-                            >
-                              <Edit size={14} />
-                            </button>
                             <button
                               onClick={() => handleDeleteClick(item.transport_id)}
                               className="w-7 h-7 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"

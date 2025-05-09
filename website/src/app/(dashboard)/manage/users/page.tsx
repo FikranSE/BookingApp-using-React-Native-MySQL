@@ -109,8 +109,7 @@ const UserManagePage = () => {
   const sortOptions = [
     { id: "name", label: "Name" },
     { id: "email", label: "Email" },
-    { id: "createdAt", label: "Date Created" },
-    { id: "id", label: "User ID" }
+    { id: "createdAt", label: "Date Created" }
   ];
 
   // Excel import methods
@@ -987,7 +986,6 @@ const UserManagePage = () => {
                   <thead className="bg-sky-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Info</th>
-                      <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">User ID</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Name</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Email</th>
                       <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Phone</th>
@@ -1015,17 +1013,11 @@ const UserManagePage = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">#{item.id}</td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.name}</td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.email}</td>
                         <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.phone || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <Link href={`/manage/users/${item.id}`}>
-                              <button className="w-7 h-7 flex items-center justify-center text-white rounded-full bg-sky-500 hover:bg-sky-600 transition-colors">
-                                <Eye size={14} />
-                              </button>
-                            </Link>
                             <button
                               onClick={() => handleEditUser(item)}
                               className="w-7 h-7 flex items-center justify-center rounded-full bg-orange-300 text-white hover:bg-orange-500 transition-colors"

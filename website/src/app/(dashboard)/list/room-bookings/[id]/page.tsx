@@ -67,6 +67,17 @@ const SingleRoomBookingPage = () => {
       icon: <AlertCircle size={14} />
     };
     
+    // Check if booking is expired
+    const isExpired = checkIfExpired(booking);
+    if (isExpired) {
+      return {
+        bg: "bg-gray-100",
+        text: "text-gray-500",
+        border: "border-gray-200",
+        icon: <Clock size={14} />
+      };
+    }
+    
     switch (status.toLowerCase()) {
       case 'approved':
         return {
@@ -97,6 +108,29 @@ const SingleRoomBookingPage = () => {
           icon: <AlertCircle size={14} />
         };
     }
+  };
+
+  // Function to check if booking is expired
+  const checkIfExpired = (booking) => {
+    if (!booking) return false;
+    
+    const now = new Date();
+    const bookingDate = new Date(booking.booking_date);
+    const [endHours, endMinutes] = booking.end_time.split(':');
+    bookingDate.setHours(parseInt(endHours), parseInt(endMinutes));
+    
+    return now > bookingDate;
+  };
+
+  // Get display status
+  const getDisplayStatus = (booking) => {
+    if (!booking) return "Unknown";
+    
+    if (booking.status.toLowerCase() === 'pending' && checkIfExpired(booking)) {
+      return "Expired";
+    }
+    
+    return booking.status;
   };
 
   // Fetch room booking data
@@ -297,140 +331,92 @@ const SingleRoomBookingPage = () => {
         
         {/* Main content */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* Left column - Main info */}
-          <div className="md:col-span-7 lg:col-span-8">
-            {/* Room info card */}
+          {/* Main info */}
+          <div className="md:col-span-8">
             <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
+              {/* Header */}
               <div className="bg-gradient-to-r from-sky-400 to-sky-500 p-6 text-white">
-                <div className="flex items-center">
-                  <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-                    <Building size={24} />
-                  </div>
-                  <div className="ml-4">
-                    <h2 className="text-2xl font-bold">Room #{booking.room_id}</h2>
-                    <div className="mt-1 text-sky-50 flex items-center text-sm">
-                      <CalendarDays size={14} className="mr-1.5" />
-                      <span>{formatDate(booking.booking_date)}</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                      <Building size={24} />
+                    </div>
+                    <div className="ml-4">
+                      <h2 className="text-2xl font-bold">Room #{booking.room_id}</h2>
+                      <div className="mt-1 text-sky-50 flex items-center text-sm">
+                        <CalendarDays size={14} className="mr-1.5" />
+                        <span>{formatDate(booking.booking_date)}</span>
+                      </div>
                     </div>
                   </div>
+                  <span className={`${statusStyle.bg} ${statusStyle.text} px-4 py-2 rounded-xl text-sm font-medium flex items-center`}>
+                    {statusStyle.icon}
+                    <span className="ml-2">{getDisplayStatus(booking)}</span>
+                  </span>
                 </div>
               </div>
               
+              {/* Booking Details */}
               <div className="p-6">
-                {/* Time slot */}
-                <div className="flex items-start mb-6 p-4 bg-sky-50 rounded-2xl">
-                  <div className="flex-shrink-0 w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
-                    <Clock size={20} className="text-sky-500" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Time and Location */}
+                  <div className="space-y-6">
+                    <div className="p-4 bg-sky-50 rounded-2xl">
+                      <div className="flex items-center mb-3">
+                        <Clock size={20} className="text-sky-500" />
+                        <h3 className="ml-2 font-semibold text-sky-900">Time Slot</h3>
+                      </div>
+                      <p className="text-gray-700">
+                        {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="ml-4">
-                    <h3 className="uppercase text-xs font-semibold text-sky-500 tracking-wider">Time Slot</h3>
-                    <p className="text-lg font-medium text-gray-800">
-                      {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
-                    </p>
+
+                  {/* Organizer Info */}
+                  <div className="space-y-6">
+                    <div className="p-4 bg-indigo-50 rounded-2xl">
+                      <div className="flex items-center mb-3">
+                        <User size={20} className="text-indigo-500" />
+                        <h3 className="ml-2 font-semibold text-indigo-900">Person in Charge</h3>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-gray-700">{booking.pic || "Not specified"}</p>
+                        <p className="text-sm text-gray-500">Section: {booking.section || "Not specified"}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                
-                {/* Organizer info */}
-                <div className="flex items-start mb-6 p-4 bg-indigo-50 rounded-2xl">
-                  <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-                    <User size={20} className="text-indigo-500" />
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="uppercase text-xs font-semibold text-indigo-500 tracking-wider">Person in Charge</h3>
-                    <p className="text-lg font-medium text-gray-800">
-                      {booking.pic || "Not specified"}
-                    </p>
-                    {booking.user_email && (
-                      <p className="text-sm text-gray-500 mt-1">
-                        {booking.user_email}
-                      </p>
+
+                {/* Description & Notes */}
+                {(booking.description || booking.notes) && (
+                  <div className="mt-6 space-y-6">
+                    {booking.description && (
+                      <div className="p-4 bg-gray-50 rounded-2xl">
+                        <div className="flex items-center mb-3">
+                          <FileText size={20} className="text-gray-500" />
+                          <h3 className="ml-2 font-semibold text-gray-900">Description</h3>
+                        </div>
+                        <p className="text-gray-700">{booking.description}</p>
+                      </div>
+                    )}
+                    
+                    {booking.notes && (
+                      <div className="p-4 bg-sky-50 rounded-2xl">
+                        <div className="flex items-center mb-3">
+                          <MessageSquare size={20} className="text-sky-500" />
+                          <h3 className="ml-2 font-semibold text-sky-900">Notes</h3>
+                        </div>
+                        <p className="text-gray-700">{booking.notes}</p>
+                      </div>
                     )}
                   </div>
-                </div>
+                )}
               </div>
             </div>
-            
-            {/* Description & Notes */}
-            {(booking.description || booking.notes) && (
-              <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100">
-                <div className="p-6">
-                  {/* Description section */}
-                  {booking.description && (
-                    <div className="mb-6">
-                      <h3 className="flex items-center text-sky-500 font-semibold mb-3 uppercase text-xs tracking-wider">
-                        <FileText size={16} className="mr-2" />
-                        Description
-                      </h3>
-                      <div className="p-4 bg-gray-50 rounded-2xl text-gray-700">
-                        {booking.description}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Notes section */}
-                  {booking.notes && (
-                    <div>
-                      <h3 className="flex items-center text-sky-500 font-semibold mb-3 uppercase text-xs tracking-wider">
-                        <MessageSquare size={16} className="mr-2" />
-                        Notes
-                      </h3>
-                      <div className="p-4 bg-sky-50 rounded-2xl text-gray-700">
-                        {booking.notes}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
           
-          {/* Right column - Summary and actions */}
-          <div className="md:col-span-5 lg:col-span-4">
-            {/* Booking summary card */}
-            <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="font-bold text-gray-900">Booking Summary</h3>
-              </div>
-              <div className="p-6">
-                <ul className="space-y-4">
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Booking ID</span>
-                    <span className="font-medium text-gray-800">#{booking.booking_id}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Room</span>
-                    <span className="font-medium text-gray-800">#{booking.room_id}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Date</span>
-                    <span className="font-medium text-gray-800">{formatDate(booking.booking_date)}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Time</span>
-                    <span className="font-medium text-gray-800">{formatTime(booking.start_time)} - {formatTime(booking.end_time)}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Person in Charge</span>
-                    <span className="font-medium text-gray-800">{booking.pic || "Not specified"}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Email</span>
-                    <span className="font-medium text-gray-800 break-words">{booking.user_email || "Not specified"}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Section</span>
-                    <span className="font-medium text-gray-800">{booking.section || "Not specified"}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2">
-                    <span className="text-gray-500">Status</span>
-                    <span className={`${statusStyle.bg} ${statusStyle.text} px-3 py-1 rounded-full text-xs font-medium`}>
-                      {booking.status}
-                    </span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            
+          {/* Actions Column */}
+          <div className="md:col-span-4">
             {/* Admin actions card */}
             {role === "admin" && (
               <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
@@ -439,7 +425,7 @@ const SingleRoomBookingPage = () => {
                 </div>
                 <div className="p-6">
                   <div className="space-y-3">
-                    {booking.status === "pending" && (
+                    {booking.status === "pending" && !checkIfExpired(booking) && (
                       <>
                         <button 
                           onClick={handleApprove}
@@ -477,9 +463,9 @@ const SingleRoomBookingPage = () => {
                         </button>
                       </>
                     )}
-                    {booking.status !== "pending" && (
-                      <div className={`${booking.status === 'approved' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'} p-3 rounded-xl text-center`}>
-                        This booking has been {booking.status.toLowerCase()}
+                    {(booking.status !== "pending" || checkIfExpired(booking)) && (
+                      <div className={`${booking.status === 'approved' ? 'bg-green-50 text-green-700' : booking.status === 'rejected' ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'} p-3 rounded-xl text-center`}>
+                        {checkIfExpired(booking) ? 'This booking has expired' : `This booking has been ${booking.status.toLowerCase()}`}
                       </div>
                     )}
                   </div>

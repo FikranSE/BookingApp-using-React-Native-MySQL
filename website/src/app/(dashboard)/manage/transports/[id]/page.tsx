@@ -8,11 +8,11 @@ import { useParams } from "next/navigation";
 import Image from "next/image";
 import { 
   Car, Edit, Trash2, ArrowLeft, Save,
-  AlertCircle, User, Users, Camera
+  AlertCircle, User, Users, Camera, Clock
 } from "lucide-react";
 
 // Add the missing formatDate function
-const formatDate = (dateString) => {
+const formatDate = (dateString: string): string => {
   if (!dateString) return "N/A";
   
   const date = new Date(dateString);
@@ -31,26 +31,55 @@ const formatDate = (dateString) => {
   });
 };
 
+interface Transport {
+  vehicle_id: string;
+  vehicle_name: string;
+  driver_name: string;
+  capacity: number;
+  image: string;
+  vehicle_type: string;
+  features: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface UpdateStatus {
+  type: 'success' | 'error' | 'info' | null;
+  message: string | null;
+}
+
+interface EditData {
+  vehicle_name: string;
+  driver_name: string;
+  capacity: number;
+  image: string;
+  vehicle_type: string;
+  features: string;
+}
+
 const SingleTransportPage = () => {
   const router = useRouter();
   const params = useParams();
   const transportId = params.id;
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [transport, setTransport] = useState(null);
+  const [transport, setTransport] = useState<Transport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({
+  const [editData, setEditData] = useState<EditData>({
     vehicle_name: "",
     driver_name: "",
     capacity: 0,
-    image: ""
+    image: "",
+    vehicle_type: "",
+    features: ""
   });
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewImage, setPreviewImage] = useState(null);
-  const [updateStatus, setUpdateStatus] = useState({ type: null, message: null });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ type: null, message: null });
   const [isSaving, setIsSaving] = useState(false);
+  const [vehicleTypes, setVehicleTypes] = useState<string[]>([]);
 
   // Create a custom axios instance
   const createApiClient = () => {
@@ -84,11 +113,17 @@ const SingleTransportPage = () => {
         vehicle_name: response.data.vehicle_name || "",
         driver_name: response.data.driver_name || "",
         capacity: response.data.capacity || 0,
-        image: response.data.image || ""
+        image: response.data.image || "",
+        vehicle_type: response.data.vehicle_type || "",
+        features: response.data.features || ""
       });
+      setVehicleTypes(response.data.vehicle_types || []);
     } catch (err) {
       console.error("Error fetching transport:", err);
-      setError("Unable to load transport information. Please try again later.");
+      setUpdateStatus({
+        type: 'error',
+        message: "Unable to load transport information. Please try again later."
+      });
     } finally {
       setLoading(false);
     }
@@ -96,13 +131,15 @@ const SingleTransportPage = () => {
 
   // Handle edit mode toggle
   const toggleEditMode = () => {
-    if (isEditing) {
+    if (isEditing && transport) {
       // Reset form data when canceling edit
       setEditData({
         vehicle_name: transport.vehicle_name || "",
         driver_name: transport.driver_name || "",
         capacity: transport.capacity || 0,
-        image: transport.image || ""
+        image: transport.image || "",
+        vehicle_type: transport.vehicle_type || "",
+        features: transport.features || ""
       });
       setSelectedFile(null);
       setPreviewImage(null);
@@ -111,191 +148,115 @@ const SingleTransportPage = () => {
     setUpdateStatus({ type: null, message: null });
   };
 
-  // Handle form input changes
-  const handleInputChange = (e) => {
+  // Fix input change handler with proper type conversion
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setEditData({
-      ...editData,
-      [name]: name === 'capacity' ? parseInt(value) : value
-    });
+    
+    switch (name) {
+      case 'capacity':
+        setEditData(prev => ({
+          ...prev,
+          capacity: Number(value) || 0
+        }));
+        break;
+      case 'vehicle_name':
+      case 'driver_name':
+      case 'image':
+      case 'vehicle_type':
+      case 'features':
+        setEditData(prev => ({
+          ...prev,
+          [name]: value
+        }));
+        break;
+      default:
+        break;
+    }
   };
 
   // Handle file selection
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
-      console.log(`Selected file: ${file.name}, size: ${(file.size / 1024).toFixed(2)}KB, type: ${file.type}`);
-      
-      // Check for file size exceeding limit
-      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-      if (file.size > maxSize) {
+      if (file.size > 5 * 1024 * 1024) {
         setUpdateStatus({
           type: 'error',
-          message: `Image is too large (${(file.size / (1024 * 1024)).toFixed(2)}MB). Maximum size is 5MB.`
+          message: 'File size must be less than 5MB'
         });
         return;
       }
-
-      // Set the selected file and its preview
       setSelectedFile(file);
-      setPreviewImage(URL.createObjectURL(file));
-      
-      if (updateStatus.type === 'error') {
-        setUpdateStatus({ type: null, message: null });
-      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   // Trigger file input click
   const triggerFileInput = () => {
-    fileInputRef.current.click();
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
-  const fixImageUrl = (imageUrl) => {
-    if (!imageUrl) return null;
-  
-    // Handle local filesystem paths
-    if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
-      return `/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
-    }
-  
-    // Fix double slash issue in URLs
-    if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
-      return imageUrl.replace('//uploads', '/uploads');
-    }
-  
-    return imageUrl;
+  const fixImageUrl = (imageUrl: string): string => {
+    if (!imageUrl) return '/placeholder-vehicle.jpg';
+    if (imageUrl.startsWith('http')) return imageUrl;
+    return `${process.env.NEXT_PUBLIC_API_URL}/uploads/${imageUrl}`;
   };
 
-// Improved handleSubmit function with better error handling
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsSaving(true);
-  setUpdateStatus({ type: null, message: null });
-  
-  const apiClient = createApiClient();
-  if (!apiClient) return;
-
-  // Prepare form data for submission
-  const formData = new FormData();
-  
-  // Ensure all required fields are included and properly formatted
-  formData.append('vehicle_name', editData.vehicle_name.trim());
-  formData.append('driver_name', editData.driver_name.trim());
-  
-  // Make sure capacity is a valid number
-  const capacity = parseInt(editData.capacity);
-  if (isNaN(capacity) || capacity <= 0) {
-    setUpdateStatus({
-      type: 'error',
-      message: 'Capacity must be a positive number'
-    });
-    setIsSaving(false);
-    return;
-  }
-  formData.append('capacity', capacity);
-
-  // If there's an image, append it to FormData with proper validation
-  if (selectedFile) {
-    // Double-check file size again before submission
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (selectedFile.size > maxSize) {
-      setUpdateStatus({
-        type: 'error',
-        message: `Image is too large (${(selectedFile.size / (1024 * 1024)).toFixed(2)}MB). Maximum size is 5MB.`
-      });
-      setIsSaving(false);
-      return;
-    }
-    
-    // Check file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-    if (!allowedTypes.includes(selectedFile.type)) {
-      setUpdateStatus({
-        type: 'error',
-        message: `Unsupported file type: ${selectedFile.type}. Please use JPEG or PNG images.`
-      });
-      setIsSaving(false);
-      return;
-    }
-    
-    formData.append('image', selectedFile);
-  }
-
-  // For debugging
-  console.log("Submitting transport update...");
-  console.log("Transport ID:", transportId);
-  
-  try {
-    // Log request details before sending
-    console.log("API URL:", `${apiClient.defaults.baseURL}/transports/${transportId}`);
-    
-    const response = await apiClient.put(`/transports/${transportId}`, formData, {
-      headers: { 
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    
-    console.log("Update successful:", response.data);
-    setTransport(response.data);
-    setUpdateStatus({
-      type: 'success',
-      message: 'Transport updated successfully',
-    });
-    setIsEditing(false);
-    setPreviewImage(null);
-    setSelectedFile(null);
-  } catch (err) {
-    console.error("Error updating transport:", err);
-    
-    // Extract more detailed error message
-    let errorMessage = 'Failed to update transport. Please try again.';
-    
-    if (err.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      console.error("Server response error data:", err.response.data);
-      console.error("Server response status:", err.response.status);
+  // Improved handleSubmit function with better error handling
+  const handleSubmit = async () => {
+    try {
+      setIsSaving(true);
+      const formData = new FormData();
       
-      if (err.response.data) {
-        if (err.response.data.message) {
-          errorMessage = err.response.data.message;
-        } else if (err.response.data.error) {
-          errorMessage = err.response.data.error;
-        } else if (typeof err.response.data === 'string') {
-          errorMessage = err.response.data;
+      // Add text fields with proper type conversion
+      Object.entries(editData).forEach(([key, value]) => {
+        if (typeof value === 'number') {
+          formData.append(key, value.toString());
+        } else {
+          formData.append(key, value);
         }
-      }
+      });
       
-      // Handle specific status codes
-      if (err.response.status === 401) {
-        errorMessage = 'Authentication failed. Please log in again.';
-        // Optionally redirect to login
-        // setTimeout(() => router.push('/sign-in'), 2000);
-      } else if (err.response.status === 403) {
-        errorMessage = 'You do not have permission to update this transport.';
-      } else if (err.response.status === 413) {
-        errorMessage = 'The image file is too large for the server to process.';
-      } else if (err.response.status === 422) {
-        errorMessage = 'Validation failed. Please check the form fields.';
+      // Add file if selected
+      if (selectedFile) {
+        formData.append('image', selectedFile);
       }
-    } else if (err.request) {
-      // The request was made but no response was received
-      console.error("No response received:", err.request);
-      errorMessage = 'No response from server. Please check your connection.';
-    } else {
-      // Something happened in setting up the request that triggered an Error
-      console.error("Request setup error:", err.message);
+
+      const response = await axios.put(`/api/transports/${transportId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.success) {
+        setTransport(response.data.data);
+        setUpdateStatus({
+          type: 'success',
+          message: 'Transport updated successfully'
+        });
+        setIsEditing(false);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        setUpdateStatus({
+          type: 'error',
+          message: error.message
+        });
+      } else {
+        setUpdateStatus({
+          type: 'error',
+          message: 'An unexpected error occurred'
+        });
+      }
+    } finally {
+      setIsSaving(false);
     }
-    
-    setUpdateStatus({
-      type: 'error',
-      message: errorMessage
-    });
-  } finally {
-    setIsSaving(false);
-  }
-};
+  };
 
   // Handle transport deletion
   const handleDelete = async () => {
@@ -316,6 +277,13 @@ const handleSubmit = async (e) => {
         message: 'Failed to delete transport. Please try again.'
       });
     }
+  };
+
+  // Fix image error handling
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const target = e.target as HTMLImageElement;
+    target.onerror = null;
+    target.src = '/placeholder-vehicle.jpg';
   };
 
   // Initial data fetch
@@ -442,7 +410,7 @@ const handleSubmit = async (e) => {
                         <h2 className="text-2xl font-bold">{transport.vehicle_name}</h2>
                       )}
                       <div className="mt-1 text-blue-50 flex items-center text-sm">
-                        <span>ID: {transport.transport_id}</span>
+                        <span>ID: {transport.vehicle_id}</span>
                       </div>
                     </div>
                   </div>
@@ -494,150 +462,148 @@ const handleSubmit = async (e) => {
               <div className="p-6">
                 {/* Image */}
                 <div className="aspect-video bg-gray-100 rounded-xl overflow-hidden relative mb-6 group">
-  {/* Hidden file input */}
-  <input 
-    type="file"
-    ref={fileInputRef}
-    accept="image/jpeg,image/png"
-    onChange={handleFileChange}
-    className="hidden"
-  />
-  
-  {previewImage ? (
-    <div className="relative w-full h-full">
-      <img
-        src={previewImage}
-        alt={transport.vehicle_name}
-        className="absolute inset-0 w-full h-full object-cover"
-      />
-    </div>
-  ) : transport.image ? (
-    <div className="relative w-full h-full">
-      <img
-        src={fixImageUrl(transport.image)} // Applying the fixImageUrl function here
-        alt={transport.vehicle_name}
-        className="absolute inset-0 w-full h-full object-cover"
-        onError={(e) => {
-          e.target.onerror = null;
-          e.target.src = '/placeholder-vehicle.jpg'; // Fallback image path
-        }}
-      />
-    </div>
-  ) : (
-    <div className="flex items-center justify-center h-full">
-      <Car size={64} className="text-gray-300" />
-      <p className="text-gray-400 absolute bottom-4">No image available</p>
-    </div>
-  )}
-  
-  {isEditing && (
-    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-      <button
-        onClick={triggerFileInput}
-        className="bg-white/90 backdrop-blur-sm rounded-xl p-3 flex items-center"
-      >
-        <Camera size={20} className="mr-2 text-blue-500" />
-        <span>Choose Image File (Max 5MB)</span>
-      </button>
-      <div className="absolute bottom-4 right-4">
-        <div className="bg-blue-500 rounded-full p-2 text-white">
-          <Camera size={20} />
-        </div>
-      </div>
-    </div>
-  )}
-</div>
-                
-                {/* Driver info */}
-                <div className="flex items-start mb-6 p-4 bg-indigo-50 rounded-2xl">
-                  <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-                    <User size={20} className="text-indigo-500" />
-                  </div>
-                  <div className="ml-4 flex-grow">
-                    <h3 className="uppercase text-xs font-semibold text-indigo-500 tracking-wider">Driver</h3>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        name="driver_name"
-                        value={editData.driver_name}
-                        onChange={handleInputChange}
-                        className="mt-1 p-2 border border-indigo-200 rounded w-full bg-white"
-                        placeholder="Driver Name"
+                  <input 
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/jpeg,image/png"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  
+                  {previewImage ? (
+                    <div className="relative w-full h-full">
+                      <img
+                        src={previewImage}
+                        alt={transport.vehicle_name}
+                        className="absolute inset-0 w-full h-full object-cover"
                       />
-                    ) : (
-                      <p className="text-lg font-medium text-gray-800">
-                        {transport.driver_name || "Not assigned"}
-                      </p>
-                    )}
-                  </div>
+                    </div>
+                  ) : transport.image ? (
+                    <div className="relative w-full h-full">
+                      <img
+                        src={fixImageUrl(transport.image)}
+                        alt={transport.vehicle_name}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        onError={handleImageError}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <Car size={64} className="text-gray-300" />
+                      <p className="text-gray-400 absolute bottom-4">No image available</p>
+                    </div>
+                  )}
+                  
+                  {isEditing && (
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button
+                        onClick={triggerFileInput}
+                        className="bg-white/90 backdrop-blur-sm rounded-xl p-3 flex items-center"
+                      >
+                        <Camera size={20} className="mr-2 text-blue-500" />
+                        <span>Choose Image File (Max 5MB)</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
-                
-                {/* Capacity info */}
-                <div className="flex items-start mb-6 p-4 bg-sky-50 rounded-2xl">
-                  <div className="flex-shrink-0 w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
-                    <Users size={20} className="text-sky-500" />
+
+                {/* Transport Details */}
+                <div className="space-y-4">
+                  {/* Vehicle Type */}
+                  <div className="flex items-start p-4 bg-indigo-50 rounded-2xl">
+                    <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                      <Car size={20} className="text-indigo-500" />
+                    </div>
+                    <div className="ml-4 flex-grow">
+                      <h3 className="uppercase text-xs font-semibold text-indigo-500 tracking-wider">Vehicle Type</h3>
+                      {isEditing ? (
+                        <select
+                          name="vehicle_type"
+                          value={editData.vehicle_type}
+                          onChange={handleInputChange}
+                          className="mt-1 p-2 border border-indigo-200 rounded w-full bg-white"
+                        >
+                          {vehicleTypes.map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <p className="text-lg font-medium text-gray-800">
+                          {transport.vehicle_type || "Not assigned"}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="ml-4 flex-grow">
-                    <h3 className="uppercase text-xs font-semibold text-sky-500 tracking-wider">Capacity</h3>
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        name="capacity"
-                        value={editData.capacity}
-                        onChange={handleInputChange}
-                        min="1"
-                        max="100"
-                        className="mt-1 p-2 border border-sky-200 rounded w-full bg-white"
-                        placeholder="Capacity"
-                      />
-                    ) : (
+
+                  {/* Capacity */}
+                  <div className="flex items-start p-4 bg-sky-50 rounded-2xl">
+                    <div className="flex-shrink-0 w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
+                      <Users size={20} className="text-sky-500" />
+                    </div>
+                    <div className="ml-4 flex-grow">
+                      <h3 className="uppercase text-xs font-semibold text-sky-500 tracking-wider">Capacity</h3>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          name="capacity"
+                          value={editData.capacity}
+                          onChange={handleInputChange}
+                          min="1"
+                          max="100"
+                          className="mt-1 p-2 border border-sky-200 rounded w-full bg-white"
+                          placeholder="Capacity"
+                        />
+                      ) : (
+                        <p className="text-lg font-medium text-gray-800">
+                          {transport.capacity} persons
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Features */}
+                  <div className="flex items-start p-4 bg-emerald-50 rounded-2xl">
+                    <div className="flex-shrink-0 w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                      <User size={20} className="text-emerald-500" />
+                    </div>
+                    <div className="ml-4 flex-grow">
+                      <h3 className="uppercase text-xs font-semibold text-emerald-500 tracking-wider">Features</h3>
+                      {isEditing ? (
+                        <textarea
+                          name="features"
+                          value={editData.features}
+                          onChange={handleInputChange}
+                          rows="3"
+                          className="mt-1 p-2 border border-emerald-200 rounded w-full bg-white"
+                          placeholder="Vehicle Features"
+                        />
+                      ) : (
+                        <p className="text-lg font-medium text-gray-800">
+                          {transport.features || "No features information available"}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Metadata */}
+                  <div className="flex items-start p-4 bg-gray-50 rounded-2xl">
+                    <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                      <Clock size={20} className="text-gray-500" />
+                    </div>
+                    <div className="ml-4 flex-grow">
+                      <h3 className="uppercase text-xs font-semibold text-gray-500 tracking-wider">Last Updated</h3>
                       <p className="text-lg font-medium text-gray-800">
-                        {transport.capacity} persons
+                        {formatDate(transport.updatedAt)}
                       </p>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
           
-          {/* Right column - Summary and metadata */}
+          {/* Right column - Actions */}
           <div className="md:col-span-5 lg:col-span-4">
-            {/* Transport summary card */}
-            <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="font-bold text-gray-900">Transport Details</h3>
-              </div>
-              <div className="p-6">
-                <ul className="space-y-4">
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Transport ID</span>
-                    <span className="font-medium text-gray-800">#{transport.transport_id}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Vehicle Name</span>
-                    <span className="font-medium text-gray-800">{transport.vehicle_name}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Driver</span>
-                    <span className="font-medium text-gray-800">{transport.driver_name || "Not assigned"}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Capacity</span>
-                    <span className="font-medium text-gray-800">{transport.capacity} persons</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Created</span>
-                    <span className="font-medium text-gray-800">{formatDate(transport.createdAt)}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2">
-                    <span className="text-gray-500">Last Updated</span>
-                    <span className="font-medium text-gray-800">{formatDate(transport.updatedAt)}</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            
             {/* Quick actions card */}
             <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
               <div className="p-6 border-b border-gray-100">

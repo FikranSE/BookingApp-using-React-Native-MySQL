@@ -8,7 +8,7 @@ import { useParams } from "next/navigation";
 import Image from "next/image";
 import { 
   BedDouble, Edit, Trash2, ArrowLeft, Save,
-  AlertCircle, User, Users, Camera, Car
+  AlertCircle, User, Users, Camera, Car, Clock
 } from "lucide-react";
 
 // Add room types for dropdown (same as in the ManageRoomsPage)
@@ -504,176 +504,151 @@ const handleSubmit = async (e) => {
               <div className="p-6">
                 {/* Image */}
                 <div className="aspect-video bg-gray-100 rounded-xl overflow-hidden relative mb-6 group">
-  {/* Hidden file input */}
-  <input 
-    type="file"
-    ref={fileInputRef}
-    accept="image/jpeg,image/png"
-    onChange={handleFileChange}
-    className="hidden"
-  />
-  
-  {previewImage ? (
-    <div className="relative w-full h-full">
-      <img
-        src={previewImage}
-        alt={room.vehicle_name}
-        className="absolute inset-0 w-full h-full object-cover"
-      />
-    </div>
-  ) : room.image ? (
-    <div className="relative w-full h-full">
-      <img
-        src={fixImageUrl(room.image)} // Applying the fixImageUrl function here
-        alt={room.vehicle_name}
-        className="absolute inset-0 w-full h-full object-cover"
-        onError={(e) => {
-          e.target.onerror = null;
-          e.target.src = '/placeholder-vehicle.jpg'; // Fallback image path
-        }}
-      />
-    </div>
-  ) : (
-    <div className="flex items-center justify-center h-full">
-      <Car size={64} className="text-gray-300" />
-      <p className="text-gray-400 absolute bottom-4">No image available</p>
-    </div>
-  )}
-  
-  {isEditing && (
-    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-      <button
-        onClick={triggerFileInput}
-        className="bg-white/90 backdrop-blur-sm rounded-xl p-3 flex items-center"
-      >
-        <Camera size={20} className="mr-2 text-blue-500" />
-        <span>Choose Image File (Max 5MB)</span>
-      </button>
-      <div className="absolute bottom-4 right-4">
-        <div className="bg-blue-500 rounded-full p-2 text-white">
-          <Camera size={20} />
-        </div>
-      </div>
-    </div>
-  )}
-</div>
-                
-                {/* Room Type info - MODIFIED TO USE DROPDOWN INSTEAD OF TEXT INPUT */}
-                <div className="flex items-start mb-6 p-4 bg-indigo-50 rounded-2xl">
-                  <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-                    <BedDouble size={20} className="text-indigo-500" />
-                  </div>
-                  <div className="ml-4 flex-grow">
-                    <h3 className="uppercase text-xs font-semibold text-indigo-500 tracking-wider">Room Type</h3>
-                    {isEditing ? (
-                      <select
-                        name="room_type"
-                        value={editData.room_type}
-                        onChange={handleInputChange}
-                        className="mt-1 p-2 border border-indigo-200 rounded w-full bg-white"
+                  <input 
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/jpeg,image/png"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  
+                  {previewImage ? (
+                    <div className="relative w-full h-full">
+                      <img
+                        src={previewImage}
+                        alt={room.room_name}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : room.image ? (
+                    <div className="relative w-full h-full">
+                      <img
+                        src={fixImageUrl(room.image)}
+                        alt={room.room_name}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = '/placeholder-room.jpg';
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <BedDouble size={64} className="text-gray-300" />
+                      <p className="text-gray-400 absolute bottom-4">No image available</p>
+                    </div>
+                  )}
+                  
+                  {isEditing && (
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button
+                        onClick={triggerFileInput}
+                        className="bg-white/90 backdrop-blur-sm rounded-xl p-3 flex items-center"
                       >
-                        {roomTypes.map((type) => (
-                          <option key={type} value={type}>{type}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <p className="text-lg font-medium text-gray-800">
-                        {room.room_type || "Not assigned"}
-                      </p>
-                    )}
-                  </div>
+                        <Camera size={20} className="mr-2 text-blue-500" />
+                        <span>Choose Image File (Max 5MB)</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
-                
-                {/* Capacity info */}
-                <div className="flex items-start mb-6 p-4 bg-sky-50 rounded-2xl">
-                  <div className="flex-shrink-0 w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
-                    <Users size={20} className="text-sky-500" />
+
+                {/* Room Details */}
+                <div className="space-y-4">
+                  {/* Room Type */}
+                  <div className="flex items-start p-4 bg-indigo-50 rounded-2xl">
+                    <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                      <BedDouble size={20} className="text-indigo-500" />
+                    </div>
+                    <div className="ml-4 flex-grow">
+                      <h3 className="uppercase text-xs font-semibold text-indigo-500 tracking-wider">Room Type</h3>
+                      {isEditing ? (
+                        <select
+                          name="room_type"
+                          value={editData.room_type}
+                          onChange={handleInputChange}
+                          className="mt-1 p-2 border border-indigo-200 rounded w-full bg-white"
+                        >
+                          {roomTypes.map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <p className="text-lg font-medium text-gray-800">
+                          {room.room_type || "Not assigned"}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="ml-4 flex-grow">
-                    <h3 className="uppercase text-xs font-semibold text-sky-500 tracking-wider">Capacity</h3>
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        name="capacity"
-                        value={editData.capacity}
-                        onChange={handleInputChange}
-                        min="1"
-                        max="100"
-                        className="mt-1 p-2 border border-sky-200 rounded w-full bg-white"
-                        placeholder="Capacity"
-                      />
-                    ) : (
+
+                  {/* Capacity */}
+                  <div className="flex items-start p-4 bg-sky-50 rounded-2xl">
+                    <div className="flex-shrink-0 w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
+                      <Users size={20} className="text-sky-500" />
+                    </div>
+                    <div className="ml-4 flex-grow">
+                      <h3 className="uppercase text-xs font-semibold text-sky-500 tracking-wider">Capacity</h3>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          name="capacity"
+                          value={editData.capacity}
+                          onChange={handleInputChange}
+                          min="1"
+                          max="100"
+                          className="mt-1 p-2 border border-sky-200 rounded w-full bg-white"
+                          placeholder="Capacity"
+                        />
+                      ) : (
+                        <p className="text-lg font-medium text-gray-800">
+                          {room.capacity} persons
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Facilities */}
+                  <div className="flex items-start p-4 bg-emerald-50 rounded-2xl">
+                    <div className="flex-shrink-0 w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                      <User size={20} className="text-emerald-500" />
+                    </div>
+                    <div className="ml-4 flex-grow">
+                      <h3 className="uppercase text-xs font-semibold text-emerald-500 tracking-wider">Facilities</h3>
+                      {isEditing ? (
+                        <textarea
+                          name="facilities"
+                          value={editData.facilities}
+                          onChange={handleInputChange}
+                          rows="3"
+                          className="mt-1 p-2 border border-emerald-200 rounded w-full bg-white"
+                          placeholder="Room Facilities"
+                        />
+                      ) : (
+                        <p className="text-lg font-medium text-gray-800">
+                          {room.facilities || "No facilities information available"}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Metadata */}
+                  <div className="flex items-start p-4 bg-gray-50 rounded-2xl">
+                    <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                      <Clock size={20} className="text-gray-500" />
+                    </div>
+                    <div className="ml-4 flex-grow">
+                      <h3 className="uppercase text-xs font-semibold text-gray-500 tracking-wider">Last Updated</h3>
                       <p className="text-lg font-medium text-gray-800">
-                        {room.capacity} persons
+                        {formatDate(room.updatedAt)}
                       </p>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Facilities info */}
-                <div className="flex items-start mb-6 p-4 bg-emerald-50 rounded-2xl">
-                  <div className="flex-shrink-0 w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                    <User size={20} className="text-emerald-500" />
-                  </div>
-                  <div className="ml-4 flex-grow">
-                    <h3 className="uppercase text-xs font-semibold text-emerald-500 tracking-wider">Facilities</h3>
-                    {isEditing ? (
-                      <textarea
-                        name="facilities"
-                        value={editData.facilities}
-                        onChange={handleInputChange}
-                        rows="3"
-                        className="mt-1 p-2 border border-emerald-200 rounded w-full bg-white"
-                        placeholder="Room Facilities"
-                      />
-                    ) : (
-                      <p className="text-lg font-medium text-gray-800">
-                        {room.facilities || "No facilities information available"}
-                      </p>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
           
-          {/* Right column - Summary and metadata */}
+          {/* Right column - Actions */}
           <div className="md:col-span-5 lg:col-span-4">
-            {/* Room summary card */}
-            <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="font-bold text-gray-900">Room Details</h3>
-              </div>
-              <div className="p-6">
-                <ul className="space-y-4">
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Room ID</span>
-                    <span className="font-medium text-gray-800">#{room.room_id}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Room Name</span>
-                    <span className="font-medium text-gray-800">{room.room_name}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Room Type</span>
-                    <span className="font-medium text-gray-800">{room.room_type || "Not assigned"}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Capacity</span>
-                    <span className="font-medium text-gray-800">{room.capacity} persons</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Created</span>
-                    <span className="font-medium text-gray-800">{formatDate(room.createdAt)}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2">
-                    <span className="text-gray-500">Last Updated</span>
-                    <span className="font-medium text-gray-800">{formatDate(room.updatedAt)}</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            
             {/* Quick actions card */}
             <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
               <div className="p-6 border-b border-gray-100">
@@ -719,8 +694,8 @@ const handleSubmit = async (e) => {
               </div>
             </div>
             
-{/* View related bookings */}
-<div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
+            {/* View related bookings */}
+            <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
               <div className="p-6">
                 <Link href={`/list/room-bookings?room=${roomId}`}>
                   <button className="w-full py-2.5 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-medium flex items-center justify-center transition-colors">

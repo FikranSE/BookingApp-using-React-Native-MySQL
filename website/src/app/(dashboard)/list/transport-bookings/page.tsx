@@ -112,28 +112,17 @@ const TransportBookingListPage = () => {
     return apiClient;
   };
 
-  // Add this function after the createApiClient function
-  const checkAndUpdateExpiredBookings = (bookings: TransportBooking[]) => {
-    const now = new Date();
-    const updatedBookings = bookings.map(booking => {
-      const bookingDate = new Date(booking.booking_date);
-      const [startHours, startMinutes] = booking.start_time.split(':').map(Number);
-      const [endHours, endMinutes] = booking.end_time.split(':').map(Number);
-      
-      bookingDate.setHours(startHours, startMinutes, 0);
-      const endDateTime = new Date(bookingDate);
-      endDateTime.setHours(endHours, endMinutes, 0);
-      
-      if (booking.status.toLowerCase() === 'pending' && endDateTime < now) {
-        return { ...booking, status: 'expired' };
-      }
-      return booking;
-    });
-    
-    return updatedBookings;
-  };
+  // Apply search, filters, and sorting
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [transportBookings, searchText, statusFilters, dateFilter, sorting, destinationFilter]);
 
-  // Add back the applyFiltersAndSort function
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchTransportBookings();
+  }, []);
+
+  // Apply all filters and sorting
   const applyFiltersAndSort = () => {
     let result = [...transportBookings];
     
@@ -188,26 +177,23 @@ const TransportBookingListPage = () => {
     // Apply sorting
     if (sorting) {
       result.sort((a, b) => {
-        const valueA = a[sorting.field as keyof TransportBooking];
-        const valueB = b[sorting.field as keyof TransportBooking];
-        
-        if (valueA === undefined || valueB === undefined) return 0;
+        let valueA = a[sorting.field];
+        let valueB = b[sorting.field];
         
         // Special handling for dates and times
         if (sorting.field === 'booking_date' || sorting.field === 'createdAt' || sorting.field === 'updatedAt') {
-          const dateA = new Date(valueA as string).getTime();
-          const dateB = new Date(valueB as string).getTime();
-          return sorting.direction === 'asc' ? dateA - dateB : dateB - dateA;
+          valueA = new Date(valueA).getTime();
+          valueB = new Date(valueB).getTime();
         } else if (sorting.field === 'start_time' || sorting.field === 'end_time') {
-          const timeA = (valueA as string).replace(':', '');
-          const timeB = (valueB as string).replace(':', '');
-          return sorting.direction === 'asc' ? timeA.localeCompare(timeB) : timeB.localeCompare(timeA);
-        } else if (typeof valueA === 'string' && typeof valueB === 'string') {
-          return sorting.direction === 'asc' 
-            ? valueA.toLowerCase().localeCompare(valueB.toLowerCase())
-            : valueB.toLowerCase().localeCompare(valueA.toLowerCase());
+          valueA = valueA.replace(':', '');
+          valueB = valueB.replace(':', '');
+        } else if (typeof valueA === 'string') {
+          valueA = valueA.toLowerCase();
+          valueB = valueB.toLowerCase();
         }
         
+        if (valueA < valueB) return sorting.direction === 'asc' ? -1 : 1;
+        if (valueA > valueB) return sorting.direction === 'asc' ? 1 : -1;
         return 0;
       });
     }
@@ -215,17 +201,6 @@ const TransportBookingListPage = () => {
     setFilteredBookings(result);
   };
 
-  // Apply search, filters, and sorting
-  useEffect(() => {
-    applyFiltersAndSort();
-  }, [transportBookings, searchText, statusFilters, dateFilter, sorting, destinationFilter]);
-
-  // Fetch data on component mount
-  useEffect(() => {
-    fetchTransportBookings();
-  }, []);
-
-  // Modify the fetchTransportBookings function
   const fetchTransportBookings = async () => {
     setLoading(true);
     setError(null);
@@ -237,10 +212,7 @@ const TransportBookingListPage = () => {
       console.log("Fetching transport bookings...");
       const response = await apiClient.get("/transport-bookings");
       console.log("Transport bookings fetched successfully:", response.data);
-      
-      // Check and update expired bookings
-      const updatedBookings = checkAndUpdateExpiredBookings(response.data);
-      setTransportBookings(updatedBookings);
+      setTransportBookings(response.data);
       setAuthStatus("Authenticated and data loaded");
     } catch (error: any) {
       console.error("Error fetching transport bookings:", error);
@@ -345,8 +317,14 @@ const TransportBookingListPage = () => {
     }
   };
 
-  // Update the getStatusColor function to include expired status
-  const getStatusColor = (status: string) => {
+  // Get appropriate badge color based on status
+  const getStatusColor = (status: string, booking: TransportBooking) => {
+    // Check if booking is expired
+    const isExpired = checkIfExpired(booking);
+    if (isExpired) {
+      return 'bg-gray-100 text-gray-500';
+    }
+
     switch (status.toLowerCase()) {
       case 'approved':
         return 'bg-green-100 text-green-800';
@@ -354,15 +332,19 @@ const TransportBookingListPage = () => {
         return 'bg-red-100 text-red-800';
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
-      case 'expired':
-        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
-  // Update the getStatusIcon function to include expired status
-  const getStatusIcon = (status: string) => {
+  // Get appropriate status icon
+  const getStatusIcon = (status: string, booking: TransportBooking) => {
+    // Check if booking is expired
+    const isExpired = checkIfExpired(booking);
+    if (isExpired) {
+      return <Clock size={14} className="mr-1 text-gray-400" />;
+    }
+
     switch (status.toLowerCase()) {
       case 'approved':
         return <CheckCircle size={14} className="mr-1 text-green-500" />;
@@ -370,11 +352,32 @@ const TransportBookingListPage = () => {
         return <XCircle size={14} className="mr-1 text-red-500" />;
       case 'pending':
         return <Clock size={14} className="mr-1 text-yellow-500" />;
-      case 'expired':
-        return <Clock size={14} className="mr-1 text-gray-500" />;
       default:
         return null;
     }
+  };
+
+  // Function to check if booking is expired
+  const checkIfExpired = (booking: TransportBooking) => {
+    if (!booking) return false;
+    
+    const now = new Date();
+    const bookingDate = new Date(booking.booking_date);
+    const [endHours, endMinutes] = booking.end_time.split(':');
+    bookingDate.setHours(parseInt(endHours), parseInt(endMinutes));
+    
+    return now > bookingDate;
+  };
+
+  // Get display status
+  const getDisplayStatus = (booking: TransportBooking) => {
+    if (!booking) return "Unknown";
+    
+    if (booking.status.toLowerCase() === 'pending' && checkIfExpired(booking)) {
+      return "Expired";
+    }
+    
+    return booking.status;
   };
 
   // Calculate active filters count
@@ -401,9 +404,9 @@ const TransportBookingListPage = () => {
         </div>
       </td>
       <td className="hidden md:table-cell p-4">
-        <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center w-fit ${getStatusColor(item.status)}`}>
-          {getStatusIcon(item.status)}
-          {item.status}
+        <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center w-fit ${getStatusColor(item.status, item)}`}>
+          {getStatusIcon(item.status, item)}
+          {getDisplayStatus(item)}
         </span>
       </td>
       <td className="p-4">
@@ -484,7 +487,6 @@ const TransportBookingListPage = () => {
                     onSort={handleSort}
                   />
                 </div>
-                <FormModal table="room-booking" type="create" />
               </div>
             </div>
           </div>
@@ -605,7 +607,7 @@ const TransportBookingListPage = () => {
             </div>
             <h3 className="font-bold text-lg mb-2 text-sky-800">No Transport Bookings Found</h3>
             <p className="text-gray-500 mb-6">No transport bookings have been created yet.</p>
-            <FormModal table="room-booking" type="create" />
+            <FormModal table="transport-booking" type="create" />
           </div>
         )}
 
@@ -644,7 +646,6 @@ const TransportBookingListPage = () => {
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Agenda</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Start Time</th>
                       <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">End Time</th>
-                      <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Transport ID</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Destination</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Actions</th>
@@ -661,7 +662,6 @@ const TransportBookingListPage = () => {
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.agenda}</td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{formatTime(item.start_time)}</td>
                         <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{formatTime(item.end_time)}</td>
-                        <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.transport_id}</td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center text-sm text-sky-800">
                             <MapPin size={14} className="mr-1 text-gray-400" />
@@ -669,9 +669,9 @@ const TransportBookingListPage = () => {
                           </div>
                         </td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
-                            {getStatusIcon(item.status)}
-                            {item.status}
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.status, item)}`}>
+                            {getStatusIcon(item.status, item)}
+                            {getDisplayStatus(item)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

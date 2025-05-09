@@ -135,27 +135,6 @@ const RoomBookingListPage = () => {
     return apiClient;
   };
 
-  // Add this function after the createApiClient function
-  const checkAndUpdateExpiredBookings = (bookings: RoomBooking[]) => {
-    const now = new Date();
-    const updatedBookings = bookings.map(booking => {
-      const bookingDate = new Date(booking.booking_date);
-      const [startHours, startMinutes] = booking.start_time.split(':').map(Number);
-      const [endHours, endMinutes] = booking.end_time.split(':').map(Number);
-      
-      bookingDate.setHours(startHours, startMinutes, 0);
-      const endDateTime = new Date(bookingDate);
-      endDateTime.setHours(endHours, endMinutes, 0);
-      
-      if (booking.status.toLowerCase() === 'pending' && endDateTime < now) {
-        return { ...booking, status: 'expired' };
-      }
-      return booking;
-    });
-    
-    return updatedBookings;
-  };
-
   // Apply search, filters, and sorting
   useEffect(() => {
     applyFiltersAndSort();
@@ -237,7 +216,6 @@ const RoomBookingListPage = () => {
     setFilteredBookings(result);
   };
 
-  // Modify the fetchRoomBookings function
   const fetchRoomBookings = async () => {
     setLoading(true);
     setError(null);
@@ -249,14 +227,12 @@ const RoomBookingListPage = () => {
       console.log("Fetching room bookings...");
       const response = await apiClient.get("/room-bookings");
       console.log("Room bookings fetched successfully:", response.data);
-      
-      // Check and update expired bookings
-      const updatedBookings = checkAndUpdateExpiredBookings(response.data);
-      setRoomBookings(updatedBookings);
+      setRoomBookings(response.data);
       setAuthStatus("Authenticated and data loaded");
     } catch (error: any) {
       console.error("Error fetching room bookings:", error);
       
+      // Check for unauthorized error
       if (error.response?.status === 401) {
         setAuthStatus("Authentication failed (401) - token may be invalid");
         localStorage.removeItem("adminToken");
@@ -351,8 +327,14 @@ const RoomBookingListPage = () => {
     }
   };
 
-  // Update the getStatusColor function to include expired status
-  const getStatusColor = (status: string) => {
+  // Get appropriate badge color based on status
+  const getStatusColor = (status: string, booking: RoomBooking) => {
+    // Check if booking is expired
+    const isExpired = checkIfExpired(booking);
+    if (isExpired) {
+      return 'bg-gray-100 text-gray-500';
+    }
+
     switch (status.toLowerCase()) {
       case 'approved':
         return 'bg-green-100 text-green-800';
@@ -360,15 +342,19 @@ const RoomBookingListPage = () => {
         return 'bg-red-100 text-red-800';
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
-      case 'expired':
-        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
-  // Update the getStatusIcon function to include expired status
-  const getStatusIcon = (status: string) => {
+  // Get appropriate status icon
+  const getStatusIcon = (status: string, booking: RoomBooking) => {
+    // Check if booking is expired
+    const isExpired = checkIfExpired(booking);
+    if (isExpired) {
+      return <Clock size={14} className="mr-1 text-gray-400" />;
+    }
+
     switch (status.toLowerCase()) {
       case 'approved':
         return <CheckCircle size={14} className="mr-1 text-green-500" />;
@@ -376,11 +362,32 @@ const RoomBookingListPage = () => {
         return <XCircle size={14} className="mr-1 text-red-500" />;
       case 'pending':
         return <Clock size={14} className="mr-1 text-yellow-500" />;
-      case 'expired':
-        return <Clock size={14} className="mr-1 text-gray-500" />;
       default:
         return null;
     }
+  };
+
+  // Function to check if booking is expired
+  const checkIfExpired = (booking: RoomBooking) => {
+    if (!booking) return false;
+    
+    const now = new Date();
+    const bookingDate = new Date(booking.booking_date);
+    const [endHours, endMinutes] = booking.end_time.split(':');
+    bookingDate.setHours(parseInt(endHours), parseInt(endMinutes));
+    
+    return now > bookingDate;
+  };
+
+  // Get display status
+  const getDisplayStatus = (booking: RoomBooking) => {
+    if (!booking) return "Unknown";
+    
+    if (booking.status.toLowerCase() === 'pending' && checkIfExpired(booking)) {
+      return "Expired";
+    }
+    
+    return booking.status;
   };
 
   // Calculate active filters count
@@ -444,7 +451,6 @@ const RoomBookingListPage = () => {
                     onSort={handleSort}
                   />
                 </div>
-                <FormModal table="room-booking" type="create" />
               </div>
             </div>
           </div>
@@ -563,7 +569,6 @@ const RoomBookingListPage = () => {
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Agenda</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Start Time</th>
                       <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">End Time</th>
-                      <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Room ID</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -579,11 +584,10 @@ const RoomBookingListPage = () => {
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.agenda}</td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{formatTime(item.start_time)}</td>
                         <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{formatTime(item.end_time)}</td>
-                        <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.room_id}</td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
-                            {getStatusIcon(item.status)}
-                            {item.status}
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.status, item)}`}>
+                            {getStatusIcon(item.status, item)}
+                            {getDisplayStatus(item)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
