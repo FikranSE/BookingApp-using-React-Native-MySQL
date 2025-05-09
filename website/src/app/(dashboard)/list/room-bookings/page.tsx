@@ -135,6 +135,27 @@ const RoomBookingListPage = () => {
     return apiClient;
   };
 
+  // Add this function after the createApiClient function
+  const checkAndUpdateExpiredBookings = (bookings: RoomBooking[]) => {
+    const now = new Date();
+    const updatedBookings = bookings.map(booking => {
+      const bookingDate = new Date(booking.booking_date);
+      const [startHours, startMinutes] = booking.start_time.split(':').map(Number);
+      const [endHours, endMinutes] = booking.end_time.split(':').map(Number);
+      
+      bookingDate.setHours(startHours, startMinutes, 0);
+      const endDateTime = new Date(bookingDate);
+      endDateTime.setHours(endHours, endMinutes, 0);
+      
+      if (booking.status.toLowerCase() === 'pending' && endDateTime < now) {
+        return { ...booking, status: 'expired' };
+      }
+      return booking;
+    });
+    
+    return updatedBookings;
+  };
+
   // Apply search, filters, and sorting
   useEffect(() => {
     applyFiltersAndSort();
@@ -216,6 +237,7 @@ const RoomBookingListPage = () => {
     setFilteredBookings(result);
   };
 
+  // Modify the fetchRoomBookings function
   const fetchRoomBookings = async () => {
     setLoading(true);
     setError(null);
@@ -227,12 +249,14 @@ const RoomBookingListPage = () => {
       console.log("Fetching room bookings...");
       const response = await apiClient.get("/room-bookings");
       console.log("Room bookings fetched successfully:", response.data);
-      setRoomBookings(response.data);
+      
+      // Check and update expired bookings
+      const updatedBookings = checkAndUpdateExpiredBookings(response.data);
+      setRoomBookings(updatedBookings);
       setAuthStatus("Authenticated and data loaded");
     } catch (error: any) {
       console.error("Error fetching room bookings:", error);
       
-      // Check for unauthorized error
       if (error.response?.status === 401) {
         setAuthStatus("Authentication failed (401) - token may be invalid");
         localStorage.removeItem("adminToken");
@@ -327,7 +351,7 @@ const RoomBookingListPage = () => {
     }
   };
 
-  // Get appropriate badge color based on status
+  // Update the getStatusColor function to include expired status
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'approved':
@@ -336,12 +360,14 @@ const RoomBookingListPage = () => {
         return 'bg-red-100 text-red-800';
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
+      case 'expired':
+        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
-  // Get appropriate status icon
+  // Update the getStatusIcon function to include expired status
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
       case 'approved':
@@ -350,6 +376,8 @@ const RoomBookingListPage = () => {
         return <XCircle size={14} className="mr-1 text-red-500" />;
       case 'pending':
         return <Clock size={14} className="mr-1 text-yellow-500" />;
+      case 'expired':
+        return <Clock size={14} className="mr-1 text-gray-500" />;
       default:
         return null;
     }

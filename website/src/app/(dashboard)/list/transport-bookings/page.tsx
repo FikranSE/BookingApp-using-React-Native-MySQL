@@ -112,17 +112,28 @@ const TransportBookingListPage = () => {
     return apiClient;
   };
 
-  // Apply search, filters, and sorting
-  useEffect(() => {
-    applyFiltersAndSort();
-  }, [transportBookings, searchText, statusFilters, dateFilter, sorting, destinationFilter]);
+  // Add this function after the createApiClient function
+  const checkAndUpdateExpiredBookings = (bookings: TransportBooking[]) => {
+    const now = new Date();
+    const updatedBookings = bookings.map(booking => {
+      const bookingDate = new Date(booking.booking_date);
+      const [startHours, startMinutes] = booking.start_time.split(':').map(Number);
+      const [endHours, endMinutes] = booking.end_time.split(':').map(Number);
+      
+      bookingDate.setHours(startHours, startMinutes, 0);
+      const endDateTime = new Date(bookingDate);
+      endDateTime.setHours(endHours, endMinutes, 0);
+      
+      if (booking.status.toLowerCase() === 'pending' && endDateTime < now) {
+        return { ...booking, status: 'expired' };
+      }
+      return booking;
+    });
+    
+    return updatedBookings;
+  };
 
-  // Fetch data on component mount
-  useEffect(() => {
-    fetchTransportBookings();
-  }, []);
-
-  // Apply all filters and sorting
+  // Add back the applyFiltersAndSort function
   const applyFiltersAndSort = () => {
     let result = [...transportBookings];
     
@@ -177,23 +188,26 @@ const TransportBookingListPage = () => {
     // Apply sorting
     if (sorting) {
       result.sort((a, b) => {
-        let valueA = a[sorting.field];
-        let valueB = b[sorting.field];
+        const valueA = a[sorting.field as keyof TransportBooking];
+        const valueB = b[sorting.field as keyof TransportBooking];
+        
+        if (valueA === undefined || valueB === undefined) return 0;
         
         // Special handling for dates and times
         if (sorting.field === 'booking_date' || sorting.field === 'createdAt' || sorting.field === 'updatedAt') {
-          valueA = new Date(valueA).getTime();
-          valueB = new Date(valueB).getTime();
+          const dateA = new Date(valueA as string).getTime();
+          const dateB = new Date(valueB as string).getTime();
+          return sorting.direction === 'asc' ? dateA - dateB : dateB - dateA;
         } else if (sorting.field === 'start_time' || sorting.field === 'end_time') {
-          valueA = valueA.replace(':', '');
-          valueB = valueB.replace(':', '');
-        } else if (typeof valueA === 'string') {
-          valueA = valueA.toLowerCase();
-          valueB = valueB.toLowerCase();
+          const timeA = (valueA as string).replace(':', '');
+          const timeB = (valueB as string).replace(':', '');
+          return sorting.direction === 'asc' ? timeA.localeCompare(timeB) : timeB.localeCompare(timeA);
+        } else if (typeof valueA === 'string' && typeof valueB === 'string') {
+          return sorting.direction === 'asc' 
+            ? valueA.toLowerCase().localeCompare(valueB.toLowerCase())
+            : valueB.toLowerCase().localeCompare(valueA.toLowerCase());
         }
         
-        if (valueA < valueB) return sorting.direction === 'asc' ? -1 : 1;
-        if (valueA > valueB) return sorting.direction === 'asc' ? 1 : -1;
         return 0;
       });
     }
@@ -201,6 +215,17 @@ const TransportBookingListPage = () => {
     setFilteredBookings(result);
   };
 
+  // Apply search, filters, and sorting
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [transportBookings, searchText, statusFilters, dateFilter, sorting, destinationFilter]);
+
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchTransportBookings();
+  }, []);
+
+  // Modify the fetchTransportBookings function
   const fetchTransportBookings = async () => {
     setLoading(true);
     setError(null);
@@ -212,7 +237,10 @@ const TransportBookingListPage = () => {
       console.log("Fetching transport bookings...");
       const response = await apiClient.get("/transport-bookings");
       console.log("Transport bookings fetched successfully:", response.data);
-      setTransportBookings(response.data);
+      
+      // Check and update expired bookings
+      const updatedBookings = checkAndUpdateExpiredBookings(response.data);
+      setTransportBookings(updatedBookings);
       setAuthStatus("Authenticated and data loaded");
     } catch (error: any) {
       console.error("Error fetching transport bookings:", error);
@@ -317,7 +345,7 @@ const TransportBookingListPage = () => {
     }
   };
 
-  // Get appropriate badge color based on status
+  // Update the getStatusColor function to include expired status
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'approved':
@@ -326,12 +354,14 @@ const TransportBookingListPage = () => {
         return 'bg-red-100 text-red-800';
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
+      case 'expired':
+        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
-  // Get appropriate status icon
+  // Update the getStatusIcon function to include expired status
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
       case 'approved':
@@ -340,6 +370,8 @@ const TransportBookingListPage = () => {
         return <XCircle size={14} className="mr-1 text-red-500" />;
       case 'pending':
         return <Clock size={14} className="mr-1 text-yellow-500" />;
+      case 'expired':
+        return <Clock size={14} className="mr-1 text-gray-500" />;
       default:
         return null;
     }
@@ -452,7 +484,7 @@ const TransportBookingListPage = () => {
                     onSort={handleSort}
                   />
                 </div>
-                <FormModal table="transport-booking" type="create" />
+                <FormModal table="room-booking" type="create" />
               </div>
             </div>
           </div>
@@ -573,7 +605,7 @@ const TransportBookingListPage = () => {
             </div>
             <h3 className="font-bold text-lg mb-2 text-sky-800">No Transport Bookings Found</h3>
             <p className="text-gray-500 mb-6">No transport bookings have been created yet.</p>
-            <FormModal table="transport-booking" type="create" />
+            <FormModal table="room-booking" type="create" />
           </div>
         )}
 

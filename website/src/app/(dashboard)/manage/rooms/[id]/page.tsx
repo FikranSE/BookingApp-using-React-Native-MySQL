@@ -400,8 +400,8 @@ const handleSubmit = async (e) => {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-white">
+      <div className="container mx-auto px-4 py-6">
         {/* Status message */}
         {updateStatus.message && (
           <div className={`mb-6 p-4 rounded-xl ${
@@ -427,55 +427,13 @@ const handleSubmit = async (e) => {
         )}
         
         {/* Main content */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-sky-100 mb-6">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-lg font-semibold text-sky-800 flex items-center">
-              <BedDouble size={20} className="mr-2 text-sky-500" />
-              Room Details
-            </h1>
-            <div className="flex items-center gap-4">
-              <Link href="/manage/rooms">
-                <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center">
-                  <ArrowLeft size={16} className="mr-2" />
-                  Back to Rooms
-                </button>
-              </Link>
-              {!isEditing ? (
-                <button
-                  onClick={toggleEditMode}
-                  className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors flex items-center"
-                >
-                  <Edit size={16} className="mr-2" />
-                  Edit Room
-                </button>
-              ) : (
-                <button
-                  onClick={handleSubmit}
-                  disabled={isSaving}
-                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center disabled:opacity-50"
-                >
-                  {isSaving ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save size={16} className="mr-2" />
-                      Save Changes
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-            {/* Left column - Main info */}
-            <div className="md:col-span-7 lg:col-span-8">
-              {/* Room info card */}
-              <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-sky-100 mb-6">
-                <div className="bg-gradient-to-r from-sky-400 to-sky-500 p-6 text-white">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          {/* Left column - Main info */}
+          <div className="md:col-span-7 lg:col-span-8">
+            {/* Room info card */}
+            <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
+              <div className="bg-gradient-to-r from-blue-400 to-blue-500 p-6 text-white">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
                       <BedDouble size={24} />
@@ -493,235 +451,294 @@ const handleSubmit = async (e) => {
                       ) : (
                         <h2 className="text-2xl font-bold">{room.room_name}</h2>
                       )}
-                      <div className="mt-1 text-sky-50 flex items-center text-sm">
+                      <div className="mt-1 text-blue-50 flex items-center text-sm">
                         <span>ID: {room.room_id}</span>
                       </div>
                     </div>
                   </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    {isEditing ? (
+                      <button
+                        onClick={toggleEditMode}
+                        className="rounded-full w-10 h-10 flex items-center justify-center bg-white/20 text-white hover:bg-white/30 transition-colors"
+                        title="Cancel"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={toggleEditMode}
+                        className="rounded-full w-10 h-10 flex items-center justify-center bg-white/20 text-white hover:bg-white/30 transition-colors"
+                        title="Edit Room"
+                      >
+                        <Edit size={18} />
+                      </button>
+                    )}
+                    {isEditing ? (
+                      <button
+                        onClick={handleSubmit}
+                        disabled={isSaving}
+                        className="rounded-full w-10 h-10 flex items-center justify-center bg-green-500 text-white hover:bg-green-600 transition-colors disabled:opacity-50"
+                        title="Save Changes"
+                      >
+                        {isSaving ? (
+                          <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
+                        ) : (
+                          <Save size={18} />
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleDelete}
+                        className="rounded-full w-10 h-10 flex items-center justify-center bg-red-500 text-white hover:bg-red-600 transition-colors"
+                        title="Delete Room"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-6">
+                {/* Image */}
+                <div className="aspect-video bg-gray-100 rounded-xl overflow-hidden relative mb-6 group">
+  {/* Hidden file input */}
+  <input 
+    type="file"
+    ref={fileInputRef}
+    accept="image/jpeg,image/png"
+    onChange={handleFileChange}
+    className="hidden"
+  />
+  
+  {previewImage ? (
+    <div className="relative w-full h-full">
+      <img
+        src={previewImage}
+        alt={room.vehicle_name}
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+    </div>
+  ) : room.image ? (
+    <div className="relative w-full h-full">
+      <img
+        src={fixImageUrl(room.image)} // Applying the fixImageUrl function here
+        alt={room.vehicle_name}
+        className="absolute inset-0 w-full h-full object-cover"
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = '/placeholder-vehicle.jpg'; // Fallback image path
+        }}
+      />
+    </div>
+  ) : (
+    <div className="flex items-center justify-center h-full">
+      <Car size={64} className="text-gray-300" />
+      <p className="text-gray-400 absolute bottom-4">No image available</p>
+    </div>
+  )}
+  
+  {isEditing && (
+    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+      <button
+        onClick={triggerFileInput}
+        className="bg-white/90 backdrop-blur-sm rounded-xl p-3 flex items-center"
+      >
+        <Camera size={20} className="mr-2 text-blue-500" />
+        <span>Choose Image File (Max 5MB)</span>
+      </button>
+      <div className="absolute bottom-4 right-4">
+        <div className="bg-blue-500 rounded-full p-2 text-white">
+          <Camera size={20} />
+        </div>
+      </div>
+    </div>
+  )}
+</div>
+                
+                {/* Room Type info - MODIFIED TO USE DROPDOWN INSTEAD OF TEXT INPUT */}
+                <div className="flex items-start mb-6 p-4 bg-indigo-50 rounded-2xl">
+                  <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                    <BedDouble size={20} className="text-indigo-500" />
+                  </div>
+                  <div className="ml-4 flex-grow">
+                    <h3 className="uppercase text-xs font-semibold text-indigo-500 tracking-wider">Room Type</h3>
+                    {isEditing ? (
+                      <select
+                        name="room_type"
+                        value={editData.room_type}
+                        onChange={handleInputChange}
+                        className="mt-1 p-2 border border-indigo-200 rounded w-full bg-white"
+                      >
+                        {roomTypes.map((type) => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="text-lg font-medium text-gray-800">
+                        {room.room_type || "Not assigned"}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 
-                <div className="p-6">
-                  {/* Image */}
-                  <div className="w-full aspect-video bg-gray-100 rounded-xl overflow-hidden relative mb-6 group">
-                    {/* Hidden file input */}
-                    <input 
-                      type="file"
-                      ref={fileInputRef}
-                      accept="image/jpeg,image/png"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    
-                    {previewImage ? (
-                      <div className="relative w-full h-full">
-                        <img
-                          src={previewImage}
-                          alt={room.room_name}
-                          className="absolute inset-0 w-full h-full object-cover"
-                        />
-                      </div>
-                    ) : room.image ? (
-                      <div className="relative w-full h-full">
-                        <img
-                          src={fixImageUrl(room.image)}
-                          alt={room.room_name}
-                          className="absolute inset-0 w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = '/placeholder-room.jpg';
-                          }}
-                        />
-                      </div>
+                {/* Capacity info */}
+                <div className="flex items-start mb-6 p-4 bg-sky-50 rounded-2xl">
+                  <div className="flex-shrink-0 w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
+                    <Users size={20} className="text-sky-500" />
+                  </div>
+                  <div className="ml-4 flex-grow">
+                    <h3 className="uppercase text-xs font-semibold text-sky-500 tracking-wider">Capacity</h3>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        name="capacity"
+                        value={editData.capacity}
+                        onChange={handleInputChange}
+                        min="1"
+                        max="100"
+                        className="mt-1 p-2 border border-sky-200 rounded w-full bg-white"
+                        placeholder="Capacity"
+                      />
                     ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <BedDouble size={64} className="text-gray-300" />
-                      </div>
-                    )}
-                    
-                    {isEditing && (
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <button
-                          onClick={triggerFileInput}
-                          className="bg-white/90 backdrop-blur-sm rounded-xl p-3 flex items-center"
-                        >
-                          <Camera size={20} className="mr-2 text-sky-500" />
-                          <span>Choose Photo</span>
-                        </button>
-                      </div>
+                      <p className="text-lg font-medium text-gray-800">
+                        {room.capacity} persons
+                      </p>
                     )}
                   </div>
-                  
-                  {/* Room Type info */}
-                  <div className="flex items-start mb-6 p-4 bg-sky-50 rounded-2xl">
-                    <div className="flex-shrink-0 w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
-                      <BedDouble size={20} className="text-sky-500" />
-                    </div>
-                    <div className="ml-4 flex-grow">
-                      <h3 className="uppercase text-xs font-semibold text-sky-500 tracking-wider">Room Type</h3>
-                      {isEditing ? (
-                        <select
-                          name="room_type"
-                          value={editData.room_type}
-                          onChange={handleInputChange}
-                          className="mt-1 p-2 border border-sky-200 rounded w-full bg-white"
-                        >
-                          {roomTypes.map((type) => (
-                            <option key={type} value={type}>{type}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <p className="text-lg font-medium text-gray-800">
-                          {room.room_type || "Not assigned"}
-                        </p>
-                      )}
-                    </div>
+                </div>
+                
+                {/* Facilities info */}
+                <div className="flex items-start mb-6 p-4 bg-emerald-50 rounded-2xl">
+                  <div className="flex-shrink-0 w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                    <User size={20} className="text-emerald-500" />
                   </div>
-                  
-                  {/* Capacity info */}
-                  <div className="flex items-start mb-6 p-4 bg-sky-50 rounded-2xl">
-                    <div className="flex-shrink-0 w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
-                      <Users size={20} className="text-sky-500" />
-                    </div>
-                    <div className="ml-4 flex-grow">
-                      <h3 className="uppercase text-xs font-semibold text-sky-500 tracking-wider">Capacity</h3>
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          name="capacity"
-                          value={editData.capacity}
-                          onChange={handleInputChange}
-                          min="1"
-                          max="100"
-                          className="mt-1 p-2 border border-sky-200 rounded w-full bg-white"
-                          placeholder="Capacity"
-                        />
-                      ) : (
-                        <p className="text-lg font-medium text-gray-800">
-                          {room.capacity} persons
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Facilities info */}
-                  <div className="flex items-start mb-6 p-4 bg-sky-50 rounded-2xl">
-                    <div className="flex-shrink-0 w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
-                      <User size={20} className="text-sky-500" />
-                    </div>
-                    <div className="ml-4 flex-grow">
-                      <h3 className="uppercase text-xs font-semibold text-sky-500 tracking-wider">Facilities</h3>
-                      {isEditing ? (
-                        <textarea
-                          name="facilities"
-                          value={editData.facilities}
-                          onChange={handleInputChange}
-                          rows={3}
-                          className="mt-1 p-2 border border-sky-200 rounded w-full bg-white"
-                          placeholder="Room Facilities"
-                        />
-                      ) : (
-                        <p className="text-lg font-medium text-gray-800">
-                          {room.facilities || "No facilities information available"}
-                        </p>
-                      )}
-                    </div>
+                  <div className="ml-4 flex-grow">
+                    <h3 className="uppercase text-xs font-semibold text-emerald-500 tracking-wider">Facilities</h3>
+                    {isEditing ? (
+                      <textarea
+                        name="facilities"
+                        value={editData.facilities}
+                        onChange={handleInputChange}
+                        rows="3"
+                        className="mt-1 p-2 border border-emerald-200 rounded w-full bg-white"
+                        placeholder="Room Facilities"
+                      />
+                    ) : (
+                      <p className="text-lg font-medium text-gray-800">
+                        {room.facilities || "No facilities information available"}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
+          </div>
+          
+          {/* Right column - Summary and metadata */}
+          <div className="md:col-span-5 lg:col-span-4">
+            {/* Room summary card */}
+            <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="font-bold text-gray-900">Room Details</h3>
+              </div>
+              <div className="p-6">
+                <ul className="space-y-4">
+                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                    <span className="text-gray-500">Room ID</span>
+                    <span className="font-medium text-gray-800">#{room.room_id}</span>
+                  </li>
+                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                    <span className="text-gray-500">Room Name</span>
+                    <span className="font-medium text-gray-800">{room.room_name}</span>
+                  </li>
+                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                    <span className="text-gray-500">Room Type</span>
+                    <span className="font-medium text-gray-800">{room.room_type || "Not assigned"}</span>
+                  </li>
+                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                    <span className="text-gray-500">Capacity</span>
+                    <span className="font-medium text-gray-800">{room.capacity} persons</span>
+                  </li>
+                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
+                    <span className="text-gray-500">Created</span>
+                    <span className="font-medium text-gray-800">{formatDate(room.createdAt)}</span>
+                  </li>
+                  <li className="flex justify-between items-center py-2">
+                    <span className="text-gray-500">Last Updated</span>
+                    <span className="font-medium text-gray-800">{formatDate(room.updatedAt)}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
             
-            {/* Right column - Summary and metadata */}
-            <div className="md:col-span-5 lg:col-span-4">
-              {/* Room summary card */}
-              <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-sky-100 mb-6">
-                <div className="p-6 border-b border-sky-100">
-                  <h3 className="font-bold text-sky-800">Room Details</h3>
-                </div>
-                <div className="p-6">
-                  <ul className="space-y-4">
-                    <li className="flex justify-between items-center py-2 border-b border-dashed border-sky-100">
-                      <span className="text-gray-500">Room ID</span>
-                      <span className="font-medium text-sky-800">#{room.room_id}</span>
-                    </li>
-                    <li className="flex justify-between items-center py-2 border-b border-dashed border-sky-100">
-                      <span className="text-gray-500">Room Name</span>
-                      <span className="font-medium text-sky-800">{room.room_name}</span>
-                    </li>
-                    <li className="flex justify-between items-center py-2 border-b border-dashed border-sky-100">
-                      <span className="text-gray-500">Room Type</span>
-                      <span className="font-medium text-sky-800">{room.room_type || "Not assigned"}</span>
-                    </li>
-                    <li className="flex justify-between items-center py-2 border-b border-dashed border-sky-100">
-                      <span className="text-gray-500">Capacity</span>
-                      <span className="font-medium text-sky-800">{room.capacity} persons</span>
-                    </li>
-                    <li className="flex justify-between items-center py-2 border-b border-dashed border-sky-100">
-                      <span className="text-gray-500">Created</span>
-                      <span className="font-medium text-sky-800">{formatDate(room.createdAt)}</span>
-                    </li>
-                    <li className="flex justify-between items-center py-2">
-                      <span className="text-gray-500">Last Updated</span>
-                      <span className="font-medium text-sky-800">{formatDate(room.updatedAt)}</span>
-                    </li>
-                  </ul>
-                </div>
+            {/* Quick actions card */}
+            <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="font-bold text-gray-900">Quick Actions</h3>
               </div>
-              
-              {/* Quick actions card */}
-              <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-sky-100 mb-6">
-                <div className="p-6 border-b border-sky-100">
-                  <h3 className="font-bold text-sky-800">Quick Actions</h3>
-                </div>
-                <div className="p-6">
-                  <div className="space-y-3">
-                    {!isEditing ? (
-                      <button 
-                        onClick={toggleEditMode}
-                        className="w-full py-2.5 px-4 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-medium flex items-center justify-center transition-colors"
-                      >
-                        <Edit size={18} className="mr-2" />
-                        Edit Room Details
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={handleSubmit}
-                        disabled={isSaving}
-                        className="w-full py-2.5 px-4 bg-green-500 hover:bg-green-600 text-white rounded-xl font-medium flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isSaving ? (
-                          <>
-                            <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2"></div>
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            <Save size={18} className="mr-2" />
-                            Save Changes
-                          </>
-                        )}
-                      </button>
-                    )}
+              <div className="p-6">
+                <div className="space-y-3">
+                  {!isEditing ? (
                     <button 
-                      onClick={handleDelete}
-                      className={`w-full py-2.5 px-4 ${isEditing ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-red-500 hover:bg-red-600 text-white'} rounded-xl font-medium flex items-center justify-center transition-colors`}
+                      onClick={toggleEditMode}
+                      className="w-full py-2.5 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium flex items-center justify-center transition-colors"
                     >
-                      <Trash2 size={18} className="mr-2" />
-                      Delete Room
+                      <Edit size={18} className="mr-2" />
+                      Edit Room Details
                     </button>
-                  </div>
+                  ) : (
+                    <button 
+                      onClick={handleSubmit}
+                      disabled={isSaving}
+                      className="w-full py-2.5 px-4 bg-green-500 hover:bg-green-600 text-white rounded-xl font-medium flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSaving ? (
+                        <>
+                          <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2"></div>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save size={18} className="mr-2" />
+                          Save Changes
+                        </>
+                      )}
+                    </button>
+                  )}
+                  <button 
+                    onClick={handleDelete}
+                    className={`w-full py-2.5 px-4 ${isEditing ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-red-500 hover:bg-red-600 text-white'} rounded-xl font-medium flex items-center justify-center transition-colors`}
+                  >
+                    <Trash2 size={18} className="mr-2" />
+                    Delete Room
+                  </button>
                 </div>
               </div>
-              
-              {/* View related bookings */}
-              <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-sky-100 mb-6">
-                <div className="p-6">
-                  <Link href={`/list/room-bookings?room=${roomId}`}>
-                    <button className="w-full py-2.5 px-4 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-xl font-medium flex items-center justify-center transition-colors">
-                      View Related Bookings
-                    </button>
-                  </Link>
-                </div>
+            </div>
+            
+{/* View related bookings */}
+<div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
+              <div className="p-6">
+                <Link href={`/list/room-bookings?room=${roomId}`}>
+                  <button className="w-full py-2.5 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-medium flex items-center justify-center transition-colors">
+                    View Related Bookings
+                  </button>
+                </Link>
               </div>
+            </div>
+            
+            {/* Navigation links */}
+            <div>
+              <Link 
+                href="/manage/rooms" 
+                className="flex items-center text-sky-500 hover:text-sky-600 font-medium transition-colors"
+              >
+                <ArrowLeft size={16} className="mr-2" />
+                Back to Room Management
+              </Link>
             </div>
           </div>
         </div>

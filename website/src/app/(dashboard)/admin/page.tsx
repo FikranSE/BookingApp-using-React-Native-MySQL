@@ -175,6 +175,12 @@ const calendarStyles = `
     animation: pulse 2s infinite;
   }
   
+  .event-expired {
+    background-color: #f3f4f6 !important; /* gray-100 */
+    color: #4b5563 !important; /* gray-600 */
+    border-left: 3px solid #9ca3af !important; /* gray-400 */
+  }
+  
   @keyframes pulse {
     0% {
       box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
@@ -374,6 +380,13 @@ const DashboardPage = () => {
           icon: <XCircle size={14} />,
           color: "#e5e7eb" // gray-200
         };
+      case 'expired':
+        return {
+          bg: "bg-gray-50",
+          text: "text-gray-600",
+          icon: <Clock size={14} />,
+          color: "#f3f4f6" // gray-100
+        };
       default:
         return {
           bg: "bg-gray-50",
@@ -407,8 +420,14 @@ const DashboardPage = () => {
             
             // Calculate booking status for visual enhancements
             let timeStatus = 'upcoming';
+            let bookingStatus = booking.status || 'pending';
+            
             if (endDate < now) {
               timeStatus = 'past';
+              // If booking is still pending and date has passed, mark as expired
+              if (bookingStatus.toLowerCase() === 'pending') {
+                bookingStatus = 'expired';
+              }
             } else if (startDate <= now && endDate >= now) {
               timeStatus = 'current';
             }
@@ -424,9 +443,12 @@ const DashboardPage = () => {
               end: endDate,
               resource: {
                 type: 'room',
-                status: booking.status || 'pending',
+                status: bookingStatus,
                 timeStatus,
-                details: booking,
+                details: {
+                  ...booking,
+                  status: bookingStatus // Update the status in details as well
+                },
                 personName
               }
             });
@@ -456,8 +478,14 @@ const DashboardPage = () => {
             
             // Calculate booking status for visual enhancements
             let timeStatus = 'upcoming';
+            let bookingStatus = booking.status || 'pending';
+            
             if (endDate < now) {
               timeStatus = 'past';
+              // If booking is still pending and date has passed, mark as expired
+              if (bookingStatus.toLowerCase() === 'pending') {
+                bookingStatus = 'expired';
+              }
             } else if (startDate <= now && endDate >= now) {
               timeStatus = 'current';
             }
@@ -473,9 +501,12 @@ const DashboardPage = () => {
               end: endDate,
               resource: {
                 type: 'transport',
-                status: booking.status || 'pending',
+                status: bookingStatus,
                 timeStatus,
-                details: booking
+                details: {
+                  ...booking,
+                  status: bookingStatus // Update the status in details as well
+                }
               }
             });
           } catch (error) {
@@ -1013,6 +1044,7 @@ const DashboardPage = () => {
                   if (status === 'approved') Icon = CheckCircle;
                   if (status === 'rejected') Icon = XCircle;
                   if (status === 'cancelled') Icon = XCircle;
+                  if (status === 'expired') Icon = XCircle;
                   if (timeStatus === 'current') Icon = Clock3;
                   
                   // Get time for display
@@ -1121,6 +1153,10 @@ const DashboardPage = () => {
                 <div className="flex items-center">
                   <div className="w-3 h-3 rounded-sm bg-gray-200 border-l-2 border-l-gray-500 mr-2 shadow-sm"></div>
                   <span className="text-gray-800">Cancelled</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 rounded-sm bg-gray-200 border-l-2 border-l-gray-500 mr-2 shadow-sm"></div>
+                  <span className="text-gray-800">Expired</span>
                 </div>
               </div>
             </div>
