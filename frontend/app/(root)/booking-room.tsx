@@ -409,7 +409,7 @@ const BookingRoom = () => {
         }
       } catch (error) {
         console.error('Error fetching rooms:', error);
-        showAlert('error', 'Gagal mengambil data room. Silakan coba lagi.');
+        showAlert('error', 'Failed to fetch room data.');
       }
     };
     fetchRooms();

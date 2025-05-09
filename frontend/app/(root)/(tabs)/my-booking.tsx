@@ -106,57 +106,7 @@ const MyBooking = () => {
   };
 
   // Function to fetch images for rooms and transports
-  const fetchImagesForBookings = async (authToken: string) => {
-    try {
-      // Fetch room images
-      const roomImagesResponse = await fetch(
-        "https://j9d3hc82-3001.asse.devtunnels.ms/api/room-images",
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      // Fetch vehicle images
-      const vehicleImagesResponse = await fetch(
-        "https://j9d3hc82-3001.asse.devtunnels.ms/api/vehicle-images",
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      let roomImages = {}; 
-      let vehicleImages = {};
-
-      if (roomImagesResponse.ok) {
-        const roomImagesData = await roomImagesResponse.json();
-        // Make sure we're mapping correctly according to database structure
-        roomImagesData.forEach((item: any) => {
-          roomImages[item.room_id] = processImageUrl(item.image_url);
-        });
-      }
-
-      if (vehicleImagesResponse.ok) {
-        const vehicleImagesData = await vehicleImagesResponse.json();
-        // Make sure we're mapping correctly according to database structure
-        vehicleImagesData.forEach((item: any) => { 
-          vehicleImages[item.vehicle_id] = processImageUrl(item.image_url);
-        });
-      }
-
-      return { roomImages, vehicleImages };
-    } catch (error) {
-      console.error("Error fetching images:", error);
-      return { roomImages: {}, vehicleImages: {} };
-    }
-  };
+ 
 
   useEffect(() => {
     const fetchUserProfile = async () => {
