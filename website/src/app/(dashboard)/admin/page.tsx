@@ -6,9 +6,9 @@ import {
   Building, Users, Car, CalendarDays, Clock, 
   ArrowUp, ArrowDown, CheckCircle, XCircle, AlertCircle, 
   PieChart, Calendar, Layers, Activity, CheckCheck, User,
-  Filter, Info, MapPin, Clock3
+  Filter, Info, MapPin, Clock3, X
 } from 'lucide-react';
-import { Calendar as BigCalendar, momentLocalizer } from 'react-big-calendar';
+import { Calendar as BigCalendar, momentLocalizer, View as CalendarView } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -191,6 +191,80 @@ const calendarStyles = `
 // Set up the localizer for the calendar
 const localizer = momentLocalizer(moment);
 
+// Add these interfaces at the top of the file, after the imports
+interface Room {
+  id: number;
+  room_id?: number;
+  name: string;
+  room_name?: string;
+  type: string;
+  room_type?: string;
+  capacity?: number;
+  facilities?: string[];
+  image?: string | null;
+  status: string;
+}
+
+interface Transport {
+  id: number;
+  transport_id?: number;
+  name: string;
+  vehicle_name?: string;
+  driver_name: string;
+  driver?: string;
+  capacity?: number;
+  image?: string | null;
+  status: string;
+}
+
+interface RoomBooking {
+  id?: number;
+  booking_id?: number;
+  room_id?: number;
+  room?: Room;
+  room_details?: Room | null;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+  pic: string;
+  purpose?: string;
+  section?: string;
+}
+
+interface TransportBooking {
+  id?: number;
+  booking_id?: number;
+  transport_id?: number;
+  transport?: Transport;
+  transport_details?: Transport | null;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+  destination?: string;
+  driver_name?: string;
+  section?: string;
+}
+
+// Add CalendarEvent interface
+interface CalendarEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  resource: {
+    type: 'room' | 'transport';
+    status: string;
+    timeStatus: string;
+    details: RoomBooking | TransportBooking;
+    personName?: string;
+  };
+}
+
+// Update View type to match react-big-calendar
+type View = CalendarView;
+
 const DashboardPage = () => {
   // Add the custom styles to the document
   useEffect(() => {
@@ -214,33 +288,36 @@ const DashboardPage = () => {
     transports: { total: 0, available: 0 }
   });
   
-  const [recentRoomBookings, setRecentRoomBookings] = useState([]);
-  const [recentTransportBookings, setRecentTransportBookings] = useState([]);
-  const [availableRooms, setAvailableRooms] = useState([]);
-  const [availableTransports, setAvailableTransports] = useState([]);
+  const [recentRoomBookings, setRecentRoomBookings] = useState<RoomBooking[]>([]);
+  const [recentTransportBookings, setRecentTransportBookings] = useState<TransportBooking[]>([]);
+  const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
+  const [availableTransports, setAvailableTransports] = useState<Transport[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState('week'); // 'week', 'month', 'year'
-  const [calendarView, setCalendarView] = useState('month'); // 'month', 'week', 'day'
+  const [calendarView, setCalendarView] = useState<View>('month'); // 'month', 'week', 'day'
   const [calendarDate, setCalendarDate] = useState(new Date());
-  const [calendarEvents, setCalendarEvents] = useState([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [showRoomBookings, setShowRoomBookings] = useState(true);
   const [showTransportBookings, setShowTransportBookings] = useState(true);
-  
+  const [selectedEvent, setSelectedEvent] = useState(null);
   // Format date to more readable format
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | null) => {
     if (!dateString) return "Not specified";
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    const options: Intl.DateTimeFormatOptions = { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
-
   // Format time to 12-hour format
-  const formatTime = (timeString) => {
+  const formatTime = (timeString: string | undefined | null): string => {
     if (!timeString) return "";
-    const [hours, minutes] = timeString.split(':');
+    const timeParts = timeString.split(':').map(part => parseInt(part, 10));
     const date = new Date();
-    date.setHours(parseInt(hours));
-    date.setMinutes(parseInt(minutes));
+    date.setHours(timeParts[0] || 0);
+    date.setMinutes(timeParts[1] || 0);
     
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
@@ -259,9 +336,8 @@ const DashboardPage = () => {
       headers: { Authorization: `Bearer ${token}` }
     };
   };
-
   // Get appropriate status style with a more subtle design
-  const getStatusStyle = (status) => {
+  const getStatusStyle = (status: string | null) => {
     if (!status) return {
       bg: "bg-gray-50",
       text: "text-gray-600",
@@ -307,10 +383,9 @@ const DashboardPage = () => {
         };
     }
   };
-
   // Process bookings into calendar events with improved information
-  const processBookingsForCalendar = (roomBookings, transportBookings) => {
-    const events = [];
+  const processBookingsForCalendar = (roomBookings: RoomBooking[], transportBookings: TransportBooking[]): CalendarEvent[] => {
+    const events: CalendarEvent[] = [];
     const now = new Date();
     
     // Process room bookings
@@ -321,14 +396,14 @@ const DashboardPage = () => {
             const bookingDate = new Date(booking.booking_date);
             
             // Parse start time
-            const [startHour, startMinute] = booking.start_time.split(':').map(Number);
+            const startTimeParts = booking.start_time.split(':').map(part => parseInt(part, 10));
             const startDate = new Date(bookingDate);
-            startDate.setHours(startHour, startMinute, 0);
+            startDate.setHours(startTimeParts[0] || 0, startTimeParts[1] || 0, 0);
             
             // Parse end time
-            const [endHour, endMinute] = booking.end_time.split(':').map(Number);
+            const endTimeParts = booking.end_time.split(':').map(part => parseInt(part, 10));
             const endDate = new Date(bookingDate);
-            endDate.setHours(endHour, endMinute, 0);
+            endDate.setHours(endTimeParts[0] || 0, endTimeParts[1] || 0, 0);
             
             // Calculate booking status for visual enhancements
             let timeStatus = 'upcoming';
@@ -339,7 +414,7 @@ const DashboardPage = () => {
             }
             
             // Create a cleaner title
-            const roomName = booking.room_details?.name || `Room ${booking.room_id || booking.room?.id || 'N/A'}`;
+            const roomName = booking.room_details?.name || booking.room_details?.room_name || `Room ${booking.room_id || booking.room?.id || 'N/A'}`;
             const personName = booking.pic || "Unassigned";
             
             events.push({
@@ -370,14 +445,14 @@ const DashboardPage = () => {
             const bookingDate = new Date(booking.booking_date);
             
             // Parse start time
-            const [startHour, startMinute] = booking.start_time.split(':').map(Number);
+            const startTimeParts = booking.start_time.split(':').map(part => parseInt(part, 10));
             const startDate = new Date(bookingDate);
-            startDate.setHours(startHour, startMinute, 0);
+            startDate.setHours(startTimeParts[0] || 0, startTimeParts[1] || 0, 0);
             
             // Parse end time
-            const [endHour, endMinute] = booking.end_time.split(':').map(Number);
+            const endTimeParts = booking.end_time.split(':').map(part => parseInt(part, 10));
             const endDate = new Date(bookingDate);
-            endDate.setHours(endHour, endMinute, 0);
+            endDate.setHours(endTimeParts[0] || 0, endTimeParts[1] || 0, 0);
             
             // Calculate booking status for visual enhancements
             let timeStatus = 'upcoming';
@@ -388,7 +463,7 @@ const DashboardPage = () => {
             }
             
             // Create a cleaner title with destination if available
-            const vehicleName = booking.transport_details?.name || `Vehicle ${booking.transport_id || booking.transport?.id || 'N/A'}`;
+            const vehicleName = booking.transport_details?.name || booking.transport_details?.vehicle_name || `Vehicle ${booking.transport_id || booking.transport?.id || 'N/A'}`;
             const destination = booking.destination ? ` to ${booking.destination}` : '';
             
             events.push({
@@ -413,139 +488,6 @@ const DashboardPage = () => {
     return events;
   };
 
-  // Generate mock data for testing
-  const generateMockData = () => {
-    // Create some mock rooms
-    const mockRooms = [
-      { id: 1, name: "Conference Room A", type: "Conference", capacity: 20, status: "available" },
-      { id: 2, name: "Board Room", type: "Meeting", capacity: 12, status: "available" },
-      { id: 3, name: "Training Lab", type: "Training", capacity: 30, status: "available" },
-      { id: 4, name: "Meeting Room B", type: "Meeting", capacity: 8, status: "available" },
-      { id: 5, name: "Workshop Space", type: "Workshop", capacity: 25, status: "available" }
-    ];
-    
-    // Create some mock transports
-    const mockTransports = [
-      { id: 1, name: "Toyota Innova", driver: "John Doe", capacity: 7, status: "available" },
-      { id: 2, name: "Hiace Van", driver: "Mike Smith", capacity: 12, status: "available" },
-      { id: 3, name: "Sedan", driver: "Alice Johnson", capacity: 4, status: "available" },
-      { id: 4, name: "Minibus", driver: "Robert Brown", capacity: 18, status: "available" },
-      { id: 5, name: "SUV", driver: "Emily Davis", capacity: 5, status: "available" }
-    ];
-    
-    // Generate dates for the last week and next week
-    const today = new Date();
-    const dates = [];
-    
-    // Last 3 days and next 4 days (7 days total)
-    for (let i = -3; i <= 4; i++) {
-      const date = new Date();
-      date.setDate(today.getDate() + i);
-      dates.push(date.toISOString().split('T')[0]); // YYYY-MM-DD format
-    }
-    
-    // Generate room bookings
-    const mockRoomBookings = [];
-    const statuses = ["pending", "approved", "rejected", "cancelled"];
-    
-    for (let i = 0; i < 20; i++) {
-      const randomRoom = mockRooms[Math.floor(Math.random() * mockRooms.length)];
-      const randomDate = dates[Math.floor(Math.random() * dates.length)];
-      const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-      
-      // Generate random start and end times
-      const startHour = 8 + Math.floor(Math.random() * 8); // Between 8 AM and 4 PM
-      const endHour = startHour + 1 + Math.floor(Math.random() * 3); // 1-3 hours after start time
-      
-      mockRoomBookings.push({
-        id: i + 1,
-        room_id: randomRoom.id,
-        booking_date: randomDate,
-        start_time: `${startHour}:00`,
-        end_time: `${endHour}:00`,
-        pic: ["John Smith", "Jane Doe", "Mark Johnson", "Anna Wilson"][Math.floor(Math.random() * 4)],
-        section: ["HR", "IT", "Finance", "Marketing"][Math.floor(Math.random() * 4)],
-        status: randomStatus,
-        room_details: randomRoom
-      });
-    }
-    
-    // Generate transport bookings
-    const mockTransportBookings = [];
-    const destinations = ["Airport", "City Center", "Industrial Park", "Corporate HQ", "Client Office"];
-    
-    for (let i = 0; i < 20; i++) {
-      const randomTransport = mockTransports[Math.floor(Math.random() * mockTransports.length)];
-      const randomDate = dates[Math.floor(Math.random() * dates.length)];
-      const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-      const randomDestination = destinations[Math.floor(Math.random() * destinations.length)];
-      
-      // Generate random start and end times
-      const startHour = 8 + Math.floor(Math.random() * 8); // Between 8 AM and 4 PM
-      const endHour = startHour + 1 + Math.floor(Math.random() * 3); // 1-3 hours after start time
-      
-      mockTransportBookings.push({
-        id: i + 1,
-        transport_id: randomTransport.id,
-        booking_date: randomDate,
-        start_time: `${startHour}:00`,
-        end_time: `${endHour}:00`,
-        destination: randomDestination,
-        section: ["HR", "IT", "Finance", "Marketing"][Math.floor(Math.random() * 4)],
-        status: randomStatus,
-        transport_details: randomTransport
-      });
-    }
-    
-    // Set stats
-    setStats({
-      roomBookings: {
-        total: mockRoomBookings.length,
-        pending: mockRoomBookings.filter(booking => booking.status === 'pending').length,
-        approved: mockRoomBookings.filter(booking => booking.status === 'approved').length,
-        rejected: mockRoomBookings.filter(booking => booking.status === 'rejected').length,
-        cancelled: mockRoomBookings.filter(booking => booking.status === 'cancelled').length
-      },
-      transportBookings: {
-        total: mockTransportBookings.length,
-        pending: mockTransportBookings.filter(booking => booking.status === 'pending').length,
-        approved: mockTransportBookings.filter(booking => booking.status === 'approved').length,
-        rejected: mockTransportBookings.filter(booking => booking.status === 'rejected').length,
-        cancelled: mockTransportBookings.filter(booking => booking.status === 'cancelled').length
-      },
-      rooms: {
-        total: mockRooms.length,
-        available: mockRooms.filter(room => room.status === 'available').length
-      },
-      transports: {
-        total: mockTransports.length,
-        available: mockTransports.filter(transport => transport.status === 'available').length
-      }
-    });
-    
-    // Set recent bookings (sort by date and take latest 5)
-    const sortedRoomBookings = [...mockRoomBookings].sort((a, b) => {
-      return new Date(b.booking_date || 0) - new Date(a.booking_date || 0);
-    });
-    
-    const sortedTransportBookings = [...mockTransportBookings].sort((a, b) => {
-      return new Date(b.booking_date || 0) - new Date(a.booking_date || 0);
-    });
-    
-    setRecentRoomBookings(sortedRoomBookings.slice(0, 5));
-    setRecentTransportBookings(sortedTransportBookings.slice(0, 5));
-    
-    // Set available resources
-    setAvailableRooms(mockRooms);
-    setAvailableTransports(mockTransports);
-    
-    // Set calendar events
-    const events = processBookingsForCalendar(mockRoomBookings, mockTransportBookings);
-    setCalendarEvents(events);
-    
-    setLoading(false);
-  };
-
   // Fetch dashboard data
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -553,8 +495,8 @@ const DashboardPage = () => {
     
     const apiClient = createApiClient();
     if (!apiClient) {
-      // If no token is found, use mock data instead
-      generateMockData();
+      setError("No authentication token found");
+      setLoading(false);
       return;
     }
     
@@ -579,38 +521,38 @@ const DashboardPage = () => {
         headers: apiClient.headers
       });
       
-      // Process room bookings data
-      const roomBookings = roomBookingsResponse.data || [];
+      // Process room bookings data with proper typing
+      const roomBookings = (roomBookingsResponse.data || []) as RoomBooking[];
       const roomStats = {
         total: roomBookings.length,
-        pending: roomBookings.filter(booking => booking.status?.toLowerCase() === 'pending').length,
-        approved: roomBookings.filter(booking => booking.status?.toLowerCase() === 'approved').length,
-        rejected: roomBookings.filter(booking => booking.status?.toLowerCase() === 'rejected').length,
-        cancelled: roomBookings.filter(booking => booking.status?.toLowerCase() === 'cancelled').length
+        pending: roomBookings.filter((booking: RoomBooking) => booking.status?.toLowerCase() === 'pending').length,
+        approved: roomBookings.filter((booking: RoomBooking) => booking.status?.toLowerCase() === 'approved').length,
+        rejected: roomBookings.filter((booking: RoomBooking) => booking.status?.toLowerCase() === 'rejected').length,
+        cancelled: roomBookings.filter((booking: RoomBooking) => booking.status?.toLowerCase() === 'cancelled').length
       };
       
-      // Process transport bookings data
-      const transportBookings = transportBookingsResponse.data || [];
+      // Process transport bookings data with proper typing
+      const transportBookings = (transportBookingsResponse.data || []) as TransportBooking[];
       const transportStats = {
         total: transportBookings.length,
-        pending: transportBookings.filter(booking => booking.status?.toLowerCase() === 'pending').length,
-        approved: transportBookings.filter(booking => booking.status?.toLowerCase() === 'approved').length,
-        rejected: transportBookings.filter(booking => booking.status?.toLowerCase() === 'rejected').length,
-        cancelled: transportBookings.filter(booking => booking.status?.toLowerCase() === 'cancelled').length
+        pending: transportBookings.filter((booking: TransportBooking) => booking.status?.toLowerCase() === 'pending').length,
+        approved: transportBookings.filter((booking: TransportBooking) => booking.status?.toLowerCase() === 'approved').length,
+        rejected: transportBookings.filter((booking: TransportBooking) => booking.status?.toLowerCase() === 'rejected').length,
+        cancelled: transportBookings.filter((booking: TransportBooking) => booking.status?.toLowerCase() === 'cancelled').length
       };
       
-      // Process rooms data
-      const rooms = roomsResponse.data || [];
+      // Process rooms data with proper typing
+      const rooms = (roomsResponse.data || []) as Room[];
       const roomsStats = {
         total: rooms.length,
-        available: rooms.filter(room => room.status?.toLowerCase() === 'available').length || rooms.length
+        available: rooms.filter((room: Room) => room.status?.toLowerCase() === 'available').length || rooms.length
       };
       
-      // Process transports data
-      const transports = transportsResponse.data || [];
+      // Process transports data with proper typing
+      const transports = (transportsResponse.data || []) as Transport[];
       const transportsStats = {
         total: transports.length,
-        available: transports.filter(transport => transport.status?.toLowerCase() === 'available').length || transports.length
+        available: transports.filter((transport: Transport) => transport.status?.toLowerCase() === 'available').length || transports.length
       };
       
       // Set stats
@@ -627,11 +569,10 @@ const DashboardPage = () => {
         name: room.room_name || room.name,
         type: room.room_type || room.type,
         capacity: room.capacity,
-        facilities: room.facilities ? (typeof room.facilities === 'string' ? room.facilities.split(',').map(f => f.trim()) : room.facilities) : [],
+        facilities: room.facilities ? (typeof room.facilities === 'string' ? room.facilities.split(',').map((f: string) => f.trim()) : Array.isArray(room.facilities) ? room.facilities : []) : [],
         image: room.image || null,
         status: room.status || 'available'
       }));
-      
       // Get transports with proper mapping to match model
       const mappedTransports = transports.map(transport => ({
         id: transport.transport_id || transport.id,
@@ -647,17 +588,6 @@ const DashboardPage = () => {
       const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
       
       // Get recent room bookings (sort by date and take latest 5)
-      const todayRoomBookings = roomBookings.filter(booking => 
-        booking.booking_date && booking.booking_date.includes(todayStr)
-      );
-      
-      // Upcoming room bookings (future dates only)
-      const upcomingRoomBookings = roomBookings.filter(booking => {
-        if (!booking.booking_date) return false;
-        const bookingDate = new Date(booking.booking_date);
-        return bookingDate > today;
-      });
-      
       const sortedRoomBookings = [...roomBookings].sort((a, b) => {
         return new Date(b.booking_date || 0) - new Date(a.booking_date || 0);
       });
@@ -674,17 +604,6 @@ const DashboardPage = () => {
       setRecentRoomBookings(enhancedRoomBookings);
       
       // Get recent transport bookings (sort by date and take latest 5)
-      const todayTransportBookings = transportBookings.filter(booking => 
-        booking.booking_date && booking.booking_date.includes(todayStr)
-      );
-      
-      // Upcoming transport bookings (future dates only)
-      const upcomingTransportBookings = transportBookings.filter(booking => {
-        if (!booking.booking_date) return false;
-        const bookingDate = new Date(booking.booking_date);
-        return bookingDate > today;
-      });
-      
       const sortedTransportBookings = [...transportBookings].sort((a, b) => {
         return new Date(b.booking_date || 0) - new Date(a.booking_date || 0);
       });
@@ -733,17 +652,20 @@ const DashboardPage = () => {
       const events = processBookingsForCalendar(enhancedAllRoomBookings, enhancedAllTransportBookings);
       setCalendarEvents(events);
       
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error fetching dashboard data:", err);
       
-      // Check for unauthorized error
-      if (err.response?.status === 401) {
-        localStorage.removeItem("adminToken");
-        // Use mock data instead of showing error
-        generateMockData();
+      if (err && typeof err === 'object' && 'response' in err && err.response && typeof err.response === 'object' && 'status' in err.response) {
+        if (err.response.status === 401) {
+          setError("Authentication failed - Please login again");
+          localStorage.removeItem("adminToken");
+          // You might want to redirect to login page here
+          // router.push("/sign-in");
+        } else {
+          setError("Failed to fetch dashboard data. Please try again later.");
+        }
       } else {
-        // Use mock data instead of showing error
-        generateMockData();
+        setError("An unexpected error occurred. Please try again later.");
       }
     } finally {
       setLoading(false);
@@ -751,9 +673,9 @@ const DashboardPage = () => {
   };
 
   // Calculate approval rate
-  const calculateApprovalRate = (data) => {
+  const calculateApprovalRate = (data: { total: number; approved: number }): number => {
     if (data.total === 0) return 0;
-    return ((data.approved / data.total) * 100).toFixed(1);
+    return Number(((data.approved / data.total) * 100).toFixed(1));
   };
 
   // Initial data fetch
@@ -770,7 +692,7 @@ const DashboardPage = () => {
   }, [showRoomBookings, showTransportBookings]);
 
   // Custom calendar event styling with class-based approach for better performance
-  const eventStyleGetter = (event, start, end, isSelected) => {
+  const eventStyleGetter = (event: CalendarEvent, start: Date, end: Date, isSelected: boolean) => {
     // Base classes to apply
     let className = "";
     
@@ -789,8 +711,8 @@ const DashboardPage = () => {
       className += " event-current";
     }
     
-    // Base style with common properties (still needed for sizing, etc.)
-    let style = {
+    // Base style with common properties
+    const style: React.CSSProperties = {
       fontSize: '12px',
       borderRadius: '6px',
       display: 'block',
@@ -811,7 +733,14 @@ const DashboardPage = () => {
   };
 
   // Custom toolbar component for calendar
-  const CustomToolbar = (toolbar) => {
+  interface ToolbarProps {
+    date: Date;
+    view: View;
+    onNavigate: (action: 'PREV' | 'NEXT' | 'TODAY') => void;
+    onView: (view: View) => void;
+  }
+
+  const CustomToolbar = (toolbar: ToolbarProps) => {
     const goToBack = () => {
       toolbar.onNavigate('PREV');
     };
@@ -929,6 +858,75 @@ const DashboardPage = () => {
     );
   };
 
+  // Add interface for event modal props
+  interface EventModalProps {
+    event: CalendarEvent;
+    onClose: () => void;
+  }
+
+  // Update the EventModal component with proper typing
+  const EventModal: React.FC<EventModalProps> = ({ event, onClose }) => {
+    const resource = event.resource;
+    const details = resource.details;
+    
+    const getRoomDetails = (details: RoomBooking) => (
+      <>
+        <div>
+          <p className="text-sm text-gray-500">Person in Charge</p>
+          <p className="font-medium">{details.pic}</p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-500">Purpose</p>
+          <p className="font-medium">{details.purpose || 'Not specified'}</p>
+        </div>
+      </>
+    );
+    
+    const getTransportDetails = (details: TransportBooking) => (
+      <>
+        <div>
+          <p className="text-sm text-gray-500">Destination</p>
+          <p className="font-medium">{details.destination || 'Not specified'}</p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-500">Driver</p>
+          <p className="font-medium">{details.driver_name || 'Not assigned'}</p>
+        </div>
+      </>
+    );
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-lg w-full">
+          <div className="flex justify-between items-start mb-4">
+            <h3 className="text-xl font-semibold">{event.title}</h3>
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-gray-500">Time</p>
+              <p className="font-medium">
+                {event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - 
+                {event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
+            
+            <div>
+              <p className="text-sm text-gray-500">Status</p>
+              <p className="font-medium capitalize">{resource.status}</p>
+            </div>
+            
+            {resource.type === 'room' && getRoomDetails(details as RoomBooking)}
+            {resource.type === 'transport' && getTransportDetails(details as TransportBooking)}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -944,11 +942,6 @@ const DashboardPage = () => {
   return (
     <div className="min-h-screen ">
       <div className="container mx-auto px-4 py-8">
-        {/* Dashboard Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-sky-800">Resource Booking Dashboard</h1>
-          <p className="text-gray-500">Monitor and manage all booking activities</p>
-        </div>
         
         {/* Time Range Filter */}
         <div className="mb-6">
@@ -1001,15 +994,14 @@ const DashboardPage = () => {
               startAccessor="start"
               endAccessor="end"
               style={{ height: '100%' }}
-              views={['month', 'week', 'day']}
+              views={['month', 'week', 'day'] as View[]}
               defaultView={calendarView}
-              onView={(view) => setCalendarView(view)}
+              onView={(view: View) => setCalendarView(view)}
               defaultDate={calendarDate}
-              onNavigate={(date) => setCalendarDate(date)}
+              onNavigate={(date: Date) => setCalendarDate(date)}
               components={{
-                toolbar: CustomToolbar,
-                // Enhanced custom event component for better display
-                event: (props) => {
+                toolbar: CustomToolbar as any, // Type assertion needed due to react-big-calendar's type definitions
+                event: (props: { event: CalendarEvent }) => {
                   const { event } = props;
                   const resource = event.resource || {};
                   const status = resource.status || 'pending';
@@ -1031,8 +1023,8 @@ const DashboardPage = () => {
                   let secondaryInfo = '';
                   if (resource.type === 'room' && resource.personName) {
                     secondaryInfo = resource.personName;
-                  } else if (resource.type === 'transport' && resource.details?.destination) {
-                    secondaryInfo = resource.details.destination;
+                  } else if (resource.type === 'transport' && 'destination' in resource.details) {
+                    secondaryInfo = resource.details.destination || '';
                   }
                   
                   return (
@@ -1063,19 +1055,19 @@ const DashboardPage = () => {
               }}
               eventPropGetter={eventStyleGetter}
               popup
-              tooltipAccessor={(event) => {
+              tooltipAccessor={(event: CalendarEvent) => {
                 const resource = event.resource;
                 if (!resource) return event.title;
                 
                 if (resource.type === 'room') {
-                  const details = resource.details;
+                  const details = resource.details as RoomBooking;
                   return `Room: ${details.room_details?.name || 'Unknown Room'}\n` + 
                          `Time: ${formatTime(details.start_time)} - ${formatTime(details.end_time)}\n` +
                          `Person: ${details.pic || 'Not specified'}\n` +
                          `Section: ${details.section || 'Not specified'}\n` +
                          `Status: ${details.status || 'Not specified'}`;
                 } else {
-                  const details = resource.details;
+                  const details = resource.details as TransportBooking;
                   return `Vehicle: ${details.transport_details?.name || 'Unknown Vehicle'}\n` + 
                          `Time: ${formatTime(details.start_time)} - ${formatTime(details.end_time)}\n` +
                          `Destination: ${details.destination || 'Not specified'}\n` +
@@ -1083,7 +1075,7 @@ const DashboardPage = () => {
                          `Status: ${details.status || 'Not specified'}`;
                 }
               }}
-              dayPropGetter={(date) => {
+              dayPropGetter={(date: Date) => {
                 const today = new Date();
                 if (date.getDate() === today.getDate() &&
                     date.getMonth() === today.getMonth() &&
@@ -1097,6 +1089,14 @@ const DashboardPage = () => {
               }}
             />
           </div>
+          
+          {/* Event Popup */}
+          {selectedEvent && (
+            <EventModal
+              event={selectedEvent}
+              onClose={() => setSelectedEvent(null)}
+            />
+          )}
           
           {/* Calendar legend with improved styling */}
           <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-sm p-4 bg-white border border-sky-100 rounded-md shadow-sm">

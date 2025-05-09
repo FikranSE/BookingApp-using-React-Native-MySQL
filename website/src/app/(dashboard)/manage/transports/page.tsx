@@ -689,121 +689,177 @@ const TransportManagePage = () => {
                            (capacityFilter ? 1 : 0);
 
   return (
-    <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
-      {/* Auth status (for debugging - remove in production) */}
-      <div className="bg-gray-50 p-2 mb-4 rounded text-xs text-gray-600 border flex justify-between">
-        <div>
-          <span>Auth status: {authStatus}</span>
-        </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={() => {
-              localStorage.removeItem("adminToken");
-              localStorage.removeItem("adminInfo");
-              router.push("/sign-in");
-            }}
-            className="text-red-500 hover:underline text-xs"
-          >
-            Sign out
-          </button>
-          <button
-            onClick={() => window.location.reload()}
-            className="text-sky-500 hover:underline text-xs"
-          >
-            Reload page
-          </button>
-        </div>
-      </div>
-
-      {/* Status message */}
-      {statusMessage.message && (
-        <div className={`mb-4 p-3 rounded-lg ${
-          statusMessage.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 
-          'bg-red-50 text-red-700 border border-red-200'
-        }`}>
-          <div className="flex items-center">
-            {statusMessage.type === 'success' ? (
-              <div className="mr-2 flex-shrink-0 w-5 h-5 bg-green-100 rounded-full flex items-center justify-center">
-                <div className="h-3 w-3 bg-green-500 rounded-full"></div>
-              </div>
-            ) : (
-              <AlertCircle size={18} className="mr-2 flex-shrink-0 text-red-500" />
-            )}
-            <p>{statusMessage.message}</p>
+    <div className="min-h-screen">
+      <div className="container mx-auto px-4 py-8">
+        {/* Auth status (for debugging - remove in production) */}
+        <div className="bg-gray-50 p-2 mb-4 rounded text-xs text-gray-600 border flex justify-between">
+          <div>
+            <span>Auth status: {authStatus}</span>
           </div>
-        </div>
-      )}
-
-      {/* TOP */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="hidden md:block text-lg font-semibold">Manage Transports</h1>
-        <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-          <TableSearch 
-            value={searchText} 
-            onSearch={handleSearch} 
-            placeholder="Search transports..." 
-          />
-          <div className="flex items-center gap-4 self-end">
-            <div className="flex flex-wrap gap-2">
-              {driverFilterOptions.length > 0 && (
-                <FilterDropdown
-                  title="Driver"
-                  options={driverFilterOptions}
-                  selectedOptions={driverFilters}
-                  onChange={handleDriverFilterChange}
-                />
-              )}
-              <CapacityFilter
-                minValue={1}
-                maxValue={50}
-                onFilter={handleCapacityFilter}
-                isActive={capacityFilter !== null}
-                onClear={clearCapacityFilter}
-              />
-              <SortDropdown
-                options={sortOptions}
-                currentSort={sorting}
-                onSort={handleSort}
-              />
-            </div>
+          <div className="flex gap-2">
             <button 
-              onClick={handleAddTransport}
-              className="h-9 px-4 flex items-center justify-center rounded-full bg-lamaYellow text-sm hover:bg-yellow-400 transition-colors"
+              onClick={() => {
+                localStorage.removeItem("adminToken");
+                localStorage.removeItem("adminInfo");
+                router.push("/sign-in");
+              }}
+              className="text-red-500 hover:underline text-xs"
             >
-              <Plus size={18} className="mr-1" />
-              <span className="font-medium">Add Transport</span>
+              Sign out
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-blue-500 hover:underline text-xs"
+            >
+              Reload page
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Active Filters */}
-      {activeFilterCount > 0 && (
-        <div className="mb-4 flex items-center">
-          <span className="text-sm text-gray-500 mr-2">Active filters:</span>
-          <div className="flex flex-wrap gap-2">
-            {driverFilters.length > 0 && (
-              <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
-                <span>Drivers: {driverFilters.length}</span>
+        {/* TOP */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-sky-100 mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-lg font-semibold text-sky-800 flex items-center">
+              <Car size={20} className="mr-2 text-sky-500" />
+              Manage Transports
+            </h1>
+            <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+              <TableSearch 
+                value={searchText} 
+                onSearch={handleSearch} 
+                placeholder="Search transports..."
+              />
+              <div className="flex items-center gap-4 self-end">
+                <div className="flex flex-wrap gap-2">
+                  {driverFilterOptions.length > 0 && (
+                    <FilterDropdown
+                      title="Driver"
+                      options={driverFilterOptions}
+                      selectedOptions={driverFilters}
+                      onChange={handleDriverFilterChange}
+                    />
+                  )}
+                  <CapacityFilter
+                    minValue={1}
+                    maxValue={50}
+                    onFilter={handleCapacityFilter}
+                    isActive={capacityFilter !== null}
+                    onClear={clearCapacityFilter}
+                  />
+                  <SortDropdown
+                    options={sortOptions}
+                    currentSort={sorting}
+                    onSort={handleSort}
+                  />
+                </div>
                 <button 
-                  onClick={() => setDriverFilters([])} 
-                  className="ml-1 text-sky-500 hover:text-sky-700"
+                  onClick={handleAddTransport}
+                  className="h-9 px-4 flex items-center justify-center rounded-full bg-sky-500 text-sm text-white hover:bg-sky-600 transition-colors"
                 >
-                  <X size={14} />
+                  <Plus size={18} className="mr-1" />
+                  <span className="font-medium">Add Transport</span>
                 </button>
               </div>
-            )}
-            {capacityFilter && (
-              <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
-                <span>Capacity: {capacityFilter.min}-{capacityFilter.max}</span>
+            </div>
+          </div>
+
+          {/* Active Filters */}
+          {activeFilterCount > 0 && (
+            <div className="flex items-center">
+              <span className="text-sm text-gray-500 mr-2">Active filters:</span>
+              <div className="flex flex-wrap gap-2">
+                {driverFilters.length > 0 && (
+                  <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
+                    <span>Drivers: {driverFilters.length}</span>
+                    <button 
+                      onClick={() => setDriverFilters([])} 
+                      className="ml-1 text-sky-500 hover:text-sky-700"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+                {capacityFilter && (
+                  <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
+                    <span>Capacity: {capacityFilter.min}-{capacityFilter.max}</span>
+                    <button 
+                      onClick={clearCapacityFilter} 
+                      className="ml-1 text-sky-500 hover:text-sky-700"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
                 <button 
-                  onClick={clearCapacityFilter} 
-                  className="ml-1 text-sky-500 hover:text-sky-700"
+                  onClick={() => {
+                    setDriverFilters([]);
+                    clearCapacityFilter();
+                    setSorting(null);
+                    setSearchText("");
+                  }}
+                  className="text-xs text-gray-500 hover:text-gray-700 underline"
                 >
-                  <X size={14} />
+                  Clear all
                 </button>
               </div>
-            )}
+            </div>
+          )}
+        </div>
+
+        {/* Loading state */}
+        {loading && (
+          <div className="flex-1 flex items-center justify-center h-64">
+            <div className="flex flex-col items-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sky-500 mb-4"></div>
+              <p className="text-gray-600">Loading transports...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Error state */}
+        {error && !loading && (
+          <div className="bg-red-50 p-4 rounded-md text-red-800 mt-4">
+            <h3 className="font-bold mb-2">Error</h3>
+            <p>{error}</p>
+            <button 
+              onClick={() => fetchTransports()}
+              className="mt-3 px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && !error && transports.length === 0 && (
+          <div className="bg-white rounded-lg shadow-sm border border-sky-100 p-10 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-sky-50 rounded-xl flex items-center justify-center">
+                <Car size={32} className="text-sky-300" />
+              </div>
+            </div>
+            <h3 className="font-bold text-lg mb-2 text-sky-800">No Transports Found</h3>
+            <p className="text-gray-500 mb-6">Get started by adding your first transport.</p>
+            <button 
+              onClick={handleAddTransport}
+              className="px-6 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors flex items-center mx-auto"
+            >
+              <Plus size={18} className="mr-2" />
+              Add New Transport
+            </button>
+          </div>
+        )}
+
+        {/* No Results After Filtering */}
+        {!loading && !error && transports.length > 0 && filteredTransports.length === 0 && (
+          <div className="bg-white rounded-lg shadow-sm border border-sky-100 p-10 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-sky-50 rounded-xl flex items-center justify-center">
+                <FilterIcon size={32} className="text-sky-300" />
+              </div>
+            </div>
+            <h3 className="font-bold text-lg mb-2 text-sky-800">No Matching Transports</h3>
+            <p className="text-gray-500 mb-6">No transports match your current search or filters.</p>
             <button 
               onClick={() => {
                 setDriverFilters([]);
@@ -811,342 +867,342 @@ const TransportManagePage = () => {
                 setSorting(null);
                 setSearchText("");
               }}
-              className="text-xs text-gray-500 hover:text-gray-700 underline"
+              className="px-6 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors flex items-center mx-auto"
             >
-              Clear all
+              Clear All Filters
             </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Loading state */}
-      {loading && (
-        <div className="flex-1 flex items-center justify-center h-64">
-          <div className="flex flex-col items-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sky-500 mb-4"></div>
-            <p className="text-gray-600">Loading transports...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Error state */}
-      {error && !loading && (
-        <div className="bg-red-50 p-4 rounded-md text-red-800 mt-4">
-          <h3 className="font-bold mb-2">Error</h3>
-          <p>{error}</p>
-          <button 
-            onClick={() => fetchTransports()}
-            className="mt-3 px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200"
-          >
-            Try Again
-          </button>
-        </div>
-      )}
-
-      {/* Empty state */}
-      {!loading && !error && transports.length === 0 && (
-        <div className="bg-gray-50 rounded-xl p-10 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center">
-              <Car size={32} className="text-gray-300" />
-            </div>
-          </div>
-          <h3 className="font-bold text-lg mb-2">No Transports Found</h3>
-          <p className="text-gray-500 mb-6">Get started by adding your first transport.</p>
-          <button 
-            onClick={handleAddTransport}
-            className="px-6 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors flex items-center mx-auto"
-          >
-            <Plus size={18} className="mr-2" />
-            Add New Transport
-          </button>
-        </div>
-      )}
-
-      {/* No Results After Filtering */}
-      {!loading && !error && transports.length > 0 && filteredTransports.length === 0 && (
-        <div className="bg-gray-50 rounded-xl p-10 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center">
-              <FilterIcon size={32} className="text-gray-300" />
-            </div>
-          </div>
-          <h3 className="font-bold text-lg mb-2">No Matching Transports</h3>
-          <p className="text-gray-500 mb-6">No transports match your current search or filters.</p>
-          <button 
-            onClick={() => {
-              setDriverFilters([]);
-              clearCapacityFilter();
-              setSorting(null);
-              setSearchText("");
-            }}
-            className="px-6 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors flex items-center mx-auto"
-          >
-            Clear All Filters
-          </button>
-        </div>
-      )}
-
-      {/* Data table */}
-      {!loading && !error && filteredTransports.length > 0 && (
-        <>
-          <div className="text-xs text-gray-500 mb-2">
-            Showing {filteredTransports.length} of {transports.length} transports
-          </div>
-          <Table columns={columns} renderRow={renderRow} data={filteredTransports} />
-          <Pagination />
-        </>
-      )}
-
-      {/* Add/Edit Transport Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-2xl w-full max-h-[90vh] flex flex-col">
-            {/* Modal Header */}
-            <div className="bg-gradient-to-r from-sky-400 to-sky-500 p-5 text-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-3">
-                    <Car size={20} />
-                  </div>
-                  <h2 className="text-xl font-bold">
-                    {isEditMode ? 'Edit Transport' : 'Add New Transport'}
-                  </h2>
-                </div>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"
-                >
-                  <X size={18} />
-                </button>
+        {/* Data table */}
+        {!loading && !error && filteredTransports.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm border border-sky-100 overflow-hidden">
+            <div className="p-4">
+              <div className="text-xs text-gray-500 mb-2">
+                Showing {filteredTransports.length} of {transports.length} transports
               </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-sky-100">
+                  <thead className="bg-sky-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Info</th>
+                      <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Transport ID</th>
+                      <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Vehicle Name</th>
+                      <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Driver</th>
+                      <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Capacity</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-sky-100">
+                    {filteredTransports.map((item) => (
+                      <tr key={item.transport_id} className="hover:bg-sky-50">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-4">
+                            <div className="relative w-12 h-12 rounded-md overflow-hidden bg-gray-100">
+                              <TransportImage 
+                                image={item.image} 
+                                alt={item.vehicle_name}
+                                fallbackIcon={<Car size={20} className="text-gray-300" />}
+                              />
+                            </div>
+                            <div className="flex flex-col">
+                              <h3 className="font-semibold text-sky-800">{item.vehicle_name}</h3>
+                              <p className="text-xs text-gray-500">
+                                Driver: {item.driver_name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Capacity: {item.capacity} persons
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.transport_id}</td>
+                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.vehicle_name}</td>
+                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.driver_name}</td>
+                        <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.capacity}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Link href={`/manage/transports/${item.transport_id}`}>
+                              <button className="w-7 h-7 flex items-center justify-center text-white rounded-full bg-sky-500 hover:bg-sky-600 transition-colors">
+                                <Eye size={14} />
+                              </button>
+                            </Link>
+                            <button
+                              onClick={() => handleEditTransport(item)}
+                              className="w-7 h-7 flex items-center justify-center rounded-full bg-orange-100 text-orange-600 hover:bg-orange-200 transition-colors"
+                              title="Edit Transport"
+                            >
+                              <Edit size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(item.transport_id)}
+                              className="w-7 h-7 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                              title="Delete Transport"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination />
             </div>
-            
-            {/* Modal Body */}
-            <div className="overflow-y-auto p-6">
-              <form onSubmit={handleSubmit}>
-                {/* Vehicle Name */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Vehicle Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="vehicle_name"
-                    value={formData.vehicle_name}
-                    onChange={handleInputChange}
-                    className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-sky-300 ${
-                      formErrors.vehicle_name ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Enter vehicle name"
-                  />
-                  {formErrors.vehicle_name && (
-                    <p className="text-red-500 text-xs mt-1">{formErrors.vehicle_name}</p>
-                  )}
-                </div>
-                
-                {/* Driver Name */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Driver Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="driver_name"
-                    value={formData.driver_name}
-                    onChange={handleInputChange}
-                    className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-sky-300 ${
-                      formErrors.driver_name ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Enter driver name"
-                  />
-                  {formErrors.driver_name && (
-                    <p className="text-red-500 text-xs mt-1">{formErrors.driver_name}</p>
-                  )}
-                </div>
-                
-                {/* Capacity */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Capacity <span className="text-red-500">*</span>
-                  </label>
+          </div>
+        )}
+
+        {/* Add/Edit Transport Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-2xl w-full max-h-[90vh] flex flex-col">
+              {/* Modal Header */}
+              <div className="bg-gradient-to-r from-sky-400 to-sky-500 p-5 text-white">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center">
+                    <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-3">
+                      <Car size={20} />
+                    </div>
+                    <h2 className="text-xl font-bold">
+                      {isEditMode ? 'Edit Transport' : 'Add New Transport'}
+                    </h2>
+                  </div>
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Modal Body */}
+              <div className="overflow-y-auto p-6">
+                <form onSubmit={handleSubmit}>
+                  {/* Vehicle Name */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Vehicle Name <span className="text-red-500">*</span>
+                    </label>
                     <input
-                      type="number"
-                      name="capacity"
-                      value={formData.capacity}
+                      type="text"
+                      name="vehicle_name"
+                      value={formData.vehicle_name}
                       onChange={handleInputChange}
-                      min="1"
-                      max="100"
                       className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-sky-300 ${
-                        formErrors.capacity ? 'border-red-500' : 'border-gray-300'
+                        formErrors.vehicle_name ? 'border-red-500' : 'border-gray-300'
                       }`}
+                      placeholder="Enter vehicle name"
                     />
-                    <div className="ml-2 text-gray-500 flex items-center">
-                      <Users size={18} className="mr-1" />
-                      <span>persons</span>
-                    </div>
-                  </div>
-                  {formErrors.capacity && (
-                    <p className="text-red-500 text-xs mt-1">{formErrors.capacity}</p>
-                  )}
-                </div>
-                
-                {/* Image Upload - Updated with TransportImage component */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Vehicle Image
-                  </label>
-                  <input 
-                    type="file"
-                    ref={fileInputRef}
-                    accept="image/jpeg,image/png"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  
-                  <div className="mt-2 aspect-video bg-gray-100 rounded-lg overflow-hidden relative mb-2 border border-gray-200">
-                    {previewImage ? (
-                      <img
-                        src={previewImage}
-                        alt="Vehicle preview"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : currentTransport && currentTransport.image ? (
-                      <TransportImage
-                        image={currentTransport.image}
-                        alt={currentTransport.vehicle_name}
-                        fallbackIcon={<Car size={48} className="text-gray-300 mb-2" />}
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center h-full">
-                        <Car size={48} className="text-gray-300 mb-2" />
-                        <p className="text-gray-400 text-sm">No image selected</p>
-                      </div>
+                    {formErrors.vehicle_name && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.vehicle_name}</p>
                     )}
+                  </div>
+                  
+                  {/* Driver Name */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Driver Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="driver_name"
+                      value={formData.driver_name}
+                      onChange={handleInputChange}
+                      className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-sky-300 ${
+                        formErrors.driver_name ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="Enter driver name"
+                    />
+                    {formErrors.driver_name && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.driver_name}</p>
+                    )}
+                  </div>
+                  
+                  {/* Capacity */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Capacity <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex items-center">
+                      <input
+                        type="number"
+                        name="capacity"
+                        value={formData.capacity}
+                        onChange={handleInputChange}
+                        min="1"
+                        max="100"
+                        className={`w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-sky-300 ${
+                          formErrors.capacity ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      />
+                      <div className="ml-2 text-gray-500 flex items-center">
+                        <Users size={18} className="mr-1" />
+                        <span>persons</span>
+                      </div>
+                    </div>
+                    {formErrors.capacity && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.capacity}</p>
+                    )}
+                  </div>
+                  
+                  {/* Image Upload */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Vehicle Image
+                    </label>
+                    <input 
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/jpeg,image/png"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
                     
-                    <button
-                      type="button"
-                      onClick={triggerFileInput}
-                      className="absolute bottom-3 right-3 bg-sky-500 text-white rounded-lg p-2 hover:bg-sky-600 transition-colors"
-                    >
-                      <Camera size={20} />
-                    </button>
+                    <div className="mt-2 aspect-video bg-gray-100 rounded-lg overflow-hidden relative mb-2 border border-gray-200">
+                      {previewImage ? (
+                        <img
+                          src={previewImage}
+                          alt="Vehicle preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : currentTransport && currentTransport.image ? (
+                        <TransportImage
+                          image={currentTransport.image}
+                          alt={currentTransport.vehicle_name}
+                          fallbackIcon={<Car size={48} className="text-gray-300 mb-2" />}
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full">
+                          <Car size={48} className="text-gray-300 mb-2" />
+                          <p className="text-gray-400 text-sm">No image selected</p>
+                        </div>
+                      )}
+                      
+                      <button
+                        type="button"
+                        onClick={triggerFileInput}
+                        className="absolute bottom-3 right-3 bg-sky-500 text-white rounded-lg p-2 hover:bg-sky-600 transition-colors"
+                      >
+                        <Camera size={20} />
+                      </button>
+                    </div>
+                    {formErrors.image && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.image}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Upload a JPEG or PNG image (max 5MB). Leave empty to keep the current image.
+                    </p>
                   </div>
-                  {formErrors.image && (
-                    <p className="text-red-500 text-xs mt-1">{formErrors.image}</p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    Upload a JPEG or PNG image (max 5MB). Leave empty to keep the current image.
-                  </p>
-                </div>
-              </form>
-            </div>
-            
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-gray-200 flex justify-end space-x-2">
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isSaving}
-                className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors disabled:opacity-50 flex items-center"
-              >
-                {isSaving ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save size={18} className="mr-2" />
-                    {isEditMode ? 'Update Transport' : 'Create Transport'}
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-red-500 to-red-600 p-5 text-white">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-3">
-                  <Trash2 size={20} />
-                </div>
-                <h2 className="text-xl font-bold">Confirm Deletion</h2>
+                </form>
               </div>
-            </div>
-            
-            {/* Body */}
-            <div className="p-6">
-              <p className="text-gray-700 mb-6">
-                Are you sure you want to delete this transport? This action cannot be undone and all associated data will be permanently removed.
-              </p>
               
-              {/* Get transport details for the transport to be deleted */}
-              {transportToDelete && 
-                <div className="bg-gray-50 p-4 rounded-xl mb-6">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <Car size={24} className="text-gray-500" />
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="font-medium">
-                        {transports.find(transport => transport.transport_id === transportToDelete)?.vehicle_name || 'Unknown Transport'}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        ID: {transportToDelete}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              }
-              
-              <div className="flex justify-end space-x-3">
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-gray-200 flex justify-end space-x-2">
                 <button
-                  onClick={() => {
-                    setShowDeleteConfirm(false);
-                    setTransportToDelete(null);
-                  }}
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                  disabled={isDeleting}
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleDeleteTransport}
-                  disabled={isDeleting}
-                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center"
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors disabled:opacity-50 flex items-center"
                 >
-                  {isDeleting ? (
+                  {isSaving ? (
                     <>
                       <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
-                      Deleting...
+                      Saving...
                     </>
                   ) : (
                     <>
-                      <Trash2 size={18} className="mr-2" />
-                      Delete Transport
+                      <Save size={18} className="mr-2" />
+                      {isEditMode ? 'Update Transport' : 'Create Transport'}
                     </>
                   )}
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+        
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-red-500 to-red-600 p-5 text-white">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-3">
+                    <Trash2 size={20} />
+                  </div>
+                  <h2 className="text-xl font-bold">Confirm Deletion</h2>
+                </div>
+              </div>
+              
+              {/* Body */}
+              <div className="p-6">
+                <p className="text-gray-700 mb-6">
+                  Are you sure you want to delete this transport? This action cannot be undone and all associated data will be permanently removed.
+                </p>
+                
+                {/* Get transport details for the transport to be deleted */}
+                {transportToDelete && 
+                  <div className="bg-gray-50 p-4 rounded-xl mb-6">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 w-12 h-12 bg-sky-100 rounded-lg flex items-center justify-center">
+                        <Car size={24} className="text-sky-500" />
+                      </div>
+                      <div className="ml-4">
+                        <h3 className="font-medium text-sky-800">
+                          {transports.find(transport => transport.transport_id === transportToDelete)?.vehicle_name || 'Unknown Transport'}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          ID: {transportToDelete}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                }
+                
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      setTransportToDelete(null);
+                    }}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                    disabled={isDeleting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteTransport}
+                    disabled={isDeleting}
+                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 size={18} className="mr-2" />
+                        Delete Transport
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

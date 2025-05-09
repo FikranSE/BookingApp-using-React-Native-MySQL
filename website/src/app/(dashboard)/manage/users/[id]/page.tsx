@@ -399,8 +399,8 @@ const handleSubmit = async (e) => {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="container mx-auto px-4 py-6">
+    <div className="min-h-screen">
+      <div className="container mx-auto px-4 py-8">
         {/* Status message */}
         {updateStatus.message && (
           <div className={`mb-6 p-4 rounded-xl ${
@@ -426,13 +426,55 @@ const handleSubmit = async (e) => {
         )}
         
         {/* Main content */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* Left column - Main info */}
-          <div className="md:col-span-7 lg:col-span-8">
-            {/* User info card */}
-            <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
-              <div className="bg-gradient-to-r from-indigo-400 to-indigo-500 p-6 text-white">
-                <div className="flex items-center justify-between">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-sky-100 mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-lg font-semibold text-sky-800 flex items-center">
+              <User size={20} className="mr-2 text-sky-500" />
+              User Details
+            </h1>
+            <div className="flex items-center gap-4">
+              <Link href="/manage/users">
+                <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center">
+                  <ArrowLeft size={16} className="mr-2" />
+                  Back to Users
+                </button>
+              </Link>
+              {!isEditing ? (
+                <button
+                  onClick={toggleEditMode}
+                  className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors flex items-center"
+                >
+                  <Edit size={16} className="mr-2" />
+                  Edit User
+                </button>
+              ) : (
+                <button
+                  onClick={handleSubmit}
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center disabled:opacity-50"
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} className="mr-2" />
+                      Save Changes
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+            {/* Left column - Main info */}
+            <div className="md:col-span-7 lg:col-span-8">
+              {/* User info card */}
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-sky-100 mb-6">
+                <div className="bg-gradient-to-r from-sky-400 to-sky-500 p-6 text-white">
                   <div className="flex items-center">
                     <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
                       <User size={24} />
@@ -450,260 +492,196 @@ const handleSubmit = async (e) => {
                       ) : (
                         <h2 className="text-2xl font-bold">{user.name}</h2>
                       )}
-                      <div className="mt-1 text-indigo-50 flex items-center text-sm">
+                      <div className="mt-1 text-sky-50 flex items-center text-sm">
                         <span>ID: {user.id}</span>
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    {isEditing ? (
-                      <button
-                        onClick={toggleEditMode}
-                        className="rounded-full w-10 h-10 flex items-center justify-center bg-white/20 text-white hover:bg-white/30 transition-colors"
-                        title="Cancel"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                </div>
+                
+                <div className="p-6">
+                  {/* Profile Image */}
+                  <div className="aspect-square w-60 mx-auto bg-gray-100 rounded-full overflow-hidden relative mb-6 group">
+                    {/* Hidden file input */}
+                    <input 
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/jpeg,image/png"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    
+                    {previewImage ? (
+                      <div className="relative w-full h-full">
+                        <img
+                          src={previewImage}
+                          alt={user.name}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : user.image ? (
+                      <div className="relative w-full h-full">
+                        <img
+                          src={fixImageUrl(user.image)}
+                          alt={user.name}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = '/placeholder-user.jpg';
+                          }}
+                        />
+                      </div>
                     ) : (
-                      <button
-                        onClick={toggleEditMode}
-                        className="rounded-full w-10 h-10 flex items-center justify-center bg-white/20 text-white hover:bg-white/30 transition-colors"
-                        title="Edit User"
-                      >
-                        <Edit size={18} />
-                      </button>
+                      <div className="flex items-center justify-center h-full">
+                        <User size={64} className="text-gray-300" />
+                      </div>
                     )}
-                    {isEditing ? (
-                      <button
-                        onClick={handleSubmit}
-                        disabled={isSaving}
-                        className="rounded-full w-10 h-10 flex items-center justify-center bg-green-500 text-white hover:bg-green-600 transition-colors disabled:opacity-50"
-                        title="Save Changes"
-                      >
-                        {isSaving ? (
-                          <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
-                        ) : (
-                          <Save size={18} />
-                        )}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleDelete}
-                        className="rounded-full w-10 h-10 flex items-center justify-center bg-red-500 text-white hover:bg-red-600 transition-colors"
-                        title="Delete User"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                    
+                    {isEditing && (
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <button
+                          onClick={triggerFileInput}
+                          className="bg-white/90 backdrop-blur-sm rounded-xl p-3 flex items-center"
+                        >
+                          <Camera size={20} className="mr-2 text-sky-500" />
+                          <span>Choose Photo</span>
+                        </button>
+                      </div>
                     )}
                   </div>
+                  
+                  {/* Email info */}
+                  <div className="flex items-start mb-6 p-4 bg-sky-50 rounded-2xl">
+                    <div className="flex-shrink-0 w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
+                      <Mail size={20} className="text-sky-500" />
+                    </div>
+                    <div className="ml-4 flex-grow">
+                      <h3 className="uppercase text-xs font-semibold text-sky-500 tracking-wider">Email</h3>
+                      {isEditing ? (
+                        <input
+                          type="email"
+                          name="email"
+                          value={editData.email}
+                          onChange={handleInputChange}
+                          className="mt-1 p-2 border border-sky-200 rounded w-full bg-white"
+                          placeholder="Email Address"
+                        />
+                      ) : (
+                        <p className="text-lg font-medium text-gray-800">
+                          {user.email || "Not available"}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Phone info */}
+                  <div className="flex items-start mb-6 p-4 bg-sky-50 rounded-2xl">
+                    <div className="flex-shrink-0 w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
+                      <Phone size={20} className="text-sky-500" />
+                    </div>
+                    <div className="ml-4 flex-grow">
+                      <h3 className="uppercase text-xs font-semibold text-sky-500 tracking-wider">Phone</h3>
+                      {isEditing ? (
+                        <input
+                          type="tel"
+                          name="phone"
+                          value={editData.phone}
+                          onChange={handleInputChange}
+                          className="mt-1 p-2 border border-sky-200 rounded w-full bg-white"
+                          placeholder="Phone Number"
+                        />
+                      ) : (
+                        <p className="text-lg font-medium text-gray-800">
+                          {user.phone || "Not provided"}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Right column - Summary and metadata */}
+            <div className="md:col-span-5 lg:col-span-4">
+              {/* User summary card */}
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-sky-100 mb-6">
+                <div className="p-6 border-b border-sky-100">
+                  <h3 className="font-bold text-sky-800">User Details</h3>
+                </div>
+                <div className="p-6">
+                  <ul className="space-y-4">
+                    <li className="flex justify-between items-center py-2 border-b border-dashed border-sky-100">
+                      <span className="text-gray-500">User ID</span>
+                      <span className="font-medium text-sky-800">#{user.id}</span>
+                    </li>
+                    <li className="flex justify-between items-center py-2 border-b border-dashed border-sky-100">
+                      <span className="text-gray-500">Name</span>
+                      <span className="font-medium text-sky-800">{user.name}</span>
+                    </li>
+                    <li className="flex justify-between items-center py-2 border-b border-dashed border-sky-100">
+                      <span className="text-gray-500">Email</span>
+                      <span className="font-medium text-sky-800">{user.email || "Not available"}</span>
+                    </li>
+                    <li className="flex justify-between items-center py-2 border-b border-dashed border-sky-100">
+                      <span className="text-gray-500">Phone</span>
+                      <span className="font-medium text-sky-800">{user.phone || "Not provided"}</span>
+                    </li>
+                    <li className="flex justify-between items-center py-2 border-b border-dashed border-sky-100">
+                      <span className="text-gray-500">Created</span>
+                      <span className="font-medium text-sky-800">{formatDate(user.createdAt)}</span>
+                    </li>
+                    <li className="flex justify-between items-center py-2">
+                      <span className="text-gray-500">Last Updated</span>
+                      <span className="font-medium text-sky-800">{formatDate(user.updatedAt)}</span>
+                    </li>
+                  </ul>
                 </div>
               </div>
               
-              <div className="p-6">
-                {/* Profile Image */}
-                <div className="aspect-square w-60 mx-auto bg-gray-100 rounded-full overflow-hidden relative mb-6 group">
-                  {/* Hidden file input */}
-                  <input 
-                    type="file"
-                    ref={fileInputRef}
-                    accept="image/jpeg,image/png"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  
-                  {previewImage ? (
-                    <div className="relative w-full h-full">
-                      <img
-                        src={previewImage}
-                        alt={user.name}
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : user.image ? (
-                    <div className="relative w-full h-full">
-                      <img
-                        src={fixImageUrl(user.image)}
-                        alt={user.name}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = '/placeholder-user.jpg';
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <User size={64} className="text-gray-300" />
-                    </div>
-                  )}
-                  
-                  {isEditing && (
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <button
-                        onClick={triggerFileInput}
-                        className="bg-white/90 backdrop-blur-sm rounded-xl p-3 flex items-center"
+              {/* Quick actions card */}
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-sky-100 mb-6">
+                <div className="p-6 border-b border-sky-100">
+                  <h3 className="font-bold text-sky-800">Quick Actions</h3>
+                </div>
+                <div className="p-6">
+                  <div className="space-y-3">
+                    {!isEditing ? (
+                      <button 
+                        onClick={toggleEditMode}
+                        className="w-full py-2.5 px-4 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-medium flex items-center justify-center transition-colors"
                       >
-                        <Camera size={20} className="mr-2 text-indigo-500" />
-                        <span>Choose Photo</span>
+                        <Edit size={18} className="mr-2" />
+                        Edit User Details
                       </button>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Email info */}
-                <div className="flex items-start mb-6 p-4 bg-blue-50 rounded-2xl">
-                  <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                    <Mail size={20} className="text-blue-500" />
-                  </div>
-                  <div className="ml-4 flex-grow">
-                    <h3 className="uppercase text-xs font-semibold text-blue-500 tracking-wider">Email</h3>
-                    {isEditing ? (
-                      <input
-                        type="email"
-                        name="email"
-                        value={editData.email}
-                        onChange={handleInputChange}
-                        className="mt-1 p-2 border border-blue-200 rounded w-full bg-white"
-                        placeholder="Email Address"
-                      />
                     ) : (
-                      <p className="text-lg font-medium text-gray-800">
-                        {user.email || "Not available"}
-                      </p>
+                      <button 
+                        onClick={handleSubmit}
+                        disabled={isSaving}
+                        className="w-full py-2.5 px-4 bg-green-500 hover:bg-green-600 text-white rounded-xl font-medium flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isSaving ? (
+                          <>
+                            <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2"></div>
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save size={18} className="mr-2" />
+                            Save Changes
+                          </>
+                        )}
+                      </button>
                     )}
-                  </div>
-                </div>
-                
-                {/* Phone info */}
-                <div className="flex items-start mb-6 p-4 bg-emerald-50 rounded-2xl">
-                  <div className="flex-shrink-0 w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                    <Phone size={20} className="text-emerald-500" />
-                  </div>
-                  <div className="ml-4 flex-grow">
-                    <h3 className="uppercase text-xs font-semibold text-emerald-500 tracking-wider">Phone</h3>
-                    {isEditing ? (
-                      <input
-                        type="tel"
-                        name="phone"
-                        value={editData.phone}
-                        onChange={handleInputChange}
-                        className="mt-1 p-2 border border-emerald-200 rounded w-full bg-white"
-                        placeholder="Phone Number"
-                      />
-                    ) : (
-                      <p className="text-lg font-medium text-gray-800">
-                        {user.phone || "Not provided"}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Right column - Summary and metadata */}
-          <div className="md:col-span-5 lg:col-span-4">
-            {/* User summary card */}
-            <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="font-bold text-gray-900">User Details</h3>
-              </div>
-              <div className="p-6">
-                <ul className="space-y-4">
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">User ID</span>
-                    <span className="font-medium text-gray-800">#{user.id}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Name</span>
-                    <span className="font-medium text-gray-800">{user.name}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Email</span>
-                    <span className="font-medium text-gray-800">{user.email || "Not available"}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Phone</span>
-                    <span className="font-medium text-gray-800">{user.phone || "Not provided"}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-dashed border-gray-100">
-                    <span className="text-gray-500">Created</span>
-                    <span className="font-medium text-gray-800">{formatDate(user.createdAt)}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2">
-                    <span className="text-gray-500">Last Updated</span>
-                    <span className="font-medium text-gray-800">{formatDate(user.updatedAt)}</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            
-            {/* Quick actions card */}
-            <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="font-bold text-gray-900">Quick Actions</h3>
-              </div>
-              <div className="p-6">
-                <div className="space-y-3">
-                  {!isEditing ? (
                     <button 
-                      onClick={toggleEditMode}
-                      className="w-full py-2.5 px-4 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-medium flex items-center justify-center transition-colors"
+                      onClick={handleDelete}
+                      className={`w-full py-2.5 px-4 ${isEditing ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-red-500 hover:bg-red-600 text-white'} rounded-xl font-medium flex items-center justify-center transition-colors`}
                     >
-                      <Edit size={18} className="mr-2" />
-                      Edit User Details
+                      <Trash2 size={18} className="mr-2" />
+                      Delete User
                     </button>
-                  ) : (
-                    <button 
-                      onClick={handleSubmit}
-                      disabled={isSaving}
-                      className="w-full py-2.5 px-4 bg-green-500 hover:bg-green-600 text-white rounded-xl font-medium flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isSaving ? (
-                        <>
-                          <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2"></div>
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save size={18} className="mr-2" />
-                          Save Changes
-                        </>
-                      )}
-                    </button>
-                  )}
-                  <button 
-                    onClick={handleDelete}
-                    className={`w-full py-2.5 px-4 ${isEditing ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-red-500 hover:bg-red-600 text-white'} rounded-xl font-medium flex items-center justify-center transition-colors`}
-                  >
-                    <Trash2 size={18} className="mr-2" />
-                    Delete User
-                  </button>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            {/* View related activities */}
-            {/* <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
-              <div className="p-6">
-                <Link href={`/manage/activities?user=${userId}`}>
-                  <button className="w-full py-2.5 px-4 bg-violet-50 hover:bg-violet-100 text-violet-700 rounded-xl font-medium flex items-center justify-center transition-colors">
-                    View User Activities
-                  </button>
-                </Link>
-              </div>
-            </div> */}
-            
-            {/* Navigation links */}
-            <div>
-              <Link 
-                href="/manage/users" 
-                className="flex items-center text-indigo-500 hover:text-indigo-600 font-medium transition-colors"
-              >
-                <ArrowLeft size={16} className="mr-2" />
-                Back to User Management
-              </Link>
             </div>
           </div>
         </div>

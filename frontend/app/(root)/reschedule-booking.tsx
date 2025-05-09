@@ -1818,17 +1818,7 @@ const fetchExistingBookings = async (resourceId: any, isRoom: boolean = true) =>
         {/* New Booking Form */}
         <View className="mx-5 mt-6 mb-6">
           <Text className="text-gray-800 font-bold text-lg mb-3">New Details</Text>
-          {bookingType === "TRANSPORT" && (
-            <View className="mb-5">
-              <Text className="text-gray-700 mb-2 font-medium">Destination</Text>
-              <View className="flex-row items-center bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
-                <MaterialIcons name="location-on" size={22} color="#F97316" />
-                <Text className="ml-3 text-gray-700">
-                  {bookingDetails.destination || "N/A"}
-                </Text>
-              </View>
-            </View>
-          )}
+        
           <View className="mb-5">
             <Text className="text-gray-700 mb-2 font-medium">New Date</Text>
             <TouchableOpacity

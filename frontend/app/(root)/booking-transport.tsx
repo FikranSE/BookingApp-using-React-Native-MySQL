@@ -17,6 +17,65 @@ import axios from 'axios';
 import { tokenCache } from "@/lib/auth";
 import { AUTH_TOKEN_KEY } from "@/lib/constants";
 
+// Jakarta Location Data
+const JAKARTA_LOCATIONS = [
+  // Kabupaten Kepulauan Seribu
+  { label: "Kepulauan Seribu Utara, Kabupaten Kepulauan Seribu", value: "Kepulauan Seribu Utara, Kabupaten Kepulauan Seribu" },
+  { label: "Kepulauan Seribu Selatan, Kabupaten Kepulauan Seribu", value: "Kepulauan Seribu Selatan, Kabupaten Kepulauan Seribu" },
+  
+  // Kota Jakarta Pusat
+  { label: "Cempaka Putih, Jakarta Pusat", value: "Cempaka Putih, Jakarta Pusat" },
+  { label: "Gambir, Jakarta Pusat", value: "Gambir, Jakarta Pusat" },
+  { label: "Johar Baru, Jakarta Pusat", value: "Johar Baru, Jakarta Pusat" },
+  { label: "Kemayoran, Jakarta Pusat", value: "Kemayoran, Jakarta Pusat" },
+  { label: "Menteng, Jakarta Pusat", value: "Menteng, Jakarta Pusat" },
+  { label: "Sawah Besar, Jakarta Pusat", value: "Sawah Besar, Jakarta Pusat" },
+  { label: "Senen, Jakarta Pusat", value: "Senen, Jakarta Pusat" },
+  { label: "Tanah Abang, Jakarta Pusat", value: "Tanah Abang, Jakarta Pusat" },
+  
+  // Kota Jakarta Utara
+  { label: "Cilincing, Jakarta Utara", value: "Cilincing, Jakarta Utara" },
+  { label: "Kelapa Gading, Jakarta Utara", value: "Kelapa Gading, Jakarta Utara" },
+  { label: "Koja, Jakarta Utara", value: "Koja, Jakarta Utara" },
+  { label: "Pademangan, Jakarta Utara", value: "Pademangan, Jakarta Utara" },
+  { label: "Penjaringan, Jakarta Utara", value: "Penjaringan, Jakarta Utara" },
+  { label: "Tanjung Priok, Jakarta Utara", value: "Tanjung Priok, Jakarta Utara" },
+  
+  // Kota Jakarta Barat
+  { label: "Cengkareng, Jakarta Barat", value: "Cengkareng, Jakarta Barat" },
+  { label: "Grogol Petamburan, Jakarta Barat", value: "Grogol Petamburan, Jakarta Barat" },
+  { label: "Taman Sari, Jakarta Barat", value: "Taman Sari, Jakarta Barat" },
+  { label: "Tambora, Jakarta Barat", value: "Tambora, Jakarta Barat" },
+  { label: "Kebon Jeruk, Jakarta Barat", value: "Kebon Jeruk, Jakarta Barat" },
+  { label: "Kalideres, Jakarta Barat", value: "Kalideres, Jakarta Barat" },
+  { label: "Palmerah, Jakarta Barat", value: "Palmerah, Jakarta Barat" },
+  { label: "Kembangan, Jakarta Barat", value: "Kembangan, Jakarta Barat" },
+  
+  // Kota Jakarta Selatan
+  { label: "Cilandak, Jakarta Selatan", value: "Cilandak, Jakarta Selatan" },
+  { label: "Jagakarsa, Jakarta Selatan", value: "Jagakarsa, Jakarta Selatan" },
+  { label: "Kebayoran Baru, Jakarta Selatan", value: "Kebayoran Baru, Jakarta Selatan" },
+  { label: "Kebayoran Lama, Jakarta Selatan", value: "Kebayoran Lama, Jakarta Selatan" },
+  { label: "Mampang Prapatan, Jakarta Selatan", value: "Mampang Prapatan, Jakarta Selatan" },
+  { label: "Pancoran, Jakarta Selatan", value: "Pancoran, Jakarta Selatan" },
+  { label: "Pasar Minggu, Jakarta Selatan", value: "Pasar Minggu, Jakarta Selatan" },
+  { label: "Pesanggrahan, Jakarta Selatan", value: "Pesanggrahan, Jakarta Selatan" },
+  { label: "Setiabudi, Jakarta Selatan", value: "Setiabudi, Jakarta Selatan" },
+  { label: "Tebet, Jakarta Selatan", value: "Tebet, Jakarta Selatan" },
+  
+  // Kota Jakarta Timur
+  { label: "Cakung, Jakarta Timur", value: "Cakung, Jakarta Timur" },
+  { label: "Cipayung, Jakarta Timur", value: "Cipayung, Jakarta Timur" },
+  { label: "Ciracas, Jakarta Timur", value: "Ciracas, Jakarta Timur" },
+  { label: "Duren Sawit, Jakarta Timur", value: "Duren Sawit, Jakarta Timur" },
+  { label: "Jatinegara, Jakarta Timur", value: "Jatinegara, Jakarta Timur" },
+  { label: "Kramat Jati, Jakarta Timur", value: "Kramat Jati, Jakarta Timur" },
+  { label: "Makasar, Jakarta Timur", value: "Makasar, Jakarta Timur" },
+  { label: "Matraman, Jakarta Timur", value: "Matraman, Jakarta Timur" },
+  { label: "Pasar Rebo, Jakarta Timur", value: "Pasar Rebo, Jakarta Timur" },
+  { label: "Pulo Gadung, Jakarta Timur", value: "Pulo Gadung, Jakarta Timur" }
+];
+
 // ----- ALERT KOMPONEN SAMA SEPERTI SEBELUMNYA -----
 const CustomAlert = ({ 
   visible, 
@@ -107,6 +166,112 @@ const CustomAlert = ({
         </View>
       </View>
     </Modal>
+  );
+};
+
+
+const DestinationSearchDropdown = ({ 
+  value, 
+  onSelect, 
+  error = null,
+  clearError = () => {}
+}) => {
+  const [searchText, setSearchText] = useState(value || '');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+
+  // Function to search locations
+  const searchLocations = (query) => {
+    if (!query || query.trim() === '') {
+      return [];
+    }
+    
+    const lowercaseQuery = query.toLowerCase();
+    return JAKARTA_LOCATIONS.filter(location => 
+      location.label.toLowerCase().includes(lowercaseQuery)
+    ).slice(0, 5); // Limit to first 5 results
+  };
+
+  // Update search results when text changes
+  useEffect(() => {
+    if (searchText.length > 1) {
+      setSearchResults(searchLocations(searchText));
+      setShowDropdown(true);
+    } else {
+      setSearchResults([]);
+      setShowDropdown(false);
+    }
+  }, [searchText]);
+
+  // Handle selection
+  const handleSelectLocation = (location) => {
+    setSearchText(location.label);
+    onSelect(location.value);
+    setShowDropdown(false);
+    if (error) clearError();
+  };
+
+  return (
+    <View className="mb-4">
+      <View className={`bg-white border ${error ? 'border-red-500' : 'border-gray-200'} 
+        rounded-xl shadow-sm overflow-visible z-10`}>
+        {/* Input Field */}
+        <View className="flex-row items-center py-0 px-3">
+          <MaterialIcons name="place" size={22} color="#94A3B8" />
+          <TextInput
+            className="flex-1 ml-3 text-gray-700 h-12 text-base"
+            placeholder="Search destination"
+            placeholderTextColor="#94A3B8"
+            value={searchText}
+            onChangeText={(text) => {
+              setSearchText(text);
+              if (error) clearError();
+            }}
+            onFocus={() => {
+              if (searchText.length > 1) {
+                setShowDropdown(true);
+              }
+            }}
+            editable={true}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={{ height: 48 }}
+          />
+          {searchText.length > 0 && (
+            <TouchableOpacity 
+              onPress={() => {
+                setSearchText('');
+                onSelect('');
+                setShowDropdown(false);
+              }}
+            >
+              <Ionicons name="close-circle" size={20} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
+          {error && (
+            <Ionicons name="alert-circle" size={22} color="#EF4444" className="ml-2" />
+          )}
+        </View>
+        
+        {/* Dropdown Results - Perbaikan: Gunakan ScrollView biasa dengan map daripada FlatList */}
+        {showDropdown && searchResults.length > 0 && (
+          <View className="absolute top-12 left-0 right-0 bg-white border border-gray-200 rounded-b-xl shadow-lg z-20">
+            <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled={true}>
+              {searchResults.map(item => (
+                <TouchableOpacity
+                  key={item.value}
+                  className="px-4 py-3 border-b border-gray-100"
+                  onPress={() => handleSelectLocation(item)}
+                >
+                  <Text className="text-gray-800">{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+      </View>
+      {error && <Text className="text-red-500 text-xs ml-1 mt-1">{error}</Text>}
+    </View>
   );
 };
 
@@ -522,6 +687,14 @@ const BookingTransport = () => {
     setForm(prev => ({ ...prev, end_time: time }));
     if (errors.end_time) {
       setErrors(prev => ({ ...prev, end_time: null }));
+    }
+  };
+
+  // Handle destination selection
+  const handleDestinationChange = (destination) => {
+    setForm(prev => ({ ...prev, destination }));
+    if (errors.destination) {
+      setErrors(prev => ({ ...prev, destination: null }));
     }
   };
 
@@ -1167,31 +1340,16 @@ const BookingTransport = () => {
             </View>
             {errors.agenda && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.agenda}</Text>}
           </View>
-          {/* DESTINATION */}
-          <View className="mb-4">
-            <View className={`flex-row items-center bg-white border ${errors.destination ? 'border-red-500' : 'border-gray-200'} 
-              rounded-xl py-0 px-3 shadow-sm`}>
-              <MaterialIcons name="place" size={22} color="#94A3B8" />
-              <TextInput
-                className="flex-1 ml-3 text-gray-700 h-12 text-base"
-                placeholder="Enter destination"
-                placeholderTextColor="#94A3B8"
-                defaultValue={form.destination}
-                onChangeText={(text) => {
-                  setForm(prev => ({ ...prev, destination: text }));
-                  if (errors.destination) setErrors(prev => ({ ...prev, destination: null }));
-                }}
-                editable={true}
-                autoCapitalize="none"
-                autoCorrect={false}
-                blurOnSubmit={false}
-                style={{ height: 48 }}
-              />
-              {errors.destination && (
-                <Ionicons name="alert-circle" size={22} color="#EF4444" />
-              )}
-            </View>
-            {errors.destination && <Text className="text-red-500 text-xs ml-1 mt-1">{errors.destination}</Text>}
+          
+          {/* DESTINATION - REPLACED WITH SEARCH DROPDOWN */}
+          <View className="mb-1">
+            <Text className="text-gray-700 mb-2 font-medium">Destination *</Text>
+            <DestinationSearchDropdown
+              value={form.destination}
+              onSelect={handleDestinationChange}
+              error={errors.destination}
+              clearError={() => setErrors(prev => ({ ...prev, destination: null }))}
+            />
           </View>
 
           {/* DESCRIPTION (OPSIONAL) */}
@@ -1248,7 +1406,6 @@ const BookingTransport = () => {
               );
             })}
           </View>
-
           {/* DATE & TIME */}
           <SectionHeader title="Date & Time" icon="calendar-outline" />
 
@@ -1351,4 +1508,4 @@ const BookingTransport = () => {
   );
 };
 
-export default BookingTransport;
+export default BookingTransport; 

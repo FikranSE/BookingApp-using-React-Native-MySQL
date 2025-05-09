@@ -58,7 +58,7 @@ const SingleTransportBookingPage = () => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Get appropriate status style with orange and sky theme
+  // Get appropriate status style with sky and indigo theme
   const getStatusStyle = (status) => {
     if (!status) return {
       bg: "bg-gray-100",
@@ -84,9 +84,9 @@ const SingleTransportBookingPage = () => {
         };
       case 'pending':
         return {
-          bg: "bg-orange-50",
-          text: "text-orange-600",
-          border: "border-orange-100",
+          bg: "bg-sky-50",
+          text: "text-sky-600",
+          border: "border-sky-100",
           icon: <Clock size={14} />
         };
       default:
@@ -302,14 +302,14 @@ const SingleTransportBookingPage = () => {
           <div className="md:col-span-7 lg:col-span-8">
             {/* Transport info card */}
             <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100 mb-6">
-              <div className="bg-gradient-to-r from-blue-400 to-blue-500 p-6 text-white">
+              <div className="bg-gradient-to-r from-sky-400 to-sky-500 p-6 text-white">
                 <div className="flex items-center">
                   <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
                     <Car size={24} />
                   </div>
                   <div className="ml-4">
                     <h2 className="text-2xl font-bold">Transport #{booking.transport_id}</h2>
-                    <div className="mt-1 text-blue-50 flex items-center text-sm">
+                    <div className="mt-1 text-sky-50 flex items-center text-sm">
                       <CalendarDays size={14} className="mr-1.5" />
                       <span>{formatDate(booking.booking_date)}</span>
                     </div>
@@ -319,12 +319,12 @@ const SingleTransportBookingPage = () => {
               
               <div className="p-6">
                 {/* Time slot */}
-                <div className="flex items-start mb-6 p-4 bg-blue-50 rounded-2xl">
-                  <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                    <Clock size={20} className="text-blue-500" />
+                <div className="flex items-start mb-6 p-4 bg-sky-50 rounded-2xl">
+                  <div className="flex-shrink-0 w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
+                    <Clock size={20} className="text-sky-500" />
                   </div>
                   <div className="ml-4">
-                    <h3 className="uppercase text-xs font-semibold text-blue-500 tracking-wider">Time Slot</h3>
+                    <h3 className="uppercase text-xs font-semibold text-sky-500 tracking-wider">Time Slot</h3>
                     <p className="text-lg font-medium text-gray-800">
                       {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
                     </p>
@@ -345,12 +345,12 @@ const SingleTransportBookingPage = () => {
                 </div>
                 
                 {/* Organizer info */}
-                <div className="flex items-start mb-6 p-4 bg-sky-50 rounded-2xl">
-                  <div className="flex-shrink-0 w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
-                    <User size={20} className="text-sky-500" />
+                <div className="flex items-start mb-6 p-4 bg-indigo-50 rounded-2xl">
+                  <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                    <User size={20} className="text-indigo-500" />
                   </div>
                   <div className="ml-4">
-                    <h3 className="uppercase text-xs font-semibold text-sky-500 tracking-wider">Person in Charge</h3>
+                    <h3 className="uppercase text-xs font-semibold text-indigo-500 tracking-wider">Person in Charge</h3>
                     <p className="text-lg font-medium text-gray-800">
                       {booking.pic || "Not specified"}
                     </p>
@@ -384,11 +384,11 @@ const SingleTransportBookingPage = () => {
                   {/* Notes section */}
                   {booking.notes && (
                     <div>
-                      <h3 className="flex items-center text-blue-500 font-semibold mb-3 uppercase text-xs tracking-wider">
+                      <h3 className="flex items-center text-sky-500 font-semibold mb-3 uppercase text-xs tracking-wider">
                         <MessageSquare size={16} className="mr-2" />
                         Notes
                       </h3>
-                      <div className="p-4 bg-blue-50 rounded-2xl text-gray-700">
+                      <div className="p-4 bg-sky-50 rounded-2xl text-gray-700">
                         {booking.notes}
                       </div>
                     </div>

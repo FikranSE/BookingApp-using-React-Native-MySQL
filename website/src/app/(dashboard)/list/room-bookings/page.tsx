@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
   Eye, Trash2, CalendarDays, BedDouble, 
-  Filter as FilterIcon, X, Clock, CheckCircle, XCircle 
+  Filter as FilterIcon, X, Clock, CheckCircle, XCircle, Building 
 } from "lucide-react";
 
 type RoomBooking = {
@@ -359,282 +359,305 @@ const RoomBookingListPage = () => {
   const activeFilterCount = (statusFilters.length > 0 ? 1 : 0) + 
                            ((dateFilter.startDate || dateFilter.endDate) ? 1 : 0);
 
-  // Modified renderRow to include status column with badges
-  const renderRow = (item: RoomBooking) => (
-    <tr
-      key={item.booking_id}
-      className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
-    >
-      <td className="p-4">#{item.booking_id}</td>
-      <td className="p-4">{item.pic}</td>
-      <td className="hidden md:table-cell p-4">{item.agenda}</td>
-      <td className="hidden md:table-cell p-4">{formatTime(item.start_time)}</td>
-      <td className="hidden lg:table-cell p-4">{formatTime(item.end_time)}</td>
-      <td className="hidden lg:table-cell p-4">{item.room_id}</td>
-      <td className="hidden md:table-cell p-4">
-        <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center w-fit ${getStatusColor(item.status)}`}>
-          {getStatusIcon(item.status)}
-          {item.status}
-        </span>
-      </td>
-      <td className="p-4">
-        <div className="flex items-center gap-2">
-          <Link href={`/list/room-bookings/${item.booking_id}`}>
-          <button className="w-7 h-7 flex items-center justify-center text-white rounded-full bg-lamaSky hover:bg-sky-500">
-            <Eye size={14} />
-            </button>
-          </Link>
-          <button 
-            onClick={() => {
-              setBookingToDelete(item.booking_id);
-              setShowDeleteConfirm(true);
-            }}
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-red-300 text-white hover:bg-red-500"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      </td>
-    </tr>
-  );
-
   return (
-    <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
-      {/* Auth status (for debugging - remove in production) */}
-      <div className="bg-gray-50 p-2 mb-4 rounded text-xs text-gray-600 border flex justify-between">
-        <div>
-          <span>Auth status: {authStatus}</span>
+    <div className="min-h-screen">
+      <div className="container mx-auto px-4 py-8">
+        {/* Auth status (for debugging - remove in production) */}
+        <div className="bg-gray-50 p-2 mb-4 rounded text-xs text-gray-600 border flex justify-between">
+          <div>
+            <span>Auth status: {authStatus}</span>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => {
+                localStorage.removeItem("adminToken");
+                localStorage.removeItem("adminInfo");
+                router.push("/sign-in");
+              }}
+              className="text-red-500 hover:underline text-xs"
+            >
+              Sign out
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-blue-500 hover:underline text-xs"
+            >
+              Reload page
+            </button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={() => {
-              localStorage.removeItem("adminToken");
-              localStorage.removeItem("adminInfo");
-              router.push("/sign-in");
-            }}
-            className="text-red-500 hover:underline text-xs"
-          >
-            Sign out
-          </button>
-          <button
-            onClick={() => window.location.reload()}
-            className="text-blue-500 hover:underline text-xs"
-          >
-            Reload page
-          </button>
-        </div>
-      </div>
 
-      {/* TOP */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="hidden md:block text-lg font-semibold">Room Bookings</h1>
-        <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-          <TableSearch 
-            value={searchText} 
-            onSearch={handleSearch} 
-            placeholder="Search bookings..."
-          />
-          <div className="flex items-center gap-4 self-end">
-            <div className="flex flex-wrap gap-2">
-              <BookingStatusFilter
-                selectedStatuses={statusFilters}
-                onStatusChange={handleStatusChange}
+        {/* TOP */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-sky-100 mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-lg font-semibold text-sky-800 flex items-center">
+              <Building size={20} className="mr-2 text-sky-500" />
+              Room Bookings
+            </h1>
+            <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+              <TableSearch 
+                value={searchText} 
+                onSearch={handleSearch} 
+                placeholder="Search bookings..."
               />
-              <DateRangeFilter
-                dateFilter={dateFilter}
-                onDateChange={handleDateChange}
-              />
-              <BookingSortDropdown
-                options={sortOptions}
-                currentSort={sorting}
-                onSort={handleSort}
-              />
+              <div className="flex items-center gap-4 self-end">
+                <div className="flex flex-wrap gap-2">
+                  <BookingStatusFilter
+                    selectedStatuses={statusFilters}
+                    onStatusChange={handleStatusChange}
+                  />
+                  <DateRangeFilter
+                    dateFilter={dateFilter}
+                    onDateChange={handleDateChange}
+                  />
+                  <BookingSortDropdown
+                    options={sortOptions}
+                    currentSort={sorting}
+                    onSort={handleSort}
+                  />
+                </div>
+                <FormModal table="room-booking" type="create" />
+              </div>
             </div>
+          </div>
+          
+          {/* Active Filters */}
+          {activeFilterCount > 0 && (
+            <div className="flex items-center">
+              <span className="text-sm text-gray-500 mr-2">Active filters:</span>
+              <div className="flex flex-wrap gap-2">
+                {statusFilters.length > 0 && (
+                  <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
+                    <span>Status: {statusFilters.length} selected</span>
+                    <button 
+                      onClick={() => setStatusFilters([])} 
+                      className="ml-1 text-sky-500 hover:text-sky-700"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+                {(dateFilter.startDate || dateFilter.endDate) && (
+                  <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
+                    <span>
+                      Date: {dateFilter.startDate ? formatDate(dateFilter.startDate) : '...'}
+                      {dateFilter.endDate ? ` - ${formatDate(dateFilter.endDate)}` : ''}
+                    </span>
+                    <button 
+                      onClick={() => setDateFilter({ startDate: null, endDate: null })} 
+                      className="ml-1 text-sky-500 hover:text-sky-700"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+                <button 
+                  onClick={clearAllFilters}
+                  className="text-xs text-gray-500 hover:text-gray-700 underline"
+                >
+                  Clear all
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Loading state */}
+        {loading && (
+          <div className="flex-1 flex items-center justify-center h-64">
+            <div className="flex flex-col items-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sky-500 mb-4"></div>
+              <p className="text-gray-600">Loading room bookings...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Error state */}
+        {error && !loading && (
+          <div className="bg-red-50 p-4 rounded-md text-red-800 mt-4">
+            <h3 className="font-bold mb-2">Error</h3>
+            <p>{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-3 px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && !error && roomBookings.length === 0 && (
+          <div className="bg-white rounded-lg shadow-sm border border-sky-100 p-10 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-sky-50 rounded-xl flex items-center justify-center">
+                <CalendarDays size={32} className="text-sky-300" />
+              </div>
+            </div>
+            <h3 className="font-bold text-lg mb-2 text-sky-800">No Room Bookings Found</h3>
+            <p className="text-gray-500 mb-6">No room bookings have been created yet.</p>
             <FormModal table="room-booking" type="create" />
           </div>
-        </div>
-      </div>
-      
-      {/* Active Filters */}
-      {activeFilterCount > 0 && (
-        <div className="mb-4 flex items-center">
-          <span className="text-sm text-gray-500 mr-2">Active filters:</span>
-          <div className="flex flex-wrap gap-2">
-            {statusFilters.length > 0 && (
-              <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
-                <span>Status: {statusFilters.length} selected</span>
-                <button 
-                  onClick={() => setStatusFilters([])} 
-                  className="ml-1 text-sky-500 hover:text-sky-700"
-                >
-                  <X size={14} />
-                </button>
+        )}
+
+        {/* No Results After Filtering */}
+        {!loading && !error && roomBookings.length > 0 && filteredBookings.length === 0 && (
+          <div className="bg-white rounded-lg shadow-sm border border-sky-100 p-10 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-sky-50 rounded-xl flex items-center justify-center">
+                <FilterIcon size={32} className="text-sky-300" />
               </div>
-            )}
-            {(dateFilter.startDate || dateFilter.endDate) && (
-              <div className="bg-sky-100 text-sky-800 px-2 py-1 rounded-full text-xs flex items-center">
-                <span>
-                  Date: {dateFilter.startDate ? formatDate(dateFilter.startDate) : '...'}
-                  {dateFilter.endDate ? ` - ${formatDate(dateFilter.endDate)}` : ''}
-                </span>
-                <button 
-                  onClick={() => setDateFilter({ startDate: null, endDate: null })} 
-                  className="ml-1 text-sky-500 hover:text-sky-700"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            )}
+            </div>
+            <h3 className="font-bold text-lg mb-2 text-sky-800">No Matching Bookings</h3>
+            <p className="text-gray-500 mb-6">No room bookings match your current search or filters.</p>
             <button 
               onClick={clearAllFilters}
-              className="text-xs text-gray-500 hover:text-gray-700 underline"
+              className="px-6 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors flex items-center mx-auto"
             >
-              Clear all
+              Clear All Filters
             </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Loading state */}
-      {loading && (
-        <div className="flex-1 flex items-center justify-center h-64">
-          <div className="flex flex-col items-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mb-4"></div>
-            <p className="text-gray-600">Loading room bookings...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Error state */}
-      {error && !loading && (
-        <div className="bg-red-50 p-4 rounded-md text-red-800 mt-4">
-          <h3 className="font-bold mb-2">Error</h3>
-          <p>{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-3 px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200"
-          >
-            Try Again
-          </button>
-        </div>
-      )}
-
-      {/* Empty state */}
-      {!loading && !error && roomBookings.length === 0 && (
-        <div className="bg-gray-50 rounded-xl p-10 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center">
-              <CalendarDays size={32} className="text-gray-300" />
-            </div>
-          </div>
-          <h3 className="font-bold text-lg mb-2">No Room Bookings Found</h3>
-          <p className="text-gray-500 mb-6">No room bookings have been created yet.</p>
-          <FormModal table="room-booking" type="create" buttonLabel="Create Room Booking" buttonStyle="primary" />
-        </div>
-      )}
-
-      {/* No Results After Filtering */}
-      {!loading && !error && roomBookings.length > 0 && filteredBookings.length === 0 && (
-        <div className="bg-gray-50 rounded-xl p-10 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center">
-              <FilterIcon size={32} className="text-gray-300" />
-            </div>
-          </div>
-          <h3 className="font-bold text-lg mb-2">No Matching Bookings</h3>
-          <p className="text-gray-500 mb-6">No room bookings match your current search or filters.</p>
-          <button 
-            onClick={clearAllFilters}
-            className="px-6 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors flex items-center mx-auto"
-          >
-            Clear All Filters
-          </button>
-        </div>
-      )}
-
-      {/* Data table */}
-      {!loading && !error && filteredBookings.length > 0 && (
-        <>
-          <div className="text-xs text-gray-500 mb-2">
-            Showing {filteredBookings.length} of {roomBookings.length} room bookings
-          </div>
-          <Table columns={columns} renderRow={renderRow} data={filteredBookings} />
-          <Pagination />
-        </>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-red-500 to-red-600 p-5 text-white">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-3">
-                  <Trash2 size={20} />
-                </div>
-                <h2 className="text-xl font-bold">Confirm Deletion</h2>
+        {/* Data table */}
+        {!loading && !error && filteredBookings.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm border border-sky-100 overflow-hidden">
+            <div className="p-4">
+              <div className="text-xs text-gray-500 mb-2">
+                Showing {filteredBookings.length} of {roomBookings.length} room bookings
               </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-sky-100">
+                  <thead className="bg-sky-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Booking ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">PIC</th>
+                      <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Agenda</th>
+                      <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Start Time</th>
+                      <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">End Time</th>
+                      <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Room ID</th>
+                      <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-sky-100">
+                    {filteredBookings.map((item) => (
+                      <tr key={item.booking_id} className="hover:bg-sky-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-sky-800">#{item.booking_id}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-sky-800">{item.pic}</div>
+                          <div className="text-xs text-gray-500">{item.section}</div>
+                        </td>
+                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.agenda}</td>
+                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{formatTime(item.start_time)}</td>
+                        <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{formatTime(item.end_time)}</td>
+                        <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.room_id}</td>
+                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
+                            {getStatusIcon(item.status)}
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Link href={`/list/room-bookings/${item.booking_id}`}>
+                              <button className="w-7 h-7 flex items-center justify-center text-white rounded-full bg-sky-500 hover:bg-sky-600 transition-colors">
+                                <Eye size={14} />
+                              </button>
+                            </Link>
+                            <button 
+                              onClick={() => {
+                                setBookingToDelete(item.booking_id);
+                                setShowDeleteConfirm(true);
+                              }}
+                              className="w-7 h-7 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination />
             </div>
-            
-            {/* Body */}
-            <div className="p-6">
-              <p className="text-gray-700 mb-6">
-                Are you sure you want to delete this room booking? This action cannot be undone and all associated data will be permanently removed.
-              </p>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md w-full">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-red-500 to-red-600 p-5 text-white">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mr-3">
+                    <Trash2 size={20} />
+                  </div>
+                  <h2 className="text-xl font-bold">Confirm Deletion</h2>
+                </div>
+              </div>
               
-                {/* Get booking details for the booking to be deleted */}
+              {/* Body */}
+              <div className="p-6">
+                <p className="text-gray-700 mb-6">
+                  Are you sure you want to delete this room booking? This action cannot be undone and all associated data will be permanently removed.
+                </p>
+                
                 {bookingToDelete && 
-                <div className="bg-gray-50 p-4 rounded-xl mb-6">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                       <BedDouble size={24} className="text-gray-500" />
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="font-medium">
-                        Room Booking #{bookingToDelete}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        {roomBookings.find(booking => booking.booking_id === bookingToDelete)?.agenda || 'Unknown Booking'}
-                      </p>
+                  <div className="bg-gray-50 p-4 rounded-xl mb-6">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 w-12 h-12 bg-sky-100 rounded-lg flex items-center justify-center">
+                        <Building size={24} className="text-sky-500" />
+                      </div>
+                      <div className="ml-4">
+                        <h3 className="font-medium text-sky-800">
+                          Room Booking #{bookingToDelete}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          {roomBookings.find(booking => booking.booking_id === bookingToDelete)?.agenda || 'Unknown Booking'}
+                        </p>
+                      </div>
                     </div>
                   </div>
+                }
+                
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      setBookingToDelete(null);
+                    }}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                    disabled={isDeleting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteBooking}
+                    disabled={isDeleting}
+                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 size={18} className="mr-2" />
+                        Delete Booking
+                      </>
+                    )}
+                  </button>
                 </div>
-              }
-              
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => {
-                    setShowDeleteConfirm(false);
-                    setBookingToDelete(null);
-                  }}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                  disabled={isDeleting}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteBooking}
-                  disabled={isDeleting}
-                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center"
-                >
-                  {isDeleting ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 size={18} className="mr-2" />
-                      Delete Booking
-                    </>
-                  )}
-                </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
