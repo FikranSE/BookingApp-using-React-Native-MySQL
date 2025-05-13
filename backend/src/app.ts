@@ -22,7 +22,7 @@ import { errorHandler } from './middlewares/errorHandler';
 dotenv.config();
 
 // Set up server URL for image uploads
-const SERVER_URL = process.env.SERVER_URL || 'https://j9d3hc82-3001.asse.devtunnels.ms';
+const SERVER_URL = process.env.SERVER_URL || 'https://bookingsisi.maturino.my.id';
 console.log(`Server URL set to: ${SERVER_URL}`);
 
 // Create Express application

@@ -165,7 +165,7 @@ const DetailBookingTransport = () => {
     
     // Handle local filesystem paths
     if (imageUrl.startsWith('E:') || imageUrl.startsWith('C:')) {
-      return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+      return `https://bookingsisi.maturino.my.id/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
     }
     
     // Fix double slash issue
@@ -176,7 +176,7 @@ const DetailBookingTransport = () => {
     // Add base URL for relative paths
     if (!imageUrl.startsWith('http')) {
       const cleanPath = imageUrl.replace(/^\/+/, '');
-      return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
+      return `https://bookingsisi.maturino.my.id/${cleanPath}`;
     }
     
     console.log("Processed image URL:", imageUrl);
@@ -204,7 +204,7 @@ const DetailBookingTransport = () => {
         }
     
         const axiosInstance = axios.create({
-          baseURL: 'https://j9d3hc82-3001.asse.devtunnels.ms/api',
+          baseURL: 'https://bookingsisi.maturino.my.id/api',
           headers: {
             Authorization: `Bearer ${authToken}`,
             'Content-Type': 'application/json',
@@ -470,7 +470,7 @@ const DetailBookingTransport = () => {
       setLoading(true);
 
       const axiosInstance = axios.create({
-        baseURL: 'https://j9d3hc82-3001.asse.devtunnels.ms/api',
+        baseURL: 'https://bookingsisi.maturino.my.id/api',
         headers: {
           Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',

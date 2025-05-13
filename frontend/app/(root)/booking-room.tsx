@@ -306,9 +306,9 @@ const BookingRoom = () => {
   
       // Daftar endpoint booking room (cari yang sesuai di backend)
       const possibleEndpoints = [
-        `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings/room/${roomId}`,
-        `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings/by-room/${roomId}`,
-        `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings?room_id=${roomId}`,
+        `https://bookingsisi.maturino.my.id/api/room-bookings/room/${roomId}`,
+        `https://bookingsisi.maturino.my.id/api/room-bookings/by-room/${roomId}`,
+        `https://bookingsisi.maturino.my.id/api/room-bookings?room_id=${roomId}`,
       ];
   
       let response;
@@ -398,7 +398,7 @@ const BookingRoom = () => {
           router.push('/(auth)/sign-in');
           return;
         }
-        const response = await axios.get('https://j9d3hc82-3001.asse.devtunnels.ms/api/rooms', {
+        const response = await axios.get('https://bookingsisi.maturino.my.id/api/rooms', {
           headers: { 'Authorization': `Bearer ${authToken}` },
         });
         if (response.data && Array.isArray(response.data)) {
@@ -531,7 +531,7 @@ const BookingRoom = () => {
       }
       const formattedDate = formatApiDate(form.booking_date);
       const bookingData = { ...form, booking_date: formattedDate };
-      const response = await axios.post('https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings', bookingData, {
+      const response = await axios.post('https://bookingsisi.maturino.my.id/api/room-bookings', bookingData, {
         headers: { 'Authorization': `Bearer ${authToken}` },
       });
       if (response.status === 201) {
@@ -931,7 +931,7 @@ const BookingRoom = () => {
   
     // Handle local filesystem paths
     if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
-      return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+      return `https://bookingsisi.maturino.my.id/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
     }
   
     // Fix double slash issue in URLs
@@ -943,7 +943,7 @@ const BookingRoom = () => {
     if (typeof imageUrl === 'string' && !imageUrl.startsWith('http')) {
       // Remove any leading slashes to avoid double slashes
       const cleanPath = imageUrl.replace(/^\/+/, '');
-      return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
+      return `https://bookingsisi.maturino.my.id/${cleanPath}`;
     }
   
     return imageUrl;

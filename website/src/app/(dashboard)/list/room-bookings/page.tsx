@@ -136,7 +136,7 @@ const RoomBookingListPage = () => {
     
     // Create axios instance with auth header
     const apiClient = axios.create({
-      baseURL: "http://10.44.7.63:3001/api",
+      baseURL: "https://bookingsisi.maturino.my.id/api",
       headers: {
         Authorization: `Bearer ${token}`
       }

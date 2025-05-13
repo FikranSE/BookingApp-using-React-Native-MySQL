@@ -38,7 +38,7 @@ const Detail = () => {
     
     // Handle local filesystem paths
     if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
-      return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+      return `https://bookingsisi.maturino.my.id/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
     }
     
     // Fix double slash issue in URLs
@@ -50,7 +50,7 @@ const Detail = () => {
     if (typeof imageUrl === 'string' && !imageUrl.startsWith('http')) {
       // Remove any leading slashes to avoid double slashes
       const cleanPath = imageUrl.replace(/^\/+/, '');
-      return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
+      return `https://bookingsisi.maturino.my.id/${cleanPath}`;
     }
     
     return imageUrl;
@@ -71,8 +71,8 @@ const Detail = () => {
       }
 
       const endpoint = type === 'room'
-        ? `https://j9d3hc82-3001.asse.devtunnels.ms/api/rooms/${id}`
-        : `https://j9d3hc82-3001.asse.devtunnels.ms/api/transports/${id}`;
+        ? `https://bookingsisi.maturino.my.id/api/rooms/${id}`
+        : `https://bookingsisi.maturino.my.id/api/transports/${id}`;
 
       const response = await axios.get(endpoint, {
         headers: { 'Authorization': `Bearer ${authToken}` }
