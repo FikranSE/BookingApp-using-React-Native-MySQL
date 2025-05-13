@@ -35,6 +35,9 @@ type TransportBooking = {
   destination: string;
   createdAt: string;
   updatedAt: string;
+  user?: {
+    email: string;
+  };
 };
 
 type SortDirection = 'asc' | 'desc';
@@ -48,6 +51,7 @@ type DateFilter = {
 const columns = [
   { header: "Booking ID", accessor: "booking_id" },
   { header: "PIC", accessor: "pic" },
+  { header: "User Email", accessor: "user.email", className: "hidden md:table-cell" },
   { header: "Agenda", accessor: "agenda", className: "hidden md:table-cell" },
   { header: "Start Time", accessor: "start_time", className: "hidden md:table-cell" },
   { header: "End Time", accessor: "end_time", className: "hidden lg:table-cell" },
@@ -393,6 +397,7 @@ const TransportBookingListPage = () => {
     >
       <td className="p-4">#{item.booking_id}</td>
       <td className="p-4">{item.pic}</td>
+      <td className="hidden md:table-cell p-4">{item.user?.email || 'N/A'}</td>
       <td className="hidden md:table-cell p-4">{item.agenda}</td>
       <td className="hidden md:table-cell p-4">{formatTime(item.start_time)}</td>
       <td className="hidden lg:table-cell p-4">{formatTime(item.end_time)}</td>
@@ -643,6 +648,7 @@ const TransportBookingListPage = () => {
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Booking ID</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">PIC</th>
+                      <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">User Email</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Agenda</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Start Time</th>
                       <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">End Time</th>
@@ -658,6 +664,9 @@ const TransportBookingListPage = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-sky-800">{item.pic}</div>
                           <div className="text-xs text-gray-500">{item.section}</div>
+                        </td>
+                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">
+                          {item.user?.email || 'N/A'}
                         </td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.agenda}</td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{formatTime(item.start_time)}</td>

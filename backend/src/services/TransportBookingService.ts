@@ -7,11 +7,23 @@ class TransportBookingService {
   }
 
   public static async getAllBookings(): Promise<TransportBooking[]> {
-    return TransportBooking.findAll();
+    return TransportBooking.findAll({
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['email']
+      }]
+    });
   }
 
   public static async getBookingById(id: number): Promise<TransportBooking | null> {
-    return TransportBooking.findByPk(id);
+    return TransportBooking.findByPk(id, {
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['email']
+      }]
+    });
   }
 
   public static async updateBooking(id: number, data: Partial<TransportBooking>) {

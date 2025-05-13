@@ -32,6 +32,9 @@ type RoomBooking = {
   notes?: string;
   approver_id?: number;
   approved_at?: string;
+  user?: {
+    email: string;
+  };
 };
 
 type SortDirection = 'asc' | 'desc';
@@ -50,6 +53,11 @@ const columns = [
   {
     header: "PIC",
     accessor: "pic",
+  },
+  {
+    header: "User Email",
+    accessor: "user.email",
+    className: "hidden md:table-cell",
   },
   {
     header: "Agenda",
@@ -566,6 +574,7 @@ const RoomBookingListPage = () => {
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Booking ID</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">PIC</th>
+                      <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">User Email</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Agenda</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Start Time</th>
                       <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">End Time</th>
@@ -580,6 +589,9 @@ const RoomBookingListPage = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-sky-800">{item.pic}</div>
                           <div className="text-xs text-gray-500">{item.section}</div>
+                        </td>
+                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">
+                          {item.user?.email || 'N/A'}
                         </td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.agenda}</td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{formatTime(item.start_time)}</td>

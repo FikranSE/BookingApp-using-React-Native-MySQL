@@ -8,11 +8,23 @@ class RoomBookingService {
   }
 
   public static async getAllBookings(): Promise<RoomBooking[]> {
-    return RoomBooking.findAll();
+    return RoomBooking.findAll({
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['email']
+      }]
+    });
   }
 
   public static async getBookingById(id: number): Promise<RoomBooking | null> {
-    return RoomBooking.findByPk(id);
+    return RoomBooking.findByPk(id, {
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['email']
+      }]
+    });
   }
 
   public static async updateBooking(id: number, data: Partial<RoomBooking>) {
