@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, SafeAreaView, Image, StatusBar } from "react-native";
+import { View, Text, TouchableOpacity, SafeAreaView, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { images } from "@/constants";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { StatusBar } from 'expo-status-bar';
 
 const OpsiBooking = () => {
   const router = useRouter();
@@ -20,28 +21,19 @@ const OpsiBooking = () => {
     <>
       <StatusBar style="dark" />
       <SafeAreaView className="flex-1 bg-gray-50">
-        {/* Header Section */}
-        <Animated.View 
-          entering={FadeInDown.delay(50)}
-          className="bg-white pt-2 pb-4"
-        >
-          <View className="px-4 pt-2">
-            <View className="flex-row items-center justify-center mb-2">
-              <View className="w-12 h-12 bg-sky-50 rounded-full items-center justify-center border border-sky-100">
-                <Ionicons name="calendar" size={24} color="#0ea5e9" />
-              </View>
-            </View>
-            <Text className="text-xl font-bold text-gray-800 text-center">
-              Choose Service
-            </Text>
-            <Text className="text-gray-500 text-center mt-1 text-sm">
-              Select the service you want to book
-            </Text>
-          </View>
-        </Animated.View>
+        {/* Header */}
+        <View className="pt-2 pb-4">
+          <Animated.View 
+            entering={FadeInDown.delay(50)}
+            className="px-4 mt-2 mb-4"
+          >
+            <Text className="text-2xl font-semibold text-gray-800 mb-1">Choose Service</Text>
+            <Text className="text-gray-500">Select the service you want to book</Text>
+          </Animated.View>
+        </View>
 
         {/* Cards Container */}
-        <View className="flex-1 px-4 pt-6">
+        <View className="flex-1 px-4 pt-2">
           <View className="flex-row justify-between px-2 gap-4">
             {/* Room Card */}
             <Animated.View
@@ -50,7 +42,7 @@ const OpsiBooking = () => {
             >
               <TouchableOpacity
                 onPress={() => handleBooking("Room")}
-                className="bg-white rounded-xl overflow-hidden"
+                className="bg-white rounded-2xl overflow-hidden shadow-sm border border-sky-50"
                 style={{
                   shadowColor: "#0ea5e9",
                   shadowOffset: { width: 0, height: 2 },
@@ -65,31 +57,27 @@ const OpsiBooking = () => {
                     className="w-full h-40"
                     resizeMode="cover"
                   />
-                  <View className="absolute top-3 right-3">
-                    <View className="bg-white/80 backdrop-blur-sm px-2 py-1 rounded-md">
-                      <Text className="text-xs font-medium text-sky-500">
-                        Room
-                      </Text>
+                  <View className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 via-black/30 to-transparent" />
+                  <View className="absolute top-4 right-4">
+                    <View className="bg-white/30 backdrop-blur-lg rounded-full p-2">
+                      <Ionicons name="business" size={24} color="white" />
                     </View>
                   </View>
                 </View>
                 
                 <View className="p-4">
-                  <View className="mb-3">
-                    <Text className="text-gray-800 text-lg font-medium mb-1">
-                      Meeting Rooms
+                  <View className="mb-2">
+                    <Text className="text-xl font-semibold text-gray-800 mb-1">
+                      Room
                     </Text>
-                    <Text className="text-gray-500 text-sm">
+                    <Text className="text-sm text-gray-500 leading-tight">
                       Book meeting rooms and workspaces for your team
                     </Text>
                   </View>
-                  
-                  <View className="flex-row items-center mt-3 pt-3 border-t border-gray-100">
-                    <View className="flex-row items-center">
-                      <View className="w-8 h-8 bg-sky-50 rounded-full items-center justify-center mr-2">
-                        <Ionicons name="people" size={16} color="#0ea5e9" />
-                      </View>
-                      <Text className="text-gray-700 text-sm">
+                  <View className="flex-row items-center mt-3">
+                    <View className="flex-row items-center bg-sky-50 px-3 py-1 rounded-full">
+                      <Ionicons name="people" size={14} color="#0EA5E9" />
+                      <Text className="text-sky-500 text-xs ml-1 font-medium">
                         For teams
                       </Text>
                     </View>
@@ -105,7 +93,7 @@ const OpsiBooking = () => {
             >
               <TouchableOpacity
                 onPress={() => handleBooking("Transportation")}
-                className="bg-white rounded-xl overflow-hidden"
+                className="bg-white rounded-2xl overflow-hidden shadow-sm border border-sky-50"
                 style={{
                   shadowColor: "#0ea5e9",
                   shadowOffset: { width: 0, height: 2 },
@@ -120,31 +108,27 @@ const OpsiBooking = () => {
                     className="w-full h-40"
                     resizeMode="cover"
                   />
-                  <View className="absolute top-3 right-3">
-                    <View className="bg-white/80 backdrop-blur-sm px-2 py-1 rounded-md">
-                      <Text className="text-xs font-medium text-sky-500">
-                        Transport
-                      </Text>
+                  <View className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 via-black/30 to-transparent" />
+                  <View className="absolute top-4 right-4">
+                    <View className="bg-white/30 backdrop-blur-lg rounded-full p-2">
+                      <Ionicons name="car" size={24} color="white" />
                     </View>
                   </View>
                 </View>
                 
                 <View className="p-4">
-                  <View className="mb-3">
-                    <Text className="text-gray-800 text-lg font-medium mb-1">
-                      Transportation
+                  <View className="mb-2">
+                    <Text className="text-xl font-semibold text-gray-800 mb-1">
+                      Transport
                     </Text>
-                    <Text className="text-gray-500 text-sm">
+                    <Text className="text-sm text-gray-500 leading-tight">
                       Book vehicles and transportation services
                     </Text>
                   </View>
-                  
-                  <View className="flex-row items-center mt-3 pt-3 border-t border-gray-100">
-                    <View className="flex-row items-center">
-                      <View className="w-8 h-8 bg-sky-50 rounded-full items-center justify-center mr-2">
-                        <Ionicons name="time" size={16} color="#0ea5e9" />
-                      </View>
-                      <Text className="text-gray-700 text-sm">
+                  <View className="flex-row items-center mt-3">
+                    <View className="flex-row items-center bg-sky-50 px-3 py-1 rounded-full">
+                      <Ionicons name="time" size={14} color="#0EA5E9" />
+                      <Text className="text-sky-500 text-xs ml-1 font-medium">
                         24/7 Available
                       </Text>
                     </View>

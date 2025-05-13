@@ -7,6 +7,8 @@ import { router } from "expo-router";
 import { tokenCache } from "@/lib/auth";
 import { AUTH_TOKEN_KEY } from "@/lib/constants";
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { StatusBar } from 'expo-status-bar';
 
 interface IApprovalStatus {
   status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "CANCELLED";
@@ -598,28 +600,24 @@ const MyBooking = () => {
   
     return (
       <TouchableOpacity
-        className="bg-white mt-4 mx-4 rounded-2xl mb-4 overflow-hidden shadow-sm border border-sky-50"
+        className="bg-white mx-4 rounded-2xl mb-4 overflow-hidden shadow-sm border border-sky-50"
         onPress={handlePress}
       >
-        <View className="flex-row p-2">
+        <View className="flex-row p-4">
           <Image
             source={{ uri: booking.imageUrl || defaultImage }}
             className="w-24 h-24 rounded-lg"
             resizeMode="cover"
             defaultSource={{ uri: defaultImage }}
-            onError={(e) => { 
-              console.log(`Image load error for ${booking.id}, type: ${booking.type}, URL: ${booking.imageUrl}`);
-              console.log("Error details:", e.nativeEvent.error);
-            }} 
-          /> 
-          <View className="flex-1 pl-3">
+          />
+          <View className="flex-1 pl-4">
             <View className="flex-row justify-between items-start">
               <View className="flex-1 mr-2">
-                <Text className="text-[15px] font-bold text-gray-800" numberOfLines={1}>
+                <Text className="text-base font-semibold text-gray-800" numberOfLines={1}>
                   {booking.agenda}
                 </Text>
                 <View className="flex-row items-center mb-2">
-                  <Text className="text-[13px] text-gray-500" numberOfLines={1}>
+                  <Text className="text-sm text-gray-500" numberOfLines={1}>
                     {booking.section}
                   </Text>
                 </View>
@@ -635,13 +633,13 @@ const MyBooking = () => {
             <View className="mt-2 space-y-1">
               <View className="flex-row items-center">
                 <Ionicons name="calendar" size={13} color="#0EA5E9" />
-                <Text className="text-[10px] text-sky-500 font-medium ml-1.5">
+                <Text className="text-xs text-sky-500 font-medium ml-1.5">
                   {booking.date}
                 </Text>
               </View>
               <View className="flex-row items-center">
                 <Ionicons name="time" size={13} color="#F97316" />
-                <Text className="text-[10px] text-orange-500 font-medium ml-1.5">
+                <Text className="text-xs text-orange-500 font-medium ml-1.5">
                   {booking.start_time} - {booking.end_time}
                 </Text>
               </View>
@@ -651,7 +649,7 @@ const MyBooking = () => {
                   size={13} 
                   color="#6366F1" 
                 />
-                <Text className="text-[10px] text-indigo-500 font-medium ml-1.5">
+                <Text className="text-xs text-indigo-500 font-medium ml-1.5">
                   {booking.type}
                 </Text>
               </View>
@@ -664,13 +662,11 @@ const MyBooking = () => {
 
   const EmptyState = () => (
     <View className="flex-1 items-center justify-center py-12">
-      <Image
-        source={icons.calendar}
-        className="w-16 h-16 mb-4"
-        tintColor="#D1D5DB"
-      />
-      <Text className="text-gray-400 text-base font-medium text-center">No bookings found</Text>
-      <Text className="text-gray-400 text-sm text-center mt-1">
+      <View className="bg-sky-50 w-16 h-16 rounded-full items-center justify-center mb-4">
+        <Ionicons name="calendar-outline" size={28} color="#0ea5e9" />
+      </View>
+      <Text className="text-gray-800 font-medium text-lg text-center">No bookings found</Text>
+      <Text className="text-gray-500 text-center mt-2 text-sm">
         Try changing your search or filters
       </Text>
     </View>
@@ -706,170 +702,184 @@ const MyBooking = () => {
   }, [userId]);
 
   return (
-    <SafeAreaView className="flex-1 pb-20 bg-white">
-      {/* Filter Modal */}
-      <FilterModal />
-      
-      {/* Header with LinearGradient */}
-      <LinearGradient
-        colors={['#0EA5E9', '#E0F2FE']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        className="absolute top-0 left-0 right-0 h-44"
-      />
-      <View className="mb-4">
-        <View className="flex-row items-center justify-start px-4 py-5 pt-8">
-          <Text className="text-xl font-bold text-white">My Booking</Text>
-        </View>
+    <>
+      <StatusBar style="dark" />
+      <SafeAreaView className="flex-1 bg-gray-50">
+        {/* Filter Modal */}
+        <FilterModal />
+        
+        {/* Header */}
+        <View className="pt-2 pb-4">
+          <Animated.View 
+            entering={FadeInDown.delay(50)}
+            className="px-4 mt-2 mb-4"
+          >
+            <Text className="text-2xl font-semibold text-gray-800 mb-1">My Booking</Text>
+            <Text className="text-gray-500">Manage your room and transportation bookings</Text>
+          </Animated.View>
 
-        {/* Search bar and filter button */}
-        <View className="flex-row items-center space-x-2 mx-4 mb-4">
-          <View className="flex-1 bg-white border border-sky-100 shadow-sm flex-row items-center px-3 py-0.5 rounded-xl">
-            <Image
-              source={icons.search}
-              className="w-4 h-4 mr-2"
-              tintColor="#9CA3AF"
-            />
-            <TextInput
-              placeholder="Search bookings..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              className="flex-1 text-sm"
-              placeholderTextColor="#9CA3AF"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery("")}>
-                <Image
-                  source={icons.close}
-                  className="w-4 h-4"
-                  tintColor="#9CA3AF"
+          {/* Search bar and filter button */}
+          <Animated.View
+            entering={FadeInDown.delay(100)}
+            className="mx-4 mb-4"
+          >
+            <View className="flex-row items-center space-x-2">
+              <View className="flex-1 bg-white rounded-lg px-3 py-2 items-center border border-gray-100 flex-row">
+                <Ionicons name="search-outline" size={18} color="#9ca3af" />
+                <TextInput
+                  placeholder="Search bookings..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  className="flex-1 ml-2 text-gray-700"
+                  style={{fontSize: 14}}
+                  placeholderTextColor="#9ca3af"
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery("")}>
+                    <Ionicons name="close-circle" size={16} color="#9ca3af" />
+                  </TouchableOpacity>
+                )}
+              </View>
+              <TouchableOpacity 
+                className={`p-2 rounded-lg ${hasActiveFilters ? 'bg-sky-500' : 'bg-white border border-gray-100'}`}
+                onPress={() => setFilterModalVisible(true)}
+              >
+                <Ionicons 
+                  name="options-outline" 
+                  size={20} 
+                  color={hasActiveFilters ? '#ffffff' : '#0EA5E9'} 
                 />
               </TouchableOpacity>
-            )}
-          </View>
-          <TouchableOpacity 
-            className={`p-1.5 rounded-lg ${hasActiveFilters ? 'bg-sky-500' : 'bg-white'}`}
-            onPress={() => setFilterModalVisible(true)}
-          >
-            <Image 
-              source={icons.filter} 
-              className="w-5 h-5" 
-              tintColor={hasActiveFilters ? '#ffffff' : '#0EA5E9'} 
-            />
-          </TouchableOpacity>
-        </View>
+            </View>
+          </Animated.View>
 
-        {/* Active filters indicators */}
-        {hasActiveFilters && (
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            className="mx-4 mb-3"
-          >
-            {filterOptions.type !== "ALL" && (
-              <View className="bg-sky-100 rounded-full px-3 py-1 mr-2 flex-row items-center">
-                <Text className="text-sky-700 text-xs">{filterOptions.type}</Text>
-                <TouchableOpacity 
-                  onPress={() => setFilterOptions({...filterOptions, type: "ALL"})}
-                  className="ml-1"
-                >
-                  <Ionicons name="close-circle" size={16} color="#0284C7" />
-                </TouchableOpacity>
-              </View>
-            )}
-            {filterOptions.timeframe !== "ALL" && (
-              <View className="bg-sky-100 rounded-full px-3 py-1 mr-2 flex-row items-center">
-                <Text className="text-sky-700 text-xs">{filterOptions.timeframe}</Text>
-                <TouchableOpacity 
-                  onPress={() => setFilterOptions({...filterOptions, timeframe: "ALL"})}
-                  className="ml-1"
-                >
-                  <Ionicons name="close-circle" size={16} color="#0284C7" />
-                </TouchableOpacity>
-              </View>
-            )}
-            {filterOptions.status !== "ALL" && (
-              <View className="bg-sky-100 rounded-full px-3 py-1 mr-2 flex-row items-center">
-                <Text className="text-sky-700 text-xs">{filterOptions.status}</Text>
-                <TouchableOpacity 
-                  onPress={() => setFilterOptions({...filterOptions, status: "ALL"})}
-                  className="ml-1"
-                >
-                  <Ionicons name="close-circle" size={16} color="#0284C7" />
-                </TouchableOpacity>
-              </View>
-            )}
-            {hasActiveFilters && (
-              <TouchableOpacity 
-                onPress={resetFilters}
-                className="bg-sky-100 rounded-full px-3 py-1"
+          {/* Active filters indicators */}
+          {hasActiveFilters && (
+            <Animated.View 
+              entering={FadeInDown.delay(150)}
+              className="mx-4 mb-4"
+            >
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
               >
-                <Text className="text-sky-700 text-xs">Clear All</Text>
-              </TouchableOpacity>
-            )}
-          </ScrollView>
-        )}
+                {filterOptions.type !== "ALL" && (
+                  <View className="bg-sky-50 rounded-full px-3 py-1 mr-2 flex-row items-center">
+                    <Text className="text-sky-700 text-xs">{filterOptions.type}</Text>
+                    <TouchableOpacity 
+                      onPress={() => setFilterOptions({...filterOptions, type: "ALL"})}
+                      className="ml-1"
+                    >
+                      <Ionicons name="close-circle" size={16} color="#0284C7" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {filterOptions.timeframe !== "ALL" && (
+                  <View className="bg-sky-50 rounded-full px-3 py-1 mr-2 flex-row items-center">
+                    <Text className="text-sky-700 text-xs">{filterOptions.timeframe}</Text>
+                    <TouchableOpacity 
+                      onPress={() => setFilterOptions({...filterOptions, timeframe: "ALL"})}
+                      className="ml-1"
+                    >
+                      <Ionicons name="close-circle" size={16} color="#0284C7" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {filterOptions.status !== "ALL" && (
+                  <View className="bg-sky-50 rounded-full px-3 py-1 mr-2 flex-row items-center">
+                    <Text className="text-sky-700 text-xs">{filterOptions.status}</Text>
+                    <TouchableOpacity 
+                      onPress={() => setFilterOptions({...filterOptions, status: "ALL"})}
+                      className="ml-1"
+                    >
+                      <Ionicons name="close-circle" size={16} color="#0284C7" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {hasActiveFilters && (
+                  <TouchableOpacity 
+                    onPress={resetFilters}
+                    className="bg-sky-50 rounded-full px-3 py-1"
+                  >
+                    <Text className="text-sky-700 text-xs">Clear All</Text>
+                  </TouchableOpacity>
+                )}
+              </ScrollView>
+            </Animated.View>
+          )}
 
-        {/* Tab buttons */}
-        <View className="flex-row mx-12 bg-white border border-white rounded-full shadow-sm">
-          <TouchableOpacity
-            onPress={() => setActiveTab("BOOKED")}
-            className={`flex-1 py-1.5 px-5 rounded-full ${
-              activeTab === "BOOKED" ? "bg-sky-500" : "bg-white"
-            }`}
+          {/* Tab Toggle */}
+          <Animated.View 
+            entering={FadeInDown.delay(200)}
+            className="flex-row justify-center mx-4"
           >
-            <Text
-              className={`text-sm text-center font-medium ${
-                activeTab === "BOOKED" ? "text-white" : "text-gray-500"
-              }`}
-            >
-              Active Bookings
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setActiveTab("HISTORY")}
-            className={`flex-1 py-1.5 px-5 rounded-full ${
-              activeTab === "HISTORY" ? "bg-sky-500" : "bg-white"
-            }`}
-          >
-            <Text
-              className={`text-sm text-center font-medium ${
-                activeTab === "HISTORY" ? "text-white" : "text-gray-500"
-              }`}
-            >
-              History
-            </Text>
-          </TouchableOpacity>
+            <View className="flex-row bg-sky-50 rounded-lg p-1 w-full">
+              {['Active Bookings', 'History'].map((tab) => (
+                <TouchableOpacity
+                  key={tab}
+                  onPress={() => setActiveTab(tab === 'Active Bookings' ? "BOOKED" : "HISTORY")}
+                  className={`flex-1 py-2 ${
+                    activeTab === (tab === 'Active Bookings' ? "BOOKED" : "HISTORY") ? 'bg-white rounded-md' : ''
+                  }`}
+                  style={{
+                    shadowColor: activeTab === (tab === 'Active Bookings' ? "BOOKED" : "HISTORY") ? "#0ea5e9" : "transparent",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: activeTab === (tab === 'Active Bookings' ? "BOOKED" : "HISTORY") ? 0.1 : 0,
+                    shadowRadius: 2,
+                    elevation: activeTab === (tab === 'Active Bookings' ? "BOOKED" : "HISTORY") ? 1 : 0
+                  }}
+                >
+                  <Text
+                    className={`text-center text-sm ${
+                      activeTab === (tab === 'Active Bookings' ? "BOOKED" : "HISTORY") ? 'text-sky-500 font-medium' : 'text-gray-500'
+                    }`}
+                  >
+                    {tab}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Animated.View>
         </View>
-      </View>
 
-      {/* Bookings List with RefreshControl */}
-      <ScrollView
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={["#0EA5E9"]}
-            tintColor="#0EA5E9"
-          />
-        }
-      >
-        {loading ? (
-          <View className="flex-1 items-center justify-center py-12">
-            <ActivityIndicator size="large" color="#0037FFFF" />
-            <Text className="text-gray-500 mt-4">Loading your bookings...</Text>
-          </View>
-        ) : filteredBookings.length > 0 ? (
-          filteredBookings.map((booking) => <BookingCard key={booking.id} booking={booking} />)
-        ) : (
-          <EmptyState />
-        )}
-        
-        {/* Add some space at the bottom */} 
-        <View className="h-8" />
-      </ScrollView>
-    </SafeAreaView> 
+        {/* Bookings List */}
+        <ScrollView
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#0EA5E9"]}
+              tintColor="#0EA5E9"
+            />
+          }
+        >
+          <Animated.View 
+            entering={FadeInDown.delay(250)}
+            className="px-4 flex-row items-center justify-between mb-2"
+          >
+            <View className="flex-row items-center">
+              <View className="w-1 h-4 bg-sky-500 rounded-full mr-2" />
+              <Text className="text-gray-800 font-medium">
+                {activeTab === "BOOKED" ? "Your Active Bookings" : "Booking History"}
+              </Text>
+            </View>
+          </Animated.View>
+
+          {loading ? (
+            <View className="flex-1 items-center justify-center py-12">
+              <ActivityIndicator size="large" color="#0EA5E9" />
+              <Text className="text-sky-500 mt-4 font-normal text-sm">Loading your bookings...</Text>
+            </View>
+          ) : filteredBookings.length > 0 ? (
+            filteredBookings.map((booking) => <BookingCard key={booking.id} booking={booking} />)
+          ) : (
+            <EmptyState />
+          )}
+          
+          <View className="h-8" />
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 }; 
  

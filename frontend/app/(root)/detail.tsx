@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { tokenCache } from "@/lib/auth";
 import { AUTH_TOKEN_KEY } from "@/lib/constants";
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 interface IRoom {
   room_id: number;
@@ -126,12 +127,12 @@ const Detail = () => {
     value: string;
   }) => (
     <View className="mb-3 flex-row items-center">
-      <View className="w-10 h-10 bg-sky-100 rounded-full items-center justify-center mr-3">
+      <View className="w-10 h-10 bg-sky-50 rounded-full items-center justify-center mr-3">
         <Ionicons name={icon as any} size={18} color="#0EA5E9" />
       </View>
       <View className="flex-1">
         <Text className="text-gray-500 text-xs font-medium">{label}</Text>
-        <Text className="text-gray-800 font-semibold">{value}</Text>
+        <Text className="text-gray-800 font-medium">{value}</Text>
       </View>
     </View>
   );
@@ -160,8 +161,8 @@ const Detail = () => {
     : fixImageUrl((data as ITransport).image);
 
   return (
-    <View className="flex-1 bg-white">
-      <StatusBar barStyle="light-content" />
+    <View className="flex-1 bg-gray-50">
+      <StatusBar style="dark" />
       
       <View className="relative">
         {/* Use the processed image URL with fallback to default image */}
@@ -184,12 +185,12 @@ const Detail = () => {
           <View className="flex-row justify-between items-center px-4 pt-2">
             <TouchableOpacity
               onPress={() => router.back()}
-              className="w-10 h-10 rounded-full bg-white/90 items-center justify-center"
+              className="w-10 h-10 rounded-full bg-white/90 items-center justify-center shadow-sm"
             >
               <Ionicons name="arrow-back" size={20} color="#0EA5E9" />
             </TouchableOpacity>
             
-            <TouchableOpacity className="w-10 h-10 rounded-full bg-white/90 items-center justify-center">
+            <TouchableOpacity className="w-10 h-10 rounded-full bg-white/90 items-center justify-center shadow-sm">
               <Ionicons name="heart-outline" size={20} color="#F97316" />
             </TouchableOpacity>
           </View>
@@ -200,7 +201,7 @@ const Detail = () => {
             colors={['transparent', 'rgba(14,165,233,0.9)']}
             className="p-6 pb-8"
           >
-            <Text className="text-white text-2xl font-bold">{title}</Text>
+            <Text className="text-white text-2xl font-semibold">{title}</Text>
             <Text className="text-white/80 mt-1">
               {type === 'room' 
                 ? `${(data as IRoom).room_type} • ${(data as IRoom).capacity} Capacity` 
@@ -211,8 +212,11 @@ const Detail = () => {
       </View>
       
       <ScrollView className="flex-1 pt-6 px-5">
-        <View className="bg-white rounded-xl p-4 mb-4 shadow-sm border border-sky-100">
-          <Text className="text-lg font-semibold text-sky-600 mb-4">
+        <Animated.View 
+          entering={FadeInDown.delay(100)}
+          className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-sky-50"
+        >
+          <Text className="text-lg font-semibold text-gray-800 mb-4">
             {type === 'room' ? 'Room Details' : 'Vehicle Details'}
           </Text>
           
@@ -248,14 +252,25 @@ const Detail = () => {
               />
             </View>
           )}
-        </View>
+        </Animated.View>
         
-        <TouchableOpacity 
-          className="bg-orange-500 py-4 rounded-lg items-center mb-6 shadow-sm"
-          onPress={handleBookNow}
+        <Animated.View
+          entering={FadeInDown.delay(150)}
         >
-          <Text className="text-white font-bold">Book Now</Text>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            className="bg-orange-500 py-4 rounded-xl items-center mb-6 shadow-sm"
+            onPress={handleBookNow}
+            style={{
+              shadowColor: "#f97316",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+              elevation: 2
+            }}
+          >
+            <Text className="text-white font-semibold">Book Now</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </ScrollView>
     </View>
   );

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, Image, ScrollView, Alert, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, Image, ScrollView, Alert, ActivityIndicator, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import axios from 'axios';
 import { images, icons } from "@/constants";
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import { tokenCache } from "@/lib/auth";
 import { AUTH_TOKEN_KEY } from "@/lib/constants";
-import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { StatusBar } from 'expo-status-bar';
 
 interface IRoom {
   room_id: number;
@@ -116,18 +117,6 @@ const Explore = () => {
     fetchData();
   }, []);
 
-  // Tab Button Component with new color scheme
-  const TabButton = ({ title, isActive, onPress }: { title: string; isActive: boolean; onPress: () => void }) => (
-    <TouchableOpacity
-      onPress={onPress}
-      className={`flex-1 justify-center items-center py-1.5 rounded-full ${isActive ? 'bg-sky-500' : 'bg-white'}`}
-    >
-      <Text className={`${isActive ? 'text-white font-bold' : 'text-gray-400'} text-[14px]`}>
-        {title}
-      </Text>
-    </TouchableOpacity>
-  );
-
   const RoomCard = ({ room }: { room: IRoom }) => {
     const facilitiesList = room.facilities 
       ? room.facilities.split(',').map(item => item.trim()) 
@@ -149,20 +138,16 @@ const Explore = () => {
         className="bg-white rounded-2xl mb-4 overflow-hidden shadow-sm border border-sky-50"
         onPress={() => router.push(`/detail?id=${room.room_id}&type=room`)}
       >
-        <View className="flex-row p-2">
-          {/* Image with error handling */}
+        <View className="flex-row p-4">
           <Image
             source={{ uri: imageUrl }}
             className="w-24 h-24 rounded-lg"
             resizeMode="cover"
             defaultSource={images.smroom}
-            onError={(e) => {
-              console.log("Image load error:", e.nativeEvent.error);
-            }}
           />
           <View className="flex-1 pl-4 justify-between">
             <View>
-              <Text className="text-base font-semibold text-gray-700" numberOfLines={1}>
+              <Text className="text-base font-semibold text-gray-800" numberOfLines={1}>
                 {room.room_name}
               </Text>
               
@@ -182,7 +167,7 @@ const Explore = () => {
             </View>
             
             {/* Fasilitas */}
-            <View className="flex-row flex-wrap gap-1.5 mt-1">
+            <View className="flex-row flex-wrap gap-1.5 mt-2">
               {facilitiesList.slice(0, 3).map((facility, index) => (
                 <View 
                   key={index} 
@@ -214,16 +199,13 @@ const Explore = () => {
         className="bg-white rounded-2xl mb-4 overflow-hidden shadow-sm border border-sky-50"
         onPress={() => router.push(`/detail?id=${transport.transport_id}&type=transport`)}
       >
-        <View className="flex-row p-2">
+        <View className="flex-row p-4">
           {imageUrl ? (
             <Image
               source={{ uri: imageUrl }}
               className="w-24 h-24 rounded-lg"
               resizeMode="cover"
               defaultSource={images.smroom}
-              onError={(e) => {
-                console.log("Transport image load error:", e.nativeEvent.error);
-              }}
             />
           ) : (
             <View className="w-24 h-24 bg-gray-200 rounded-lg items-center justify-center">
@@ -233,7 +215,7 @@ const Explore = () => {
           
           <View className="flex-1 pl-4 justify-between">
             <View>
-              <Text className="text-base font-semibold text-gray-700" numberOfLines={1}>
+              <Text className="text-base font-semibold text-gray-800" numberOfLines={1}>
                 {transport.vehicle_name}
               </Text>
               
@@ -263,9 +245,17 @@ const Explore = () => {
   // Empty state components with new color scheme
   const EmptyState = ({ type }: { type: "Rooms" | "Transportation" }) => (
     <View className="flex-1 justify-center items-center py-12">
-      <Ionicons name={type === "Rooms" ? "bed-outline" : "car-outline"} size={60} color="#BAE6FD" />
-      <Text className="text-lg font-medium text-sky-500 mt-4">No {type} Available</Text>
-      <Text className="text-sky-400 text-center mt-2 px-10 text-sm">
+      <View className="bg-sky-50 w-16 h-16 rounded-full items-center justify-center mb-4">
+        <Ionicons 
+          name={type === "Rooms" ? "bed-outline" : "car-outline"} 
+          size={28} 
+          color="#0ea5e9" 
+        />
+      </View>
+      <Text className="text-gray-800 font-medium text-lg text-center">
+        No {type} Available
+      </Text>
+      <Text className="text-gray-500 text-center mt-2 text-sm">
         {type === "Rooms" 
           ? "There are no rooms available at the moment. Please check again later." 
           : "There are no vehicles available at the moment. Please check again later."}
@@ -274,65 +264,105 @@ const Explore = () => {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      {/* Gradient Header */}
-      <LinearGradient
-        colors={['#0EA5E9', '#E0F2FE']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        className="absolute top-0 left-0 right-0 h-40"
-      />
-       {/* Header with greeting */}
-       <View className="px-6 pt-3 pb-5">
-          <Text className="text-2xl font-semibold text-white mb-1">Explore</Text>
-          <Text className="text-white font-normal">Find rooms and transportation for your needs</Text>
-        </View>
-        
-        {/* Tab Buttons */}
-        <View className="px-20 pb-5">
-          <View className="flex-row bg-white border border-sky-100 rounded-full shadow-sm">
-            <TabButton 
-              title="Rooms" 
-              isActive={activeTab === "Rooms"}
-              onPress={() => setActiveTab("Rooms")}
-            />
-            <TabButton 
-              title="Transportation" 
-              isActive={activeTab === "Transportation"}
-              onPress={() => setActiveTab("Transportation")}
-            />
-          </View>
-        </View>
-      
-      {/* Scrollable container for entire screen */}
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-      
-       
+    <>
+      <StatusBar style="dark" />
+      <SafeAreaView className="flex-1 bg-gray-50">
+        {/* Header */}
+        <View className="pt-2 pb-4">
+          <Animated.View 
+            entering={FadeInDown.delay(50)}
+            className="px-4 mt-2 mb-4"
+          >
+            <Text className="text-2xl font-semibold text-gray-800 mb-1">Explore</Text>
+            <Text className="text-gray-500">Find rooms and transportation for your needs</Text>
+          </Animated.View>
 
-        {loading ? (
-          <View className="flex-1 justify-center items-center py-32">
-            <ActivityIndicator size="large" color="#0EA5E9" />
-            <Text className="text-sky-500 mt-4 font-normal text-sm">Loading content...</Text>
-          </View>
-        ) : (
-          <View className="flex-1 px-5 pt-1 pb-24 mt-4">
-            {activeTab === "Rooms" ? (
-              rooms.length > 0 ? 
-              rooms.map((room) => <RoomCard key={room.room_id} room={room} />) : 
-              <EmptyState type="Rooms" />
-            ) : (
-              transportations.length > 0 ?
-              transportations.map((transport) => <TransportCard key={transport.transport_id} transport={transport} />) :
-              <EmptyState type="Transportation" />
-            )}
-          </View>
-        )}
-        
-        {/* Extra padding at bottom for better scrolling experience */}
-        <View className="h-16" />
-      </ScrollView>
-    </SafeAreaView>
-  );  
+          {/* Search Bar */}
+          <Animated.View
+            entering={FadeInDown.delay(100)}
+            className="mx-4 mb-4"
+          >
+            <View className="flex-row bg-white rounded-lg px-3 py-2 items-center border border-gray-100">
+              <Ionicons name="search-outline" size={18} color="#9ca3af" />
+              <TextInput
+                placeholder="Search rooms or transportation..."
+                placeholderTextColor="#9ca3af"
+                className="flex-1 ml-2 text-gray-700"
+                style={{fontSize: 14}}
+              />
+            </View>
+          </Animated.View>
+
+          {/* Tab Toggle */}
+          <Animated.View 
+            entering={FadeInDown.delay(150)}
+            className="flex-row justify-center mx-4"
+          >
+            <View className="flex-row bg-sky-50 rounded-lg p-1 w-full">
+              {['Rooms', 'Transportation'].map((tab) => (
+                <TouchableOpacity
+                  key={tab}
+                  onPress={() => setActiveTab(tab as "Rooms" | "Transportation")}
+                  className={`flex-1 py-2 ${
+                    activeTab === tab ? 'bg-white rounded-md' : ''
+                  }`}
+                  style={{
+                    shadowColor: activeTab === tab ? "#0ea5e9" : "transparent",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: activeTab === tab ? 0.1 : 0,
+                    shadowRadius: 2,
+                    elevation: activeTab === tab ? 1 : 0
+                  }}
+                >
+                  <Text
+                    className={`text-center text-sm ${
+                      activeTab === tab ? 'text-sky-500 font-medium' : 'text-gray-500'
+                    }`}
+                  >
+                    {tab}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Animated.View>
+        </View>
+
+        {/* Main Content */}
+        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+          <Animated.View 
+            entering={FadeInDown.delay(200)}
+            className="px-4 flex-row items-center justify-between mb-2"
+          >
+            <View className="flex-row items-center">
+              <View className="w-1 h-4 bg-sky-500 rounded-full mr-2" />
+              <Text className="text-gray-800 font-medium">
+                {activeTab === "Rooms" ? "Available Rooms" : "Available Transportation"}
+              </Text>
+            </View>
+          </Animated.View>
+
+          {loading ? (
+            <View className="flex-1 justify-center items-center py-32">
+              <ActivityIndicator size="large" color="#0EA5E9" />
+              <Text className="text-sky-500 mt-4 font-normal text-sm">Loading content...</Text>
+            </View>
+          ) : (
+            <View className="flex-1 px-4 pt-1 pb-24">
+              {activeTab === "Rooms" ? (
+                rooms.length > 0 ? 
+                rooms.map((room) => <RoomCard key={room.room_id} room={room} />) : 
+                <EmptyState type="Rooms" />
+              ) : (
+                transportations.length > 0 ?
+                transportations.map((transport) => <TransportCard key={transport.transport_id} transport={transport} />) :
+                <EmptyState type="Transportation" />
+              )}
+            </View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </>
+  );
 };
 
 export default Explore;

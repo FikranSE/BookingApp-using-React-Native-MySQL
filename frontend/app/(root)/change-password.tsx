@@ -9,6 +9,8 @@ import axios from "axios";
 import BookInput from "@/components/BookInput";
 import { icons } from "@/constants";
 import CustomAlert from "@/components/CustomAlert"; // Import the CustomAlert component
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { StatusBar } from 'expo-status-bar';
 
 const ChangePassword = () => {
   const router = useRouter();
@@ -127,117 +129,137 @@ const ChangePassword = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-sky-50">
-      {/* Header */}
-      <View className="px-6 pt-6 pb-6 mb-2">
-        <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => router.back()} className="mr-3 p-2 -ml-2">
-            <View className="w-8 h-8 bg-white rounded-full items-center justify-center shadow-sm">
-              <Ionicons name="chevron-back" size={16} color="#0ea5e9" />
-            </View>
-          </TouchableOpacity>
-          <Text className="text-xl font-semibold text-sky-700">Security</Text>
-        </View>
-      </View>
-
-      {/* Title */}
-      <View className="px-6 mb-4">
-        <Text className="text-2xl font-bold text-sky-800">Change Password</Text>
-        <Text className="text-sky-500 mt-1">Update your password to keep your account secure</Text>
-      </View>
-
-      {/* Main Content */}
-      <ScrollView className="flex-1 px-6">
-        <View className="mb-6">
-          {/* Current Password */}
-          <View className="mb-5">
-            <BookInput
-              label="Current Password"
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              placeholder="Enter current password"
-              secureTextEntry={!showCurrentPassword}
-              rightIcon={showCurrentPassword ? icons.eye : icons.eyecross}
-              onRightIconPress={() => setShowCurrentPassword(!showCurrentPassword)}
-              error={errors.currentPassword}
-              required
-              containerClassName="bg-white rounded-xl shadow-sm border-l-4 border-sky-300"
-              labelClassName="text-sky-600 font-medium"
-            />
-            {errors.currentPassword && (
-              <Text className="text-red-500 text-xs mt-1 ml-1">{errors.currentPassword}</Text>
-            )}
-          </View>
-
-          {/* New Password */}
-          <View className="mb-1">
-            <BookInput
-              label="New Password"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              placeholder="Enter new password"
-              secureTextEntry={!showNewPassword}
-              rightIcon={showNewPassword ? icons.eye : icons.eyecross}
-              onRightIconPress={() => setShowNewPassword(!showNewPassword)}
-              error={errors.newPassword}
-              required
-              containerClassName="bg-white rounded-xl shadow-sm border-l-4 border-sky-300"
-              labelClassName="text-sky-600 font-medium"
-            />
-            {errors.newPassword && (
-              <Text className="text-red-500 text-xs mt-1 ml-1">{errors.newPassword}</Text>
-            )}
-          </View>
-
-          {/* Confirm Password */}
-          <View className="mb-6">
-            <BookInput
-              label="Confirm New Password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Confirm new password"
-              secureTextEntry={!showConfirmPassword}
-              rightIcon={showConfirmPassword ? icons.eye : icons.eyecross}
-              onRightIconPress={() => setShowConfirmPassword(!showConfirmPassword)}
-              error={errors.confirmPassword}
-              required
-              containerClassName="bg-white rounded-xl shadow-sm border-l-4 border-sky-300"
-              labelClassName="text-sky-600 font-medium"
-            />
-            {errors.confirmPassword && (
-              <Text className="text-red-500 text-xs mt-1 ml-1">{errors.confirmPassword}</Text>
-            )}
-          </View>
-
-          {/* Submit Button */}
-          <TouchableOpacity
-            className={`py-4 rounded-xl mt-2 mb-8 flex-row justify-center items-center ${
-              !currentPassword || !newPassword || !confirmPassword ? "bg-gray-300" : "bg-orange-400"
-            }`}
-            onPress={handleSubmit}
-            disabled={loading || !currentPassword || !newPassword || !confirmPassword}
+    <>
+      <StatusBar style="dark" />
+      <SafeAreaView className="flex-1 bg-gray-50">
+        {/* Header */}
+        <View className="pt-2 pb-4">
+          <Animated.View 
+            entering={FadeInDown.delay(50)}
+            className="px-4 mt-2 mb-4"
           >
-            {loading ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <>
-                <Ionicons name="lock-closed-outline" size={18} color="white" style={{ marginRight: 8 }} />
-                <Text className="text-white text-center font-medium">Update Password</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+            <View className="flex-row items-center">
+              <TouchableOpacity onPress={() => router.back()} className="mr-3 p-2 -ml-2">
+                <View className="w-8 h-8 bg-white rounded-full items-center justify-center shadow-sm">
+                  <Ionicons name="chevron-back" size={16} color="#0ea5e9" />
+                </View>
+              </TouchableOpacity>
+              <Text className="text-xl font-semibold text-gray-800">Security</Text>
+            </View>
+          </Animated.View>
 
-      {/* Custom Alert */}
-      <CustomAlert
-        visible={alertVisible}
-        type={alertType}
-        title={alertTitle}
-        message={alertMessage}
-        onClose={() => setAlertVisible(false)}
-      />
-    </SafeAreaView>
+          <Animated.View 
+            entering={FadeInDown.delay(100)}
+            className="px-4 mb-4"
+          >
+            <Text className="text-2xl font-semibold text-gray-800">Change Password</Text>
+            <Text className="text-gray-500 mt-1">Update your password to keep your account secure</Text>
+          </Animated.View>
+        </View>
+
+        {/* Main Content */}
+        <ScrollView className="flex-1 px-4">
+          <Animated.View 
+            entering={FadeInDown.delay(150)}
+            className="mb-6"
+          >
+            {/* Current Password */}
+            <View className="mb-5">
+              <BookInput
+                label="Current Password"
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                placeholder="Enter current password"
+                secureTextEntry={!showCurrentPassword}
+                rightIcon={showCurrentPassword ? icons.eye : icons.eyecross}
+                onRightIconPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                error={errors.currentPassword}
+                required
+                containerClassName="bg-white rounded-xl shadow-sm border border-gray-100"
+                labelClassName="text-gray-700 font-medium"
+              />
+              {errors.currentPassword && (
+                <Text className="text-red-500 text-xs mt-1 ml-1">{errors.currentPassword}</Text>
+              )}
+            </View>
+
+            {/* New Password */}
+            <View className="mb-1">
+              <BookInput
+                label="New Password"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                placeholder="Enter new password"
+                secureTextEntry={!showNewPassword}
+                rightIcon={showNewPassword ? icons.eye : icons.eyecross}
+                onRightIconPress={() => setShowNewPassword(!showNewPassword)}
+                error={errors.newPassword}
+                required
+                containerClassName="bg-white rounded-xl shadow-sm border border-gray-100"
+                labelClassName="text-gray-700 font-medium"
+              />
+              {errors.newPassword && (
+                <Text className="text-red-500 text-xs mt-1 ml-1">{errors.newPassword}</Text>
+              )}
+            </View>
+
+            {/* Confirm Password */}
+            <View className="mb-6">
+              <BookInput
+                label="Confirm New Password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Confirm new password"
+                secureTextEntry={!showConfirmPassword}
+                rightIcon={showConfirmPassword ? icons.eye : icons.eyecross}
+                onRightIconPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                error={errors.confirmPassword}
+                required
+                containerClassName="bg-white rounded-xl shadow-sm border border-gray-100"
+                labelClassName="text-gray-700 font-medium"
+              />
+              {errors.confirmPassword && (
+                <Text className="text-red-500 text-xs mt-1 ml-1">{errors.confirmPassword}</Text>
+              )}
+            </View>
+
+            {/* Submit Button */}
+            <TouchableOpacity
+              className={`py-4 rounded-xl mt-2 mb-8 flex-row justify-center items-center ${
+                !currentPassword || !newPassword || !confirmPassword ? "bg-gray-300" : "bg-orange-500"
+              }`}
+              onPress={handleSubmit}
+              disabled={loading || !currentPassword || !newPassword || !confirmPassword}
+              style={{
+                shadowColor: !currentPassword || !newPassword || !confirmPassword ? "#9ca3af" : "#f97316",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+                elevation: 2
+              }}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <Ionicons name="lock-closed-outline" size={18} color="white" style={{ marginRight: 8 }} />
+                  <Text className="text-white text-center font-medium">Update Password</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </Animated.View>
+        </ScrollView>
+
+        {/* Custom Alert */}
+        <CustomAlert
+          visible={alertVisible}
+          type={alertType}
+          title={alertTitle}
+          message={alertMessage}
+          onClose={() => setAlertVisible(false)}
+        />
+      </SafeAreaView>
+    </>
   );
 };
 
