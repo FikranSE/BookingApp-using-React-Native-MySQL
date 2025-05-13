@@ -101,6 +101,12 @@ class TransportBookingService {
                   <div style="font-size: 16px; line-height: 1.5; color: #555;">
                     ${cleanBody}
                   </div>
+                  ${body.includes('Notes:') ? `
+                  <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #0ea5e9; border-radius: 4px;">
+                    <p style="margin: 0; color: #0f172a; font-weight: 500;">Notes from Administrator:</p>
+                    <p style="margin: 10px 0 0 0; color: #475569;">${body.split('Notes:')[1].trim()}</p>
+                  </div>
+                  ` : ''}
                   <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee;">
                     <p style="font-size: 14px; color: #777;">This is an automated notification from the Transport Booking System.</p>
                   </div>

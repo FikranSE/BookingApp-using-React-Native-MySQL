@@ -49,7 +49,9 @@ class TransportBookingController {
 
         if (userEmail) {
           const subject = `Transport Booking Status: ${updateData.status.toUpperCase()}`;
-          const body = `Dear User,\n\nYour booking for Transport #${updatedBooking.transport_id} on ${new Date(updatedBooking.booking_date).toLocaleDateString()} has been ${updateData.status.toLowerCase()}.\n\nThank you for using our booking system.`;
+          const body = `Dear User,\n\nYour booking for Transport #${updatedBooking.transport_id} on ${new Date(updatedBooking.booking_date).toLocaleDateString()} has been ${updateData.status.toLowerCase()}.\n\n${
+            updateData.notes ? `Notes:\n${updateData.notes}\n\n` : ''
+          }Thank you for using our booking system.`;
 
           console.log("Email parameters:", { to: userEmail, subject, bodyPreview: body.substring(0, 50) + "..." });
 

@@ -23,6 +23,7 @@ const SingleTransportBookingPage = () => {
   const [error, setError] = useState(null);
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState(null);
+  const [notes, setNotes] = useState("");
 
   // Create a custom axios instance
   const createApiClient = () => {
@@ -189,7 +190,8 @@ const SingleTransportBookingPage = () => {
       const updateData = {
         status: newStatus,
         approver_id: approver_id,
-        approved_at: new Date().toISOString()
+        approved_at: new Date().toISOString(),
+        notes: notes
       };
       
       console.log(`Sending update request for transport booking ${bookingId} with status ${newStatus}`);
@@ -207,6 +209,7 @@ const SingleTransportBookingPage = () => {
         });
         
         fetchBookingData(); // Refresh booking data
+        setNotes(""); // Clear notes after successful update
       } else {
         setStatusMessage({
           type: 'error',
@@ -438,6 +441,19 @@ const SingleTransportBookingPage = () => {
                   <div className="space-y-3">
                     {booking.status === "pending" && !checkIfExpired(booking) && (
                       <>
+                        <div className="mb-4">
+                          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+                            Notes (optional)
+                          </label>
+                          <textarea
+                            id="notes"
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            placeholder="Add any notes or comments for this booking..."
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                            rows={3}
+                          />
+                        </div>
                         <button 
                           onClick={handleApprove}
                           disabled={statusLoading}
