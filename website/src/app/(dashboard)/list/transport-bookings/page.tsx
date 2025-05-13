@@ -14,8 +14,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
   Eye, Trash2, Car, MapPin, Calendar, CheckCircle, XCircle, Clock,
-  Filter as FilterIcon, X, ArrowRight
+  Filter as FilterIcon, X, ArrowRight, Download
 } from "lucide-react";
+import { exportToExcel, formatDateForExcel, formatTimeForExcel } from "@/utils/excelExport";
 
 type TransportBooking = {
   booking_id: number;
@@ -435,6 +436,27 @@ const TransportBookingListPage = () => {
     </tr>
   );
 
+  // Add export function
+  const handleExport = () => {
+    const exportData = filteredBookings.map(booking => ({
+      'Booking ID': booking.booking_id,
+      'PIC': booking.pic,
+      'Section': booking.section,
+      'User Email': booking.user?.email || 'N/A',
+      'Agenda': booking.agenda,
+      'Booking Date': formatDateForExcel(booking.booking_date),
+      'Start Time': formatTimeForExcel(booking.start_time),
+      'End Time': formatTimeForExcel(booking.end_time),
+      'Transport ID': booking.transport_id,
+      'Destination': booking.destination,
+      'Status': getDisplayStatus(booking),
+      'Description': booking.description || '',
+      'Notes': booking.notes || ''
+    }));
+
+    exportToExcel(exportData, `transport-bookings-${new Date().toISOString().split('T')[0]}`);
+  };
+
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8">
@@ -491,6 +513,14 @@ const TransportBookingListPage = () => {
                     currentSort={sorting}
                     onSort={handleSort}
                   />
+                  <button
+                    onClick={handleExport}
+                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+                    disabled={filteredBookings.length === 0}
+                  >
+                    <Download size={16} />
+                    Export Excel
+                  </button>
                 </div>
               </div>
             </div>
