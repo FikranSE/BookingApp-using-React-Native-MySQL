@@ -219,11 +219,16 @@ const Home = () => {
 
   const handleError = (error: any) => {
     if (error.response?.status === 401) {
-      Alert.alert('Session Expired', 'Please log in again to continue.', [
-        { text: 'OK', onPress: () => router.replace('/(auth)/sign-in') }
-      ]);
+      setAlertType('error');
+      setAlertMessage('Your session has expired. Please login again.');
+      setAlertVisible(true);
+      setTimeout(() => {
+        router.replace('/(auth)/sign-in');
+      }, 1500);
     } else {
-      Alert.alert('Error', 'Something went wrong. Please try again later.');
+      setAlertType('error');
+      setAlertMessage('Something went wrong. Please try again later.');
+      setAlertVisible(true);
     }
   };
 
@@ -253,8 +258,12 @@ const Home = () => {
     try {
       const authToken = await fetchAuthToken();
       if (!authToken) {
-        Alert.alert('Error', 'Not authenticated');
-        router.push('/(auth)/sign-in');
+        setAlertType('error');
+        setAlertMessage('Not authenticated');
+        setAlertVisible(true);
+        setTimeout(() => {
+          router.push('/(auth)/sign-in');
+        }, 1500);
         return;
       }
 
@@ -270,7 +279,8 @@ const Home = () => {
           setUser(profileRes.data.user);
           currentUserId = profileRes.data.user.id;
         } catch (error) {
-          console.error('Error fetching user profile:', error);
+          handleError(error);
+          return;
         }
       }
 
@@ -279,8 +289,8 @@ const Home = () => {
         const roomsRes = await axios.get(`${BASE_URL}/rooms`, { headers });
         setRooms(roomsRes.data);
       } catch (error) {
-        console.error('Error fetching rooms:', error);
         handleError(error);
+        return;
       }
 
       // Fetch transport data
@@ -288,8 +298,8 @@ const Home = () => {
         const transportsRes = await axios.get(`${BASE_URL}/transports`, { headers });
         setTransports(transportsRes.data);
       } catch (error) {
-        console.error('Error fetching transports:', error);
         handleError(error);
+        return;
       }
 
       // Fetch bookings after we have rooms and transports
@@ -342,14 +352,12 @@ const Home = () => {
 
         setPastApprovedBookings(pastApproved);
       } catch (error) {
-        console.error('Error fetching bookings:', error);
         handleError(error);
         setRecentBookings([]);
         setPastApprovedBookings([]);
       }
 
     } catch (error) {
-      console.error('Error in fetchData:', error);
       handleError(error);
     } finally {
       setLoading(false);

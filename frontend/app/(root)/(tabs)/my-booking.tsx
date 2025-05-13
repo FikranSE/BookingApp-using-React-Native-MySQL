@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, Image, ScrollView, ActivityIndicator, Alert, TextInput, SafeAreaView, Modal } from "react-native";
+import { View, Text, TouchableOpacity, Image, ScrollView, ActivityIndicator, Alert, TextInput, SafeAreaView, Modal, RefreshControl } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { icons } from "@/constants";
 import { Ionicons } from '@expo/vector-icons';
@@ -46,6 +46,10 @@ const MyBooking = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertType, setAlertType] = useState<'success' | 'error' | 'warning' | 'info'>('error');
+  const [alertMessage, setAlertMessage] = useState('');
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     type: "ALL",
     timeframe: "ALL",
@@ -105,17 +109,19 @@ const MyBooking = () => {
     return bookingDateTime < now ? "EXPIRED" : "PENDING";
   };
 
-  // Function to fetch images for rooms and transports
- 
-
+  // Add useEffect to fetch initial data
   useEffect(() => {
-    const fetchUserProfile = async () => {
+    const fetchInitialData = async () => {
+      setLoading(true);
       try {
         const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
-
         if (!authToken) {
-          Alert.alert("Error", "Not authenticated");
-          router.push("/(auth)/sign-in");
+          setAlertType('error');
+          setAlertMessage('Not authenticated');
+          setAlertVisible(true);
+          setTimeout(() => {
+            router.push('/(auth)/sign-in');
+          }, 1500);
           return;
         }
 
@@ -130,241 +136,219 @@ const MyBooking = () => {
           }
         );
 
+        if (!response.ok) {
+          throw new Error('Failed to fetch profile');
+        }
+
         const profileData = await response.json();
-        setUserId(profileData.user.id); // Set the user ID
+        setUserId(profileData.user.id);
       } catch (error) {
-        console.error("Error fetching user profile: ", error);
-        Alert.alert("Error", "Failed to fetch user profile");
-      }
-    };
-
-    fetchUserProfile();
-  }, []);
-
-  useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
-    
-        if (!authToken) {
-          Alert.alert("Error", "Not authenticated");
-          router.push("/(auth)/sign-in");
-          return;
-        }
-    
-        // Fetch booking data directly
-        const roomResponse = await fetch(
-          "https://bookingsisi.maturino.my.id/api/room-bookings",
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-    
-        const transportResponse = await fetch(
-          "https://bookingsisi.maturino.my.id/api/transport-bookings",
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-    
-        // Fetch rooms and transports for image data
-        const roomsResponse = await fetch(
-          "https://bookingsisi.maturino.my.id/api/rooms",
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-    
-        const transportsResponse = await fetch(
-          "https://bookingsisi.maturino.my.id/api/transports",
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-    
-        const roomData = await roomResponse.json();
-        const transportData = await transportResponse.json();
-        
-        // Create image mappings from room and transport data
-        let roomImages = {};
-        let transportImages = {};
-        
-        if (roomsResponse.ok) {
-          const roomsData = await roomsResponse.json();
-          console.log("Rooms data fetched:", roomsData.length);
-          
-          roomsData.forEach((room: any) => {
-            if (room.room_id && room.image) {
-              roomImages[room.room_id] = processImageUrl(room.image);
-              console.log(`Room ${room.room_id} image: ${room.image} → ${roomImages[room.room_id]}`);
-            }
-          });
-        }
-        
-        if (transportsResponse.ok) {
-          const transportsData = await transportsResponse.json();
-          console.log("Transports data fetched:", transportsData.length);
-          
-          transportsData.forEach((transport: any) => {
-            if (transport.transport_id && transport.image) {
-              transportImages[transport.transport_id] = processImageUrl(transport.image);
-              console.log(`Transport ${transport.transport_id} image: ${transport.image} → ${transportImages[transport.transport_id]}`);
-            }
-          });
-        }
-    
-        if (!roomResponse.ok || !transportResponse.ok) {
-          if (roomResponse.status === 401 || transportResponse.status === 401) {
-            await tokenCache.removeToken(AUTH_TOKEN_KEY);
-            router.push("/(auth)/sign-in");
-            return;
-          }
-          throw new Error("Failed to fetch bookings");
-        }
-    
-        // Process room bookings with images
-        const mappedRoomBookings = roomData 
-          .filter((item: any) => item.user_id === userId)
-          .map((item: any) => {
-            const bookingDate = new Date(item.booking_date);
-            const formattedBookingDate = `${bookingDate.getDate()} ${bookingDate.toLocaleString('default', { month: 'short' })} ${bookingDate.getFullYear()}`;
-            const start_time = item.start_time ? new Date(`1970-01-01T${item.start_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
-            const end_time = item.end_time ? new Date(`1970-01-01T${item.end_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
-    
-            // Try to get image directly from booking data first, then from room data
-            let imageUrl;
-            
-            // Check if the item itself has an image_url
-            if (item.image_url) {
-              imageUrl = processImageUrl(item.image_url);
-              console.log(`Room booking ${item.booking_id} has direct image: ${imageUrl}`);
-            } 
-            // Otherwise check if we have an image for this room_id in our mapping
-            else if (roomImages[item.room_id]) {
-              imageUrl = roomImages[item.room_id];
-              console.log(`Room booking ${item.booking_id} using room_id ${item.room_id} image: ${imageUrl}`);
-            } 
-            // Finally fall back to default
-            else {
-              imageUrl = defaultRoomImageUrl;
-              console.log(`Room booking ${item.booking_id} using default image`);
-            }
-            
-            // Determine the status (check if expired for PENDING status)
-            const status = getBookingStatus(
-              item.status, 
-              bookingDate, 
-              item.end_time
-            );
-    
-            return {
-              id: item.booking_id.toString(),
-              type: "ROOM",
-              agenda: item.agenda || "Meeting Room",
-              date: formattedBookingDate,
-              start_time: start_time,
-              end_time: end_time,
-              section: item.section || "Office section",
-              isOngoing: false,
-              approval: {
-                status: status as "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "CANCELLED",
-                approverName: item.pic,
-                approvedAt: item.approved_at ? new Date(item.approved_at).toISOString() : undefined,
-                feedback: item.notes || undefined,
-              },
-              imageUrl: imageUrl,
-              rawDate: bookingDate, // Store raw date for sorting and expired check
-            };
-          });
-    
-        // Process transport bookings with images
-        const mappedTransportBookings = transportData
-          .filter((item: any) => item.user_id === userId)
-          .map((item: any) => {
-            const bookingDate = new Date(item.booking_date);
-            const formattedBookingDate = `${bookingDate.getDate()} ${bookingDate.toLocaleString('default', { month: 'short' })} ${bookingDate.getFullYear()}`;
-            const start_time = item.start_time ? new Date(`1970-01-01T${item.start_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
-            const end_time = item.end_time ? new Date(`1970-01-01T${item.end_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
-    
-            // Try to get image directly from booking data first, then from transport data
-            let imageUrl;
-            
-            // Check if the item itself has an image_url
-            if (item.image_url) {
-              imageUrl = processImageUrl(item.image_url);
-              console.log(`Transport booking ${item.booking_id} has direct image: ${imageUrl}`);
-            } 
-            // Otherwise check if we have an image for this transport_id in our mapping
-            else if (transportImages[item.transport_id]) {
-              imageUrl = transportImages[item.transport_id];
-              console.log(`Transport booking ${item.booking_id} using transport_id ${item.transport_id} image: ${imageUrl}`);
-            } 
-            // Finally fall back to default
-            else {
-              imageUrl = defaultTransportImageUrl;
-              console.log(`Transport booking ${item.booking_id} using default image`);
-            }
-            
-            // Determine the status (check if expired for PENDING status)
-            const status = getBookingStatus(
-              item.status, 
-              bookingDate, 
-              item.end_time
-            );
-    
-            return {
-              id: item.booking_id.toString(),
-              type: "TRANSPORT",
-              agenda: item.agenda || "Transport Service",
-              date: formattedBookingDate,
-              start_time: start_time,
-              end_time: end_time,
-              section: item.section || "Transport section",
-              isOngoing: false,
-              approval: {
-                status: status as "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "CANCELLED",
-                approverName: item.pic,
-                approvedAt: item.approved_at ? new Date(item.approved_at).toISOString() : undefined,
-                feedback: item.notes || undefined,
-              },
-              vehicleName: item.vehicle_name || "No vehicle name",
-              driverName: item.driver_name || "No driver name",
-              capacity: item.capacity || "Not specified",
-              imageUrl: imageUrl,
-              rawDate: bookingDate, // Store raw date for sorting and expired check
-            };
-          });
-    
-        const allBookings = [...mappedRoomBookings, ...mappedTransportBookings];
-        allBookings.sort((a, b) => (b.rawDate?.getTime() || 0) - (a.rawDate?.getTime() || 0));
-    
-        setBookings(allBookings);
-      } catch (error) {
-        console.error("Error fetching bookings: ", error);
-        Alert.alert("Error", "Failed to fetch bookings");
+        handleError(error);
       } finally {
         setLoading(false);
       }
     };
 
-    if (userId) {
-      fetchBookings();
+    fetchInitialData();
+  }, []);
+
+  // Modify fetchBookings to handle loading state better
+  const fetchBookings = async () => {
+    if (!userId) return;
+    
+    setLoading(true);
+    try {
+      const authToken = await tokenCache.getToken(AUTH_TOKEN_KEY);
+    
+      if (!authToken) {
+        setAlertType('error');
+        setAlertMessage('Not authenticated');
+        setAlertVisible(true);
+        setTimeout(() => {
+          router.push('/(auth)/sign-in');
+        }, 1500);
+        return;
+      }
+    
+      // Fetch booking data directly
+      const roomResponse = await fetch(
+        "https://bookingsisi.maturino.my.id/api/room-bookings",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    
+      const transportResponse = await fetch(
+        "https://bookingsisi.maturino.my.id/api/transport-bookings",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    
+      if (!roomResponse.ok || !transportResponse.ok) {
+        if (roomResponse.status === 401 || transportResponse.status === 401) {
+          await tokenCache.removeToken(AUTH_TOKEN_KEY);
+          router.push("/(auth)/sign-in");
+          return;
+        }
+        throw new Error("Failed to fetch bookings");
+      }
+
+      const roomData = await roomResponse.json();
+      const transportData = await transportResponse.json();
+      
+      // Create image mappings from room and transport data
+      const roomImages: Record<number, string> = {};
+      const transportImages: Record<number, string> = {};
+      
+      // Fetch rooms and transports for image data
+      const roomsResponse = await fetch(
+        "https://bookingsisi.maturino.my.id/api/rooms",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    
+      const transportsResponse = await fetch(
+        "https://bookingsisi.maturino.my.id/api/transports",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      if (roomsResponse.ok) {
+        const roomsData = await roomsResponse.json();
+        roomsData.forEach((room: any) => {
+          if (room.room_id && room.image) {
+            roomImages[room.room_id] = processImageUrl(room.image);
+          }
+        });
+      }
+      
+      if (transportsResponse.ok) {
+        const transportsData = await transportsResponse.json();
+        transportsData.forEach((transport: any) => {
+          if (transport.transport_id && transport.image) {
+            transportImages[transport.transport_id] = processImageUrl(transport.image);
+          }
+        });
+      }
+    
+      // Process room bookings with images
+      const mappedRoomBookings = roomData 
+        .filter((item: any) => item.user_id === userId)
+        .map((item: any) => {
+          const bookingDate = new Date(item.booking_date);
+          const formattedBookingDate = `${bookingDate.getDate()} ${bookingDate.toLocaleString('default', { month: 'short' })} ${bookingDate.getFullYear()}`;
+          const start_time = item.start_time ? new Date(`1970-01-01T${item.start_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
+          const end_time = item.end_time ? new Date(`1970-01-01T${item.end_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
+    
+          let imageUrl = item.image_url ? processImageUrl(item.image_url) : 
+                        roomImages[item.room_id] || defaultRoomImageUrl;
+            
+          const status = getBookingStatus(
+            item.status, 
+            bookingDate, 
+            item.end_time
+          );
+    
+          return {
+            id: item.booking_id.toString(),
+            type: "ROOM",
+            agenda: item.agenda || "Meeting Room",
+            date: formattedBookingDate,
+            start_time: start_time,
+            end_time: end_time,
+            section: item.section || "Office section",
+            isOngoing: false,
+            approval: {
+              status: status as "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "CANCELLED",
+              approverName: item.pic,
+              approvedAt: item.approved_at ? new Date(item.approved_at).toISOString() : undefined,
+              feedback: item.notes || undefined,
+            },
+            imageUrl: imageUrl,
+            rawDate: bookingDate,
+          };
+        });
+    
+      // Process transport bookings with images
+      const mappedTransportBookings = transportData
+        .filter((item: any) => item.user_id === userId)
+        .map((item: any) => {
+          const bookingDate = new Date(item.booking_date);
+          const formattedBookingDate = `${bookingDate.getDate()} ${bookingDate.toLocaleString('default', { month: 'short' })} ${bookingDate.getFullYear()}`;
+          const start_time = item.start_time ? new Date(`1970-01-01T${item.start_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
+          const end_time = item.end_time ? new Date(`1970-01-01T${item.end_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Invalid Time";
+    
+          let imageUrl = item.image_url ? processImageUrl(item.image_url) : 
+                        transportImages[item.transport_id] || defaultTransportImageUrl;
+            
+          const status = getBookingStatus(
+            item.status, 
+            bookingDate, 
+            item.end_time
+          );
+    
+          return {
+            id: item.booking_id.toString(),
+            type: "TRANSPORT",
+            agenda: item.agenda || "Transport Service",
+            date: formattedBookingDate,
+            start_time: start_time,
+            end_time: end_time,
+            section: item.section || "Transport section",
+            isOngoing: false,
+            approval: {
+              status: status as "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "CANCELLED",
+              approverName: item.pic,
+              approvedAt: item.approved_at ? new Date(item.approved_at).toISOString() : undefined,
+              feedback: item.notes || undefined,
+            },
+            vehicleName: item.vehicle_name || "No vehicle name",
+            driverName: item.driver_name || "No driver name",
+            capacity: item.capacity || "Not specified",
+            imageUrl: imageUrl,
+            rawDate: bookingDate,
+          };
+        });
+    
+      const allBookings = [...mappedRoomBookings, ...mappedTransportBookings];
+      allBookings.sort((a, b) => (b.rawDate?.getTime() || 0) - (a.rawDate?.getTime() || 0));
+    
+      setBookings(allBookings);
+    } catch (error) {
+      handleError(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Modify onRefresh to handle loading state better
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchBookings();
+    } catch (error) {
+      handleError(error);
+    } finally {
+      setRefreshing(false);
     }
   }, [userId]);
 
@@ -698,6 +682,29 @@ const MyBooking = () => {
     filterOptions.timeframe !== "ALL" || 
     filterOptions.status !== "ALL";
 
+  // Function to handle errors
+  const handleError = (error: any) => {
+    if (error.response?.status === 401) {
+      setAlertType('error');
+      setAlertMessage('Your session has expired. Please login again.');
+      setAlertVisible(true);
+      setTimeout(() => {
+        router.replace('/(auth)/sign-in');
+      }, 1500);
+    } else {
+      setAlertType('error');
+      setAlertMessage('Something went wrong. Please try again later.');
+      setAlertVisible(true);
+    }
+  };
+
+  // Add useEffect to fetch bookings when userId changes
+  useEffect(() => {
+    if (userId) {
+      fetchBookings();
+    }
+  }, [userId]);
+
   return (
     <SafeAreaView className="flex-1 pb-20 bg-white">
       {/* Filter Modal */}
@@ -837,8 +844,17 @@ const MyBooking = () => {
         </View>
       </View>
 
-      {/* Bookings List */}
-      <ScrollView>
+      {/* Bookings List with RefreshControl */}
+      <ScrollView
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#0EA5E9"]}
+            tintColor="#0EA5E9"
+          />
+        }
+      >
         {loading ? (
           <View className="flex-1 items-center justify-center py-12">
             <ActivityIndicator size="large" color="#0037FFFF" />
