@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, SafeAreaView, Image } from "react-native";
+import { View, Text, TouchableOpacity, SafeAreaView, Image, StatusBar } from "react-native";
 import { useRouter } from "expo-router";
 import { images } from "@/constants";
 import { Ionicons } from "@expo/vector-icons";
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 const OpsiBooking = () => {
   const router = useRouter();
@@ -16,113 +17,145 @@ const OpsiBooking = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-sky-50">
-      {/* Enhanced Header */}
-      <View className="bg-white shadow-sm">
-        <View className="px-4 pt-8 pb-6">
-          <View className="flex-row items-center justify-center mb-2">
-            <View className="w-12 h-12 bg-orange-200 rounded-full items-center justify-center">
-              <Ionicons name="calendar" size={24} color="#FF8C00" />
+    <>
+      <StatusBar style="dark" />
+      <SafeAreaView className="flex-1 bg-gray-50">
+        {/* Header Section */}
+        <Animated.View 
+          entering={FadeInDown.delay(50)}
+          className="bg-white pt-2 pb-4"
+        >
+          <View className="px-4 pt-2">
+            <View className="flex-row items-center justify-center mb-2">
+              <View className="w-12 h-12 bg-sky-50 rounded-full items-center justify-center border border-sky-100">
+                <Ionicons name="calendar" size={24} color="#0ea5e9" />
+              </View>
             </View>
+            <Text className="text-xl font-bold text-gray-800 text-center">
+              Choose Service
+            </Text>
+            <Text className="text-gray-500 text-center mt-1 text-sm">
+              Select the service you want to book
+            </Text>
           </View>
-          <Text className="text-2xl font-bold text-sky-500 text-center">
-            Choose Service
-          </Text>
-          <Text className="text-gray-500 text-center mt-1">
-            Select the service you want to book
-          </Text>
-        </View>
-      </View>
+        </Animated.View>
 
-      {/* Cards Container */}
-      <View className="flex-1 px-4 pt-6">
-        <View className="flex-row justify-between px-2 gap-4">
-          {/* Enhanced Room Card */}
-          <TouchableOpacity
-            onPress={() => handleBooking("Room")}
-            className="bg-white flex-1 rounded-3xl shadow-lg overflow-hidden border border-gray-200"
-            style={{
-              elevation: 3
-            }}
-          >
-            <View className="relative">
-              <Image 
-                source={images.smroom} 
-                className="w-full h-40"
-                resizeMode="cover"
-              />
-              <View className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 via-black/30 to-transparent" />
-              <View className="absolute top-4 right-4">
-                <View className="bg-white/30 backdrop-blur-lg rounded-full p-2">
-                  <Ionicons name="business" size={24} color="white" />
+        {/* Cards Container */}
+        <View className="flex-1 px-4 pt-6">
+          <View className="flex-row justify-between px-2 gap-4">
+            {/* Room Card */}
+            <Animated.View
+              entering={FadeInDown.delay(100)}
+              className="flex-1"
+            >
+              <TouchableOpacity
+                onPress={() => handleBooking("Room")}
+                className="bg-white rounded-xl overflow-hidden"
+                style={{
+                  shadowColor: "#0ea5e9",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 8,
+                  elevation: 2
+                }}
+              >
+                <View className="relative">
+                  <Image 
+                    source={images.smroom} 
+                    className="w-full h-40"
+                    resizeMode="cover"
+                  />
+                  <View className="absolute top-3 right-3">
+                    <View className="bg-white/80 backdrop-blur-sm px-2 py-1 rounded-md">
+                      <Text className="text-xs font-medium text-sky-500">
+                        Room
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              </View>
-            </View>
-            
-            <View className="p-4">
-              <View className="mb-2">
-                <Text className="text-xl font-bold text-sky-500 mb-1">
-                  Room
-                </Text>
-                <Text className="text-sm text-gray-500 leading-tight">
-                  Book meeting rooms and workspaces for your team
-                </Text>
-              </View>
-              <View className="flex-row items-center mt-3">
-                <View className="flex-row items-center bg-sky-50 px-3 py-1 rounded-full">
-                  <Ionicons name="people" size={14} color="#0EA5E9" />
-                  <Text className="text-sky-500 text-xs ml-1 font-medium">
-                    For teams
-                  </Text>
+                
+                <View className="p-4">
+                  <View className="mb-3">
+                    <Text className="text-gray-800 text-lg font-medium mb-1">
+                      Meeting Rooms
+                    </Text>
+                    <Text className="text-gray-500 text-sm">
+                      Book meeting rooms and workspaces for your team
+                    </Text>
+                  </View>
+                  
+                  <View className="flex-row items-center mt-3 pt-3 border-t border-gray-100">
+                    <View className="flex-row items-center">
+                      <View className="w-8 h-8 bg-sky-50 rounded-full items-center justify-center mr-2">
+                        <Ionicons name="people" size={16} color="#0ea5e9" />
+                      </View>
+                      <Text className="text-gray-700 text-sm">
+                        For teams
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              </View>
-            </View>
-          </TouchableOpacity>
+              </TouchableOpacity>
+            </Animated.View>
 
-          {/* Enhanced Transport Card */}
-          <TouchableOpacity
-            onPress={() => handleBooking("Transportation")}
-            className="bg-white flex-1 rounded-3xl shadow-lg overflow-hidden border border-gray-200"
-            style={{
-              elevation: 3
-            }}
-          >
-            <View className="relative">
-              <Image 
-                source={images.car1} 
-                className="w-full h-40"
-                resizeMode="cover"
-              />
-              <View className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 via-black/30 to-transparent" />
-              <View className="absolute top-4 right-4">
-                <View className="bg-white/30 backdrop-blur-lg rounded-full p-2">
-                  <Ionicons name="car" size={24} color="white" />
+            {/* Transport Card */}
+            <Animated.View
+              entering={FadeInDown.delay(150)}
+              className="flex-1"
+            >
+              <TouchableOpacity
+                onPress={() => handleBooking("Transportation")}
+                className="bg-white rounded-xl overflow-hidden"
+                style={{
+                  shadowColor: "#0ea5e9",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 8,
+                  elevation: 2
+                }}
+              >
+                <View className="relative">
+                  <Image 
+                    source={images.car1} 
+                    className="w-full h-40"
+                    resizeMode="cover"
+                  />
+                  <View className="absolute top-3 right-3">
+                    <View className="bg-white/80 backdrop-blur-sm px-2 py-1 rounded-md">
+                      <Text className="text-xs font-medium text-sky-500">
+                        Transport
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              </View>
-            </View>
-            
-            <View className="p-4">
-              <View className="mb-2">
-                <Text className="text-xl font-bold text-sky-500 mb-1">
-                  Transport
-                </Text>
-                <Text className="text-sm text-gray-500 leading-tight">
-                  Book vehicles and transportation services
-                </Text>
-              </View>
-              <View className="flex-row items-center mt-3">
-                <View className="flex-row items-center bg-sky-50 px-3 py-1 rounded-full">
-                  <Ionicons name="time" size={14} color="#0EA5E9" />
-                  <Text className="text-sky-500 text-xs ml-1 font-medium">
-                    24/7 Available
-                  </Text>
+                
+                <View className="p-4">
+                  <View className="mb-3">
+                    <Text className="text-gray-800 text-lg font-medium mb-1">
+                      Transportation
+                    </Text>
+                    <Text className="text-gray-500 text-sm">
+                      Book vehicles and transportation services
+                    </Text>
+                  </View>
+                  
+                  <View className="flex-row items-center mt-3 pt-3 border-t border-gray-100">
+                    <View className="flex-row items-center">
+                      <View className="w-8 h-8 bg-sky-50 rounded-full items-center justify-center mr-2">
+                        <Ionicons name="time" size={16} color="#0ea5e9" />
+                      </View>
+                      <Text className="text-gray-700 text-sm">
+                        24/7 Available
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              </View>
-            </View>
-          </TouchableOpacity>
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </>
   );
 };
 
