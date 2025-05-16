@@ -36,7 +36,7 @@ const SingleRoomBookingPage = () => {
     }
     
     return axios.create({
-      baseURL: "https://bookingsisi.maturino.my.id/api",
+      baseURL: "https://j9d3hc82-3001.asse.devtunnels.ms/api",
       headers: { Authorization: `Bearer ${token}` }
     });
   };
@@ -345,7 +345,7 @@ const SingleRoomBookingPage = () => {
                       <Building size={24} />
                     </div>
                     <div className="ml-4">
-                      <h2 className="text-2xl font-bold">Room #{booking.room_id}</h2>
+                      <h2 className="text-2xl font-bold">{booking.room?.name || `Room #${booking.room_id}`}</h2>
                       <div className="mt-1 text-sky-50 flex items-center text-sm">
                         <CalendarDays size={14} className="mr-1.5" />
                         <span>{formatDate(booking.booking_date)}</span>
@@ -373,6 +373,21 @@ const SingleRoomBookingPage = () => {
                         {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
                       </p>
                     </div>
+
+                    {/* Room Image */}
+                    {booking.room?.image && (
+                      <div className="p-4 bg-sky-50 rounded-2xl">
+                        <div className="flex items-center mb-3">
+                          <Building size={20} className="text-sky-500" />
+                          <h3 className="ml-2 font-semibold text-sky-900">Room Image</h3>
+                        </div>
+                        <img 
+                          src={booking.room.image} 
+                          alt={booking.room.name || "Room"} 
+                          className="w-full h-48 object-cover rounded-xl"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Organizer Info */}

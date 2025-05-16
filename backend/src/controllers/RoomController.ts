@@ -10,7 +10,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Get server URL from environment variables or use a default
-const SERVER_URL = process.env.SERVER_URL || 'https://bookingsisi.maturino.my.id';
+const SERVER_URL = process.env.SERVER_URL || 'https://j9d3hc82-3001.asse.devtunnels.ms';
 
 // Use the same uploads directory path as in app.js and multerConfig.ts
 const uploadsDir = path.join(__dirname, '../utils/uploads');
@@ -36,7 +36,7 @@ class RoomController {
             console.log(`Verified file exists at: ${req.file.path}`);
             
             // Create a proper URL with the server domain
-            imageUrl = `${SERVER_URL}/uploads/${req.file.filename}`;
+            imageUrl = `/uploads/${req.file.filename}`;
             console.log(`Image URL created: ${imageUrl}`);
           } else {
             console.error(`WARNING: File does not exist at path: ${req.file.path}`);
@@ -139,7 +139,7 @@ class RoomController {
               console.log(`Verified new file exists at: ${req.file.path}`);
               
               // Use full URL with server domain
-              roomData.image = `${SERVER_URL}/uploads/${req.file.filename}`;
+              roomData.image = `/uploads/${req.file.filename}`;
               console.log(`New image URL: ${roomData.image}`);
   
               // Try to delete the old image if it exists

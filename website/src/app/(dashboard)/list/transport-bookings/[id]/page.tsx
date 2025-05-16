@@ -36,7 +36,7 @@ const SingleTransportBookingPage = () => {
     }
     
     return axios.create({
-      baseURL: "https://bookingsisi.maturino.my.id/api",
+      baseURL: "https://j9d3hc82-3001.asse.devtunnels.ms/api",
       headers: { Authorization: `Bearer ${token}` }
     });
   };
@@ -346,7 +346,7 @@ const SingleTransportBookingPage = () => {
                       <Car size={24} />
                     </div>
                     <div className="ml-4">
-                      <h2 className="text-2xl font-bold">Transport #{booking.transport_id}</h2>
+                      <h2 className="text-2xl font-bold">{booking.transport?.name || `Transport #${booking.transport_id}`}</h2>
                       <div className="mt-1 text-sky-50 flex items-center text-sm">
                         <CalendarDays size={14} className="mr-1.5" />
                         <span>{formatDate(booking.booking_date)}</span>
@@ -375,15 +375,20 @@ const SingleTransportBookingPage = () => {
                       </p>
                     </div>
 
-                    <div className="p-4 bg-sky-50 rounded-2xl">
-                      <div className="flex items-center mb-3">
-                        <MapPin size={20} className="text-sky-500" />
-                        <h3 className="ml-2 font-semibold text-sky-900">Destination</h3>
+                    {/* Transport Image */}
+                    {booking.transport?.image && (
+                      <div className="p-4 bg-sky-50 rounded-2xl">
+                        <div className="flex items-center mb-3">
+                          <Car size={20} className="text-sky-500" />
+                          <h3 className="ml-2 font-semibold text-sky-900">Transport Image</h3>
+                        </div>
+                        <img 
+                          src={booking.transport.image} 
+                          alt={booking.transport.name || "Transport"} 
+                          className="w-full h-48 object-cover rounded-xl"
+                        />
                       </div>
-                      <p className="text-gray-700">
-                        {booking.destination || "Not specified"}
-                      </p>
-                    </div>
+                    )}
                   </div>
 
                   {/* Organizer Info */}

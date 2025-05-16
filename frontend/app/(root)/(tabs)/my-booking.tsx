@@ -68,7 +68,7 @@ const MyBooking = () => {
     
     // Handle local filesystem paths
     if (imageUrl.startsWith('E:') || imageUrl.startsWith('C:')) {
-      return `https://bookingsisi.maturino.my.id/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
     }
     
     // Fix double slash issue
@@ -79,7 +79,7 @@ const MyBooking = () => {
     // Add base URL for relative paths
     if (!imageUrl.startsWith('http')) {
       const cleanPath = imageUrl.replace(/^\/+/, '');
-      return `https://bookingsisi.maturino.my.id/${cleanPath}`;
+      return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
     }
     
     return imageUrl;
@@ -128,7 +128,7 @@ const MyBooking = () => {
         }
 
         const response = await fetch(
-          "https://bookingsisi.maturino.my.id/api/auth/profile",
+          "https://j9d3hc82-3001.asse.devtunnels.ms/api/auth/profile",
           {
             method: "GET",
             headers: {
@@ -174,7 +174,7 @@ const MyBooking = () => {
     
       // Fetch booking data directly
       const roomResponse = await fetch(
-        "https://bookingsisi.maturino.my.id/api/room-bookings",
+        "https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings",
         {
           method: "GET",
           headers: {
@@ -185,7 +185,7 @@ const MyBooking = () => {
       );
     
       const transportResponse = await fetch(
-        "https://bookingsisi.maturino.my.id/api/transport-bookings",
+        "https://j9d3hc82-3001.asse.devtunnels.ms/api/transport-bookings",
         {
           method: "GET",
           headers: {
@@ -213,7 +213,7 @@ const MyBooking = () => {
       
       // Fetch rooms and transports for image data
       const roomsResponse = await fetch(
-        "https://bookingsisi.maturino.my.id/api/rooms",
+        "https://j9d3hc82-3001.asse.devtunnels.ms/api/rooms",
         {
           method: "GET",
           headers: {
@@ -224,7 +224,7 @@ const MyBooking = () => {
       );
     
       const transportsResponse = await fetch(
-        "https://bookingsisi.maturino.my.id/api/transports",
+        "https://j9d3hc82-3001.asse.devtunnels.ms/api/transports",
         {
           method: "GET",
           headers: {

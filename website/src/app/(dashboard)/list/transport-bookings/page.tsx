@@ -39,6 +39,12 @@ type TransportBooking = {
   user?: {
     email: string;
   };
+  transport?: {
+    vehicle_name: string;
+    image?: string;
+    driver_name?: string;
+    capacity?: number;
+  };
 };
 
 type SortDirection = 'asc' | 'desc';
@@ -51,12 +57,12 @@ type DateFilter = {
 // Columns definition
 const columns = [
   { header: "Booking ID", accessor: "booking_id" },
+  { header: "Transport", accessor: "transport", className: "hidden md:table-cell" },
   { header: "PIC", accessor: "pic" },
   { header: "User Email", accessor: "user.email", className: "hidden md:table-cell" },
   { header: "Agenda", accessor: "agenda", className: "hidden md:table-cell" },
   { header: "Start Time", accessor: "start_time", className: "hidden md:table-cell" },
   { header: "End Time", accessor: "end_time", className: "hidden lg:table-cell" },
-  { header: "Transport ID", accessor: "transport_id", className: "hidden lg:table-cell" },
   { header: "Destination", accessor: "destination", className: "hidden md:table-cell" },
   { header: "Status", accessor: "status", className: "hidden md:table-cell" },
   { header: "Actions", accessor: "action" },
@@ -108,7 +114,7 @@ const TransportBookingListPage = () => {
     
     // Create axios instance with auth header
     const apiClient = axios.create({
-      baseURL: "https://bookingsisi.maturino.my.id/api",
+      baseURL: "https://j9d3hc82-3001.asse.devtunnels.ms/api",
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -182,8 +188,8 @@ const TransportBookingListPage = () => {
     // Apply sorting
     if (sorting) {
       result.sort((a, b) => {
-        let valueA = a[sorting.field];
-        let valueB = b[sorting.field];
+        let valueA: any = sorting.field === 'user.email' ? a.user?.email : a[sorting.field as keyof TransportBooking];
+        let valueB: any = sorting.field === 'user.email' ? b.user?.email : b[sorting.field as keyof TransportBooking];
         
         // Special handling for dates and times
         if (sorting.field === 'booking_date' || sorting.field === 'createdAt' || sorting.field === 'updatedAt') {
@@ -215,9 +221,55 @@ const TransportBookingListPage = () => {
     
     try {
       console.log("Fetching transport bookings...");
-      const response = await apiClient.get("/transport-bookings");
-      console.log("Transport bookings fetched successfully:", response.data);
-      setTransportBookings(response.data);
+      // First, fetch all transports to ensure we have the data
+      const transportsResponse = await apiClient.get("/transports");
+      const transportsMap = new Map(
+        transportsResponse.data.map((transport: any) => [
+          transport.transport_id,
+          {
+            transport_id: transport.transport_id,
+            vehicle_name: transport.vehicle_name,
+            image: transport.image,
+            driver_name: transport.driver_name,
+            capacity: transport.capacity
+          }
+        ])
+      );
+
+      // Then fetch bookings with their relations
+      const response = await apiClient.get("/transport-bookings", {
+        params: {
+          include: 'transport,user',
+          populate: {
+            transport: true,
+            user: true
+          }
+        }
+      });
+      console.log("Transport bookings API response:", response.data);
+      
+      // Transform the data to ensure transport data is properly structured
+      const transformedData = response.data.map((booking: any) => {
+        console.log("Processing booking:", booking); // Debug log
+        
+        // Get transport data from our map
+        const transportData = transportsMap.get(booking.transport_id) || {
+          transport_id: booking.transport_id,
+          vehicle_name: `Transport #${booking.transport_id}`,
+          image: null,
+          driver_name: 'No driver assigned',
+          capacity: 'Not specified'
+        };
+
+        return {
+          ...booking,
+          transport: transportData,
+          user: booking.user || null
+        };
+      });
+      
+      console.log("Transformed data:", transformedData);
+      setTransportBookings(transformedData);
       setAuthStatus("Authenticated and data loaded");
     } catch (error: any) {
       console.error("Error fetching transport bookings:", error);
@@ -391,50 +443,85 @@ const TransportBookingListPage = () => {
                            (destinationFilter ? 1 : 0);
 
   // Modified renderRow to include enhanced status and destination
-  const renderRow = (item: TransportBooking) => (
-    <tr
-      key={item.booking_id}
-      className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
-    >
-      <td className="p-4">#{item.booking_id}</td>
-      <td className="p-4">{item.pic}</td>
-      <td className="hidden md:table-cell p-4">{item.user?.email || 'N/A'}</td>
-      <td className="hidden md:table-cell p-4">{item.agenda}</td>
-      <td className="hidden md:table-cell p-4">{formatTime(item.start_time)}</td>
-      <td className="hidden lg:table-cell p-4">{formatTime(item.end_time)}</td>
-      <td className="hidden lg:table-cell p-4">{item.transport_id}</td>
-      <td className="hidden md:table-cell p-4">
-        <div className="flex items-center">
-          <MapPin size={14} className="mr-1 text-gray-400" />
-          {item.destination}
-        </div>
-      </td>
-      <td className="hidden md:table-cell p-4">
-        <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center w-fit ${getStatusColor(item.status, item)}`}>
-          {getStatusIcon(item.status, item)}
-          {getDisplayStatus(item)}
-        </span>
-      </td>
-      <td className="p-4">
-        <div className="flex items-center gap-2">
-          <Link href={`/list/transport-bookings/${item.booking_id}`}>
-            <button className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky text-white hover:bg-sky-500">
-            <Eye size={16} />
+  const renderRow = (item: TransportBooking) => {
+    console.log("Rendering row with data:", item); // Debug log
+    
+    return (
+      <tr
+        key={item.booking_id}
+        className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
+      >
+        <td className="p-4">#{item.booking_id}</td>
+        <td className="hidden md:table-cell p-4">
+          <div className="flex items-center gap-2">
+            {item.transport?.image ? (
+              <div className="relative w-8 h-8 rounded-lg overflow-hidden">
+                <Image
+                  src={item.transport.image}
+                  alt={item.transport.vehicle_name || 'Transport Image'}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                <Car size={16} className="text-gray-400" />
+              </div>
+            )}
+            <div className="flex flex-col">
+              <span className="font-medium text-gray-900">
+                {item.transport?.vehicle_name || `Transport #${item.transport_id}`}
+              </span>
+              <span className="text-xs text-gray-500">{item.transport?.driver_name ? `Driver: ${item.transport.driver_name}` : 'No driver assigned'}</span>
+              {item.transport?.capacity && (
+                <span className="text-xs text-gray-500">Capacity: {item.transport.capacity}</span>
+              )}
+            </div>
+          </div>
+        </td>
+        <td className="p-4">
+          <div className="flex flex-col">
+            <span className="font-medium text-gray-900">{item.pic}</span>
+            <span className="text-xs text-gray-500">{item.section}</span>
+          </div>
+        </td>
+        <td className="hidden md:table-cell p-4">{item.user?.email || 'N/A'}</td>
+        <td className="hidden md:table-cell p-4">{item.agenda}</td>
+        <td className="hidden md:table-cell p-4">{formatTime(item.start_time)}</td>
+        <td className="hidden lg:table-cell p-4">{formatTime(item.end_time)}</td>
+        <td className="hidden md:table-cell p-4">
+          <div className="flex items-center">
+            <MapPin size={14} className="mr-1 text-gray-400" />
+            {item.destination}
+          </div>
+        </td>
+        <td className="hidden md:table-cell p-4">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center w-fit ${getStatusColor(item.status, item)}`}>
+            {getStatusIcon(item.status, item)}
+            {getDisplayStatus(item)}
+          </span>
+        </td>
+        <td className="p-4">
+          <div className="flex items-center gap-2">
+            <Link href={`/list/transport-bookings/${item.booking_id}`}>
+              <button className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky text-white hover:bg-sky-500">
+                <Eye size={16} />
+              </button>
+            </Link>
+            <button 
+              onClick={() => {
+                setBookingToDelete(item.booking_id);
+                setShowDeleteConfirm(true);
+              }}
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-red-300 text-white hover:bg-red-500"
+            >
+              <Trash2 size={16} />
             </button>
-          </Link>
-          <button 
-            onClick={() => {
-              setBookingToDelete(item.booking_id);
-              setShowDeleteConfirm(true);
-            }}
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-red-300 text-white hover:bg-red-500"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      </td>
-    </tr>
-  );
+          </div>
+        </td>
+      </tr>
+    );
+  };
 
   // Add export function
   const handleExport = () => {
@@ -642,7 +729,7 @@ const TransportBookingListPage = () => {
             </div>
             <h3 className="font-bold text-lg mb-2 text-sky-800">No Transport Bookings Found</h3>
             <p className="text-gray-500 mb-6">No transport bookings have been created yet.</p>
-            <FormModal table="transport-booking" type="create" />
+            <FormModal table="room-booking" type="create" />
           </div>
         )}
 
@@ -677,6 +764,7 @@ const TransportBookingListPage = () => {
                   <thead className="bg-sky-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Booking ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Transport</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">PIC</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">User Email</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Agenda</th>
@@ -691,6 +779,38 @@ const TransportBookingListPage = () => {
                     {filteredBookings.map((item) => (
                       <tr key={item.booking_id} className="hover:bg-sky-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-sky-800">#{item.booking_id}</td>
+                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-start">
+                            {item.transport?.image ? (
+                              <div className="flex-shrink-0 h-16 w-16 mr-4">
+                                <Image
+                                  src={item.transport.image}
+                                  alt={item.transport?.vehicle_name || `Transport ${item.transport_id}`}
+                                  width={64}
+                                  height={64}
+                                  className="rounded-lg object-cover"
+                                />
+                              </div>
+                            ) : (
+                              <div className="flex-shrink-0 h-16 w-16 mr-4 bg-gray-100 rounded-lg flex items-center justify-center">
+                                <Car size={32} className="text-gray-400" />
+                              </div>
+                            )}
+                            <div className="flex flex-col justify-center">
+                              <div className="text-sm font-medium text-sky-800">
+                                {item.transport?.vehicle_name || `Transport ${item.transport_id}`}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {item.transport?.driver_name ? `Driver: ${item.transport.driver_name}` : 'No driver assigned'}
+                              </div>
+                              {item.transport?.capacity && (
+                                <div className="text-xs text-gray-500">
+                                  Capacity: {item.transport.capacity}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-sky-800">{item.pic}</div>
                           <div className="text-xs text-gray-500">{item.section}</div>
@@ -701,33 +821,29 @@ const TransportBookingListPage = () => {
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.agenda}</td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{formatTime(item.start_time)}</td>
                         <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{formatTime(item.end_time)}</td>
-                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center text-sm text-sky-800">
-                            <MapPin size={14} className="mr-1 text-gray-400" />
-                            {item.destination}
-                          </div>
-                        </td>
+                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.destination}</td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.status, item)}`}>
                             {getStatusIcon(item.status, item)}
                             {getDisplayStatus(item)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <Link href={`/list/transport-bookings/${item.booking_id}`}>
-                              <button className="w-7 h-7 flex items-center justify-center text-white rounded-full bg-sky-500 hover:bg-sky-600 transition-colors">
-                                <Eye size={14} />
-                              </button>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end space-x-2">
+                            <Link
+                              href={`/list/transport-bookings/${item.booking_id}`}
+                              className="text-sky-600 hover:text-sky-900"
+                            >
+                              <Eye size={16} />
                             </Link>
-                            <button 
+                            <button
                               onClick={() => {
                                 setBookingToDelete(item.booking_id);
                                 setShowDeleteConfirm(true);
                               }}
-                              className="w-7 h-7 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                              className="text-red-600 hover:text-red-900"
                             >
-                              <Trash2 size={14} />
+                              <Trash2 size={16} />
                             </button>
                           </div>
                         </td>

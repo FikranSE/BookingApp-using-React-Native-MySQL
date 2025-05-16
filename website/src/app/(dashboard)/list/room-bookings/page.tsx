@@ -37,6 +37,12 @@ type RoomBooking = {
   user?: {
     email: string;
   };
+  room?: {
+    room_name: string;
+    image?: string;
+    floor: string;
+    capacity: string;
+  };
 };
 
 type SortDirection = 'asc' | 'desc';
@@ -46,11 +52,16 @@ type DateFilter = {
   endDate: string | null;
 };
 
-// Updated columns to include status
+// Updated columns to include room name and image
 const columns = [
   {
     header: "Booking ID",
     accessor: "booking_id",
+  },
+  {
+    header: "Room",
+    accessor: "room",
+    className: "hidden md:table-cell",
   },
   {
     header: "PIC",
@@ -74,11 +85,6 @@ const columns = [
   {
     header: "End Time",
     accessor: "end_time",
-    className: "hidden lg:table-cell",
-  },
-  {
-    header: "Room ID",
-    accessor: "room_id",
     className: "hidden lg:table-cell",
   },
   {
@@ -136,7 +142,7 @@ const RoomBookingListPage = () => {
     
     // Create axios instance with auth header
     const apiClient = axios.create({
-      baseURL: "https://bookingsisi.maturino.my.id/api",
+      baseURL: "https://j9d3hc82-3001.asse.devtunnels.ms/api",
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -202,8 +208,8 @@ const RoomBookingListPage = () => {
     // Apply sorting
     if (sorting) {
       result.sort((a, b) => {
-        let valueA = a[sorting.field];
-        let valueB = b[sorting.field];
+        let valueA: any = sorting.field === 'user.email' ? a.user?.email : a[sorting.field as keyof RoomBooking];
+        let valueB: any = sorting.field === 'user.email' ? b.user?.email : b[sorting.field as keyof RoomBooking];
         
         // Special handling for dates and times
         if (sorting.field === 'booking_date') {
@@ -235,14 +241,59 @@ const RoomBookingListPage = () => {
     
     try {
       console.log("Fetching room bookings...");
-      const response = await apiClient.get("/room-bookings");
-      console.log("Room bookings fetched successfully:", response.data);
-      setRoomBookings(response.data);
+      // First, fetch all rooms to ensure we have the data
+      const roomsResponse = await apiClient.get("/rooms");
+      const roomsMap = new Map(
+        roomsResponse.data.map((room: any) => [
+          room.room_id,
+          {
+            room_id: room.room_id,
+            room_name: room.room_name,
+            image: room.image,
+            capacity: room.capacity,
+            floor: room.floor
+          }
+        ])
+      );
+
+      // Then fetch bookings with their relations
+      const response = await apiClient.get("/room-bookings", {
+        params: {
+          include: 'room,user',
+          populate: {
+            room: true,
+            user: true
+          }
+        }
+      });
+      console.log("Room bookings API response:", response.data);
+      
+      // Transform the data to ensure room data is properly structured
+      const transformedData = response.data.map((booking: any) => {
+        console.log("Processing booking:", booking); // Debug log
+        
+        // Get room data from our map
+        const roomData = roomsMap.get(booking.room_id) || {
+          room_id: booking.room_id,
+          room_name: `Room #${booking.room_id}`,
+          image: null,
+          capacity: 'Not specified',
+          floor: 'Not specified'
+        };
+
+        return {
+          ...booking,
+          room: roomData,
+          user: booking.user || null
+        };
+      });
+      
+      console.log("Transformed data:", transformedData);
+      setRoomBookings(transformedData);
       setAuthStatus("Authenticated and data loaded");
     } catch (error: any) {
       console.error("Error fetching room bookings:", error);
       
-      // Check for unauthorized error
       if (error.response?.status === 401) {
         setAuthStatus("Authentication failed (401) - token may be invalid");
         localStorage.removeItem("adminToken");
@@ -424,6 +475,88 @@ const RoomBookingListPage = () => {
     exportToExcel(exportData, `room-bookings-${new Date().toISOString().split('T')[0]}`);
   };
 
+  const renderRow = (item: RoomBooking) => {
+    console.log("Rendering row with data:", item); // Debug log
+    console.log("Room data in render:", item.room); // Debug log for room data
+    
+    return (
+      <tr
+        key={item.booking_id}
+        className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
+      >
+        <td className="p-4">#{item.booking_id}</td>
+        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
+          <div className="flex items-start">
+            {item.room?.image ? (
+              <div className="flex-shrink-0 h-16 w-16 mr-4">
+                <Image
+                  src={item.room.image}
+                  alt={item.room?.room_name || `Room ${item.room_id}`}
+                  width={64}
+                  height={64}
+                  className="rounded-lg object-cover"
+                />
+              </div>
+            ) : (
+              <div className="flex-shrink-0 h-16 w-16 mr-4 bg-gray-100 rounded-lg flex items-center justify-center">
+                <Building size={32} className="text-gray-400" />
+              </div>
+            )}
+            <div className="flex flex-col justify-center">
+              <div className="text-sm font-medium text-sky-800">
+                {item.room?.room_name || `Room ${item.room_id}`}
+              </div>
+              {item.room?.floor && (
+                <div className="text-xs text-gray-500">
+                  Floor: {item.room.floor}
+                </div>
+              )}
+              {item.room?.capacity && (
+                <div className="text-xs text-gray-500">
+                  Capacity: {item.room.capacity}
+                </div>
+              )}
+            </div>
+          </div>
+        </td>
+        <td className="p-4">
+          <div className="flex flex-col">
+            <span className="font-medium text-gray-900">{item.pic}</span>
+            <span className="text-xs text-gray-500">{item.section}</span>
+          </div>
+        </td>
+        <td className="hidden md:table-cell p-4">{item.user?.email || 'N/A'}</td>
+        <td className="hidden md:table-cell p-4">{item.agenda}</td>
+        <td className="hidden md:table-cell p-4">{formatTime(item.start_time)}</td>
+        <td className="hidden lg:table-cell p-4">{formatTime(item.end_time)}</td>
+        <td className="hidden md:table-cell p-4">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center w-fit ${getStatusColor(item.status, item)}`}>
+            {getStatusIcon(item.status, item)}
+            {getDisplayStatus(item)}
+          </span>
+        </td>
+        <td className="p-4">
+          <div className="flex items-center gap-2">
+            <Link href={`/list/room-bookings/${item.booking_id}`}>
+              <button className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky text-white hover:bg-sky-500">
+                <Eye size={16} />
+              </button>
+            </Link>
+            <button 
+              onClick={() => {
+                setBookingToDelete(item.booking_id);
+                setShowDeleteConfirm(true);
+              }}
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-red-300 text-white hover:bg-red-500"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8">
@@ -603,6 +736,7 @@ const RoomBookingListPage = () => {
                   <thead className="bg-sky-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Booking ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Room</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">PIC</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">User Email</th>
                       <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-sky-600 uppercase tracking-wider">Agenda</th>
@@ -613,45 +747,7 @@ const RoomBookingListPage = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-sky-100">
-                    {filteredBookings.map((item) => (
-                      <tr key={item.booking_id} className="hover:bg-sky-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-sky-800">#{item.booking_id}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-sky-800">{item.pic}</div>
-                          <div className="text-xs text-gray-500">{item.section}</div>
-                        </td>
-                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">
-                          {item.user?.email || 'N/A'}
-                        </td>
-                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{item.agenda}</td>
-                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{formatTime(item.start_time)}</td>
-                        <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-sky-800">{formatTime(item.end_time)}</td>
-                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.status, item)}`}>
-                            {getStatusIcon(item.status, item)}
-                            {getDisplayStatus(item)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <Link href={`/list/room-bookings/${item.booking_id}`}>
-                              <button className="w-7 h-7 flex items-center justify-center text-white rounded-full bg-sky-500 hover:bg-sky-600 transition-colors">
-                                <Eye size={14} />
-                              </button>
-                            </Link>
-                            <button 
-                              onClick={() => {
-                                setBookingToDelete(item.booking_id);
-                                setShowDeleteConfirm(true);
-                              }}
-                              className="w-7 h-7 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredBookings.map((item) => renderRow(item))}
                   </tbody>
                 </table>
               </div>

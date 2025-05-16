@@ -1,4 +1,3 @@
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -6,12 +5,18 @@ const nextConfig = {
     domains: [
       'bookingsisi.maturino.my.id',
       'localhost',
+      'j9d3hc82-3001.asse.devtunnels.ms'
     ],
     remotePatterns: [
       {
         protocol: 'http',
         hostname: 'localhost',
         port: '3001',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'j9d3hc82-3001.asse.devtunnels.ms',
         pathname: '/uploads/**',
       },
     ],

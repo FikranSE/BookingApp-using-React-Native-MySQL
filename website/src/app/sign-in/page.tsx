@@ -81,7 +81,7 @@ const LoginPage = () => {
 
     try {
       const response = await axios.post(
-        "https://bookingsisi.maturino.my.id/api/admins/auth/login",
+        "https://j9d3hc82-3001.asse.devtunnels.ms/api/admins/auth/login",
         {
           email: formData.email,
           password: formData.password,
@@ -101,7 +101,7 @@ const LoginPage = () => {
         
         axios.defaults.headers.common["Authorization"] = `Bearer ${response.data.token}`;
         
-        router.push("/list/room-bookings");
+        router.push("/admin");
       } else {
         setErrors({
           ...errors,

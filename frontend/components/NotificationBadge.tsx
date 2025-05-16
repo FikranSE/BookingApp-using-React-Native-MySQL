@@ -30,7 +30,7 @@ const NotificationBadge: React.FC<NotificationBadgeProps> = ({
       }
 
       const response = await axios.get(
-        'https://bookingsisi.maturino.my.id/api/notifications/unread-count',
+        'https://j9d3hc82-3001.asse.devtunnels.ms/api/notifications/unread-count',
         { headers: { 'Authorization': `Bearer ${authToken}` } }
       );
 
