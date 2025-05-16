@@ -12,6 +12,7 @@ import {
   CalendarDays, Clock, User, Users, FileText, AlertCircle, 
   CheckCheck, Home, MessageSquare
 } from "lucide-react";
+import Image from "next/image";
 
 const SingleRoomBookingPage = () => {
   const router = useRouter();
@@ -143,8 +144,49 @@ const SingleRoomBookingPage = () => {
     if (!apiClient) return;
     
     try {
-      const response = await apiClient.get(`/room-bookings/${bookingId}`);
-      setBooking(response.data);
+      // First, fetch all rooms to ensure we have the data
+      const roomsResponse = await apiClient.get("/rooms");
+      const roomsMap = new Map(
+        roomsResponse.data.map((room: any) => [
+          room.room_id,
+          {
+            room_id: room.room_id,
+            room_name: room.room_name,
+            image: room.image,
+            capacity: room.capacity,
+            room_type: room.room_type
+          }
+        ])
+      );
+
+      // Then fetch booking with its relations
+      const response = await apiClient.get(`/room-bookings/${bookingId}`, {
+        params: {
+          include: 'room,user',
+          populate: {
+            room: true,
+            user: true
+          }
+        }
+      });
+
+      // Get room data from our map
+      const roomData = roomsMap.get(response.data.room_id) || {
+        room_id: response.data.room_id,
+        room_name: `Room #${response.data.room_id}`,
+        image: null,
+        capacity: 'Not specified',
+        room_type: 'Not specified'
+      };
+
+      // Combine booking data with room data
+      const bookingData = {
+        ...response.data,
+        room: roomData,
+        user: response.data.user || null
+      };
+
+      setBooking(bookingData);
     } catch (err) {
       console.error("Error fetching room booking:", err);
       
@@ -345,7 +387,7 @@ const SingleRoomBookingPage = () => {
                       <Building size={24} />
                     </div>
                     <div className="ml-4">
-                      <h2 className="text-2xl font-bold">{booking.room?.name || `Room #${booking.room_id}`}</h2>
+                      <h2 className="text-2xl font-bold">{booking.room?.room_name || `Room #${booking.room_id}`}</h2>
                       <div className="mt-1 text-sky-50 flex items-center text-sm">
                         <CalendarDays size={14} className="mr-1.5" />
                         <span>{formatDate(booking.booking_date)}</span>
@@ -362,73 +404,156 @@ const SingleRoomBookingPage = () => {
               {/* Booking Details */}
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Time and Location */}
+                  {/* Left Column - Room & Time Info */}
                   <div className="space-y-6">
-                    <div className="p-4 bg-sky-50 rounded-2xl">
-                      <div className="flex items-center mb-3">
-                        <Clock size={20} className="text-sky-500" />
-                        <h3 className="ml-2 font-semibold text-sky-900">Time Slot</h3>
+                    {/* Room Details */}
+                    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                      <div className="p-4 bg-sky-50 border-b border-gray-200">
+                        <h3 className="font-semibold text-sky-900 flex items-center">
+                          <Building size={18} className="mr-2" />
+                          Room Information
+                        </h3>
                       </div>
-                      <p className="text-gray-700">
-                        {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
-                      </p>
+                      <div className="p-4">
+                        {booking.room?.image ? (
+                          <div className="relative w-full h-48 rounded-lg overflow-hidden mb-4">
+                            <Image
+                              src={booking.room.image}
+                              alt={booking.room.room_name || "Room"}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center mb-4">
+                            <Building size={48} className="text-gray-400" />
+                          </div>
+                        )}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-600">Room Name:</span>
+                            <span className="text-sm text-gray-900">{booking.room?.room_name || "Not specified"}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-600">Room Type:</span>
+                            <span className="text-sm text-gray-900">{booking.room?.room_type || "Not specified"}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-600">Capacity:</span>
+                            <span className="text-sm text-gray-900">{booking.room?.capacity || "Not specified"}</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Room Image */}
-                    {booking.room?.image && (
-                      <div className="p-4 bg-sky-50 rounded-2xl">
-                        <div className="flex items-center mb-3">
-                          <Building size={20} className="text-sky-500" />
-                          <h3 className="ml-2 font-semibold text-sky-900">Room Image</h3>
-                        </div>
-                        <img 
-                          src={booking.room.image} 
-                          alt={booking.room.name || "Room"} 
-                          className="w-full h-48 object-cover rounded-xl"
-                        />
+                    {/* Time Details */}
+                    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                      <div className="p-4 bg-sky-50 border-b border-gray-200">
+                        <h3 className="font-semibold text-sky-900 flex items-center">
+                          <Clock size={18} className="mr-2" />
+                          Time Information
+                        </h3>
                       </div>
-                    )}
+                      <div className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-600">Date:</span>
+                          <span className="text-sm text-gray-900">{formatDate(booking.booking_date)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-600">Start Time:</span>
+                          <span className="text-sm text-gray-900">{formatTime(booking.start_time)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-600">End Time:</span>
+                          <span className="text-sm text-gray-900">{formatTime(booking.end_time)}</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Organizer Info */}
+                  {/* Right Column - Booking & User Info */}
                   <div className="space-y-6">
-                    <div className="p-4 bg-indigo-50 rounded-2xl">
-                      <div className="flex items-center mb-3">
-                        <User size={20} className="text-indigo-500" />
-                        <h3 className="ml-2 font-semibold text-indigo-900">Person in Charge</h3>
+                    {/* Booking Details */}
+                    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                      <div className="p-4 bg-sky-50 border-b border-gray-200">
+                        <h3 className="font-semibold text-sky-900 flex items-center">
+                          <FileText size={18} className="mr-2" />
+                          Booking Information
+                        </h3>
                       </div>
-                      <div className="space-y-2">
-                        <p className="text-gray-700">{booking.pic || "Not specified"}</p>
-                        <p className="text-sm text-gray-500">Section: {booking.section || "Not specified"}</p>
+                      <div className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-600">Booking ID:</span>
+                          <span className="text-sm text-gray-900">#{booking.booking_id}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-600">Status:</span>
+                          <span className={`text-sm px-2 py-1 rounded-full ${getStatusStyle(booking.status).bg} ${getStatusStyle(booking.status).text}`}>
+                            {getDisplayStatus(booking)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-600">PIC:</span>
+                          <span className="text-sm text-gray-900">{booking.pic}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-600">Section:</span>
+                          <span className="text-sm text-gray-900">{booking.section}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-600">Agenda:</span>
+                          <span className="text-sm text-gray-900">{booking.agenda}</span>
+                        </div>
                       </div>
                     </div>
+
+                    {/* User Information */}
+                    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                      <div className="p-4 bg-sky-50 border-b border-gray-200">
+                        <h3 className="font-semibold text-sky-900 flex items-center">
+                          <Users size={18} className="mr-2" />
+                          User Information
+                        </h3>
+                      </div>
+                      <div className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-600">User ID:</span>
+                          <span className="text-sm text-gray-900">{booking.user_id}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-600">Email:</span>
+                          <span className="text-sm text-gray-900">{booking.user?.email || "Not specified"}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Additional Information */}
+                    {(booking.description || booking.notes) && (
+                      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                        <div className="p-4 bg-sky-50 border-b border-gray-200">
+                          <h3 className="font-semibold text-sky-900 flex items-center">
+                            <MessageSquare size={18} className="mr-2" />
+                            Additional Information
+                          </h3>
+                        </div>
+                        <div className="p-4 space-y-3">
+                          {booking.description && (
+                            <div>
+                              <span className="text-sm font-medium text-gray-600 block mb-1">Description:</span>
+                              <p className="text-sm text-gray-900">{booking.description}</p>
+                            </div>
+                          )}
+                          {booking.notes && (
+                            <div>
+                              <span className="text-sm font-medium text-gray-600 block mb-1">Notes:</span>
+                              <p className="text-sm text-gray-900">{booking.notes}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                {/* Description & Notes */}
-                {(booking.description || booking.notes) && (
-                  <div className="mt-6 space-y-6">
-                    {booking.description && (
-                      <div className="p-4 bg-gray-50 rounded-2xl">
-                        <div className="flex items-center mb-3">
-                          <FileText size={20} className="text-gray-500" />
-                          <h3 className="ml-2 font-semibold text-gray-900">Description</h3>
-                        </div>
-                        <p className="text-gray-700">{booking.description}</p>
-                      </div>
-                    )}
-                    
-                    {booking.notes && (
-                      <div className="p-4 bg-sky-50 rounded-2xl">
-                        <div className="flex items-center mb-3">
-                          <MessageSquare size={20} className="text-sky-500" />
-                          <h3 className="ml-2 font-semibold text-sky-900">Notes</h3>
-                        </div>
-                        <p className="text-gray-700">{booking.notes}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
           </div>
