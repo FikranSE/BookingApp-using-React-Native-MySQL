@@ -10,7 +10,7 @@ interface StatusFilterProps {
 
 const BookingStatusFilter: React.FC<StatusFilterProps> = ({ 
   onStatusChange, 
-  selectedStatuses 
+  selectedStatuses = [] // Provide default empty array
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -30,20 +30,22 @@ const BookingStatusFilter: React.FC<StatusFilterProps> = ({
   }, []);
 
   const toggleStatus = (status: string) => {
-    if (selectedStatuses.includes(status)) {
-      onStatusChange(selectedStatuses.filter(s => s !== status));
+    const currentStatuses = selectedStatuses || [];
+    if (currentStatuses.includes(status)) {
+      onStatusChange(currentStatuses.filter(s => s !== status));
     } else {
-      onStatusChange([...selectedStatuses, status]);
+      onStatusChange([...currentStatuses, status]);
     }
   };
 
   // Get the appropriate icon and color for the status button
   const getStatusIcon = () => {
-    if (selectedStatuses.length === 0) {
+    const currentStatuses = selectedStatuses || [];
+    if (currentStatuses.length === 0) {
       // No status selected - default state
       return <Clock size={14} className="mr-1.5 text-gray-500" />;
     } 
-    if (selectedStatuses.length === 3) {
+    if (currentStatuses.length === 3) {
       // All statuses selected
       return <Check size={14} className="mr-1.5 text-sky-600" />;
     }
@@ -56,16 +58,16 @@ const BookingStatusFilter: React.FC<StatusFilterProps> = ({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center px-3 py-1.5 rounded-full text-sm ${
-          selectedStatuses.length > 0 
+          (selectedStatuses || []).length > 0 
             ? 'bg-sky-100 text-sky-700' 
             : 'bg-gray-100 text-gray-700'
         } hover:bg-opacity-80 transition-colors`}
       >
         {getStatusIcon()}
         <span>Status</span>
-        {selectedStatuses.length > 0 && (
+        {(selectedStatuses || []).length > 0 && (
           <span className="ml-1.5 bg-sky-200 text-sky-800 rounded-full w-5 h-5 flex items-center justify-center text-xs">
-            {selectedStatuses.length}
+            {(selectedStatuses || []).length}
           </span>
         )}
         <ChevronDown size={14} className="ml-1.5" />
@@ -82,11 +84,11 @@ const BookingStatusFilter: React.FC<StatusFilterProps> = ({
               onClick={() => toggleStatus('approved')}
             >
               <div className={`w-4 h-4 rounded flex items-center justify-center mr-2 border ${
-                selectedStatuses.includes('approved')
+                (selectedStatuses || []).includes('approved')
                   ? 'bg-green-500 border-green-500'
                   : 'border-gray-300'
               }`}>
-                {selectedStatuses.includes('approved') && (
+                {(selectedStatuses || []).includes('approved') && (
                   <Check size={12} className="text-white" />
                 )}
               </div>
@@ -101,11 +103,11 @@ const BookingStatusFilter: React.FC<StatusFilterProps> = ({
               onClick={() => toggleStatus('pending')}
             >
               <div className={`w-4 h-4 rounded flex items-center justify-center mr-2 border ${
-                selectedStatuses.includes('pending')
+                (selectedStatuses || []).includes('pending')
                   ? 'bg-yellow-500 border-yellow-500'
                   : 'border-gray-300'
               }`}>
-                {selectedStatuses.includes('pending') && (
+                {(selectedStatuses || []).includes('pending') && (
                   <Check size={12} className="text-white" />
                 )}
               </div>
@@ -120,11 +122,11 @@ const BookingStatusFilter: React.FC<StatusFilterProps> = ({
               onClick={() => toggleStatus('rejected')}
             >
               <div className={`w-4 h-4 rounded flex items-center justify-center mr-2 border ${
-                selectedStatuses.includes('rejected')
+                (selectedStatuses || []).includes('rejected')
                   ? 'bg-red-500 border-red-500'
                   : 'border-gray-300'
               }`}>
-                {selectedStatuses.includes('rejected') && (
+                {(selectedStatuses || []).includes('rejected') && (
                   <Check size={12} className="text-white" />
                 )}
               </div>

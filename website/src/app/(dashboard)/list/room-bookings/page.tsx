@@ -9,6 +9,7 @@ import TableSearch from "@/components/TableSearch";
 import BookingStatusFilter from "@/components/BookingStatusFilter";
 import DateRangeFilter from "@/components/DateRangeFilter";
 import BookingSortDropdown from "@/components/BookingSortDropdown";
+import AlertMessage from "@/components/AlertMessage";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -109,6 +110,8 @@ const RoomBookingListPage = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [bookingToDelete, setBookingToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [alertType, setAlertType] = useState<'success' | 'error'>('success');
 
   // New state for search, filter, and sort
   const [searchText, setSearchText] = useState("");
@@ -377,12 +380,21 @@ const RoomBookingListPage = () => {
       setShowDeleteConfirm(false);
       setBookingToDelete(null);
       
+      // Show success alert
+      setAlertType('success');
+      setAlertMessage('Room booking has been successfully deleted.');
+      
     } catch (error: any) {
       console.error("Error deleting booking:", error);
       setError(
         error.response?.data?.message || 
         "Unable to delete the room booking. Please try again later."
       );
+      
+      // Show error alert
+      setAlertType('error');
+      setAlertMessage(error.response?.data?.message || 
+        "Unable to delete the room booking. Please try again later.");
     } finally {
       setIsDeleting(false);
     }
@@ -521,14 +533,14 @@ const RoomBookingListPage = () => {
         </td>
         <td className="p-4">
           <div className="flex flex-col">
-            <span className="font-medium text-gray-900">{item.pic}</span>
+            <span className="font-medium text-sky-800">{item.pic}</span>
             <span className="text-xs text-gray-500">{item.section}</span>
           </div>
         </td>
-        <td className="hidden md:table-cell p-4">{item.user?.email || 'N/A'}</td>
-        <td className="hidden md:table-cell p-4">{item.agenda}</td>
-        <td className="hidden md:table-cell p-4">{formatTime(item.start_time)}</td>
-        <td className="hidden lg:table-cell p-4">{formatTime(item.end_time)}</td>
+        <td className="hidden md:table-cell p-4 text-sky-800">{item.user?.email || 'N/A'}</td>
+        <td className="hidden md:table-cell p-4 text-sky-800">{item.agenda}</td>
+        <td className="hidden md:table-cell p-4 text-sky-800">{formatTime(item.start_time)}</td>
+        <td className="hidden lg:table-cell p-4 text-sky-800">{formatTime(item.end_time)}</td>
         <td className="hidden md:table-cell p-4">
           <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center w-fit ${getStatusColor(item.status, item)}`}>
             {getStatusIcon(item.status, item)}
@@ -558,8 +570,15 @@ const RoomBookingListPage = () => {
   };
 
   return (
-    <div className="min-h-screen">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gray-50">
+      {alertMessage && (
+        <AlertMessage 
+          type={alertType} 
+          message={alertMessage} 
+          onClose={() => setAlertMessage(null)} 
+        />
+      )}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Auth status (for debugging - remove in production) */}
         <div className="bg-gray-50 p-2 mb-4 rounded text-xs text-gray-600 border flex justify-between">
           <div>

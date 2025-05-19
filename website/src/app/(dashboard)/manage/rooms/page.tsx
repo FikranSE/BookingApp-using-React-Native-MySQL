@@ -8,6 +8,7 @@ import TableSearch from "@/components/TableSearch"; // This is our enhanced comp
 import FilterDropdown from "@/components/FilterDropdown"; // Our new filter component
 import SortDropdown, { SortDirection } from "@/components/SortDropdown"; // Our new sort component
 import CapacityFilter from "@/components/CapacityFilter"; // Our capacity range filter
+import AlertMessage from "@/components/AlertMessage";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -195,8 +196,9 @@ const RoomManagePage = () => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [statusMessage, setStatusMessage] = useState({ type: null, message: null });
-  
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [alertType, setAlertType] = useState<'success' | 'error'>('success');
+
   // Delete confirmation state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [roomToDelete, setRoomToDelete] = useState<string | null>(null);
@@ -416,21 +418,16 @@ const RoomManagePage = () => {
     try {
       await apiClient.delete(`/rooms/${roomToDelete}`);
       setRooms(rooms.filter(room => room.room_id !== roomToDelete));
-      setStatusMessage({
-        type: 'success',
-        message: 'Room deleted successfully'
-      });
       
-      // Hide the message after 3 seconds
-      setTimeout(() => {
-        setStatusMessage({ type: null, message: null });
-      }, 3000);
+      // Show success alert
+      setAlertType('success');
+      setAlertMessage('Room deleted successfully');
     } catch (err) {
       console.error("Error deleting room:", err);
-      setStatusMessage({
-        type: 'error',
-        message: 'Failed to delete room. Please try again.'
-      });
+      
+      // Show error alert
+      setAlertType('error');
+      setAlertMessage('Failed to delete room. Please try again.');
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
@@ -533,10 +530,9 @@ const RoomManagePage = () => {
           room.room_id === currentRoom.room_id ? response.data : room
         ));
         
-        setStatusMessage({
-          type: 'success',
-          message: 'Room updated successfully'
-        });
+        // Show success alert
+        setAlertType('success');
+        setAlertMessage('Room updated successfully');
       } else {
         // Create new room
         response = await apiClient.post('/rooms', formDataToSend, {
@@ -546,10 +542,9 @@ const RoomManagePage = () => {
         // Add the new room to the rooms list
         setRooms([...rooms, response.data]);
         
-        setStatusMessage({
-          type: 'success',
-          message: 'Room created successfully'
-        });
+        // Show success alert
+        setAlertType('success');
+        setAlertMessage('Room created successfully');
       }
       
       // Close the modal and reset form
@@ -557,7 +552,7 @@ const RoomManagePage = () => {
       
       // Hide the message after 3 seconds
       setTimeout(() => {
-        setStatusMessage({ type: null, message: null });
+        setAlertMessage(null);
       }, 3000);
     } catch (err) {
       console.error("Error saving room:", err);
@@ -572,10 +567,9 @@ const RoomManagePage = () => {
         }
       }
       
-      setStatusMessage({
-        type: 'error',
-        message: errorMessage
-      });
+      // Show error alert
+      setAlertType('error');
+      setAlertMessage(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -651,6 +645,13 @@ const RoomManagePage = () => {
 
   return (
     <div className="min-h-screen">
+      {alertMessage && (
+        <AlertMessage 
+          type={alertType} 
+          message={alertMessage} 
+          onClose={() => setAlertMessage(null)} 
+        />
+      )}
       <div className="container mx-auto px-4 py-8">
         {/* Auth status (for debugging - remove in production) */}
         <div className="bg-gray-50 p-2 mb-4 rounded text-xs text-gray-600 border flex justify-between">
@@ -836,6 +837,7 @@ const RoomManagePage = () => {
         {/* Data table */}
         {!loading && !error && filteredRooms.length > 0 && (
           <div className="bg-white rounded-lg shadow-sm border border-sky-100 overflow-hidden">
+            {/* Table Header with Search, Filter, and Add Button */}
             <div className="p-4">
               <div className="text-xs text-gray-500 mb-2">
                 Showing {filteredRooms.length} of {rooms.length} rooms

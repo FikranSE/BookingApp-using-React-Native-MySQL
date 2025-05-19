@@ -8,6 +8,7 @@ import TableSearch from "@/components/TableSearch"; // This is our enhanced comp
 import FilterDropdown from "@/components/FilterDropdown"; // Our new filter component
 import SortDropdown, { SortDirection } from "@/components/SortDropdown"; // Our new sort component
 import CapacityFilter from "@/components/CapacityFilter"; // Our capacity range filter
+import AlertMessage from "@/components/AlertMessage";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -186,7 +187,8 @@ const TransportManagePage = () => {
   const [previewImage, setPreviewImage] = useState(null);
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [statusMessage, setStatusMessage] = useState({ type: null, message: null });
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [alertType, setAlertType] = useState<'success' | 'error'>('success');
   
   // Delete confirmation state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -423,21 +425,16 @@ const TransportManagePage = () => {
     try {
       await apiClient.delete(`/transports/${transportToDelete}`);
       setTransports(transports.filter(transport => transport.transport_id !== transportToDelete));
-      setStatusMessage({
-        type: 'success',
-        message: 'Transport deleted successfully'
-      });
       
-      // Hide the message after 3 seconds
-      setTimeout(() => {
-        setStatusMessage({ type: null, message: null });
-      }, 3000);
+      // Show success alert
+      setAlertType('success');
+      setAlertMessage('Transport deleted successfully');
     } catch (err) {
       console.error("Error deleting transport:", err);
-      setStatusMessage({
-        type: 'error',
-        message: 'Failed to delete transport. Please try again.'
-      });
+      
+      // Show error alert
+      setAlertType('error');
+      setAlertMessage('Failed to delete transport. Please try again.');
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
@@ -572,10 +569,9 @@ const TransportManagePage = () => {
           transport.transport_id === currentTransport.transport_id ? response.data : transport
         ));
         
-        setStatusMessage({
-          type: 'success',
-          message: 'Transport updated successfully'
-        });
+        // Show success alert
+        setAlertType('success');
+        setAlertMessage('Transport updated successfully');
       } else {
         // Create new transport
         response = await apiClient.post('/transports', formDataToSend, {
@@ -585,10 +581,9 @@ const TransportManagePage = () => {
         // Add the new transport to the transports list
         setTransports([...transports, response.data]);
         
-        setStatusMessage({
-          type: 'success',
-          message: 'Transport created successfully'
-        });
+        // Show success alert
+        setAlertType('success');
+        setAlertMessage('Transport created successfully');
       }
       
       // Close the modal and reset form
@@ -596,7 +591,7 @@ const TransportManagePage = () => {
       
       // Hide the message after 3 seconds
       setTimeout(() => {
-        setStatusMessage({ type: null, message: null });
+        setAlertMessage(null);
       }, 3000);
     } catch (err) {
       console.error("Error saving transport:", err);
@@ -611,10 +606,9 @@ const TransportManagePage = () => {
         }
       }
       
-      setStatusMessage({
-        type: 'error',
-        message: errorMessage
-      });
+      // Show error alert
+      setAlertType('error');
+      setAlertMessage(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -682,6 +676,13 @@ const TransportManagePage = () => {
 
   return (
     <div className="min-h-screen">
+      {alertMessage && (
+        <AlertMessage 
+          type={alertType} 
+          message={alertMessage} 
+          onClose={() => setAlertMessage(null)} 
+        />
+      )}
       <div className="container mx-auto px-4 py-8">
         {/* Auth status (for debugging - remove in production) */}
         <div className="bg-gray-50 p-2 mb-4 rounded text-xs text-gray-600 border flex justify-between">
