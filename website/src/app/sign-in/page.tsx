@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LockIcon, MailIcon, EyeIcon, EyeOffIcon, AlertCircleIcon } from "lucide-react";
+import { apiClient, endpoints } from "@/lib/api-client";
 
 const LoginPage = () => {
   const router = useRouter();
@@ -31,18 +31,18 @@ const LoginPage = () => {
     }
   }, []);
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [name]: value,
-    });
+    }));
     
-    if (errors[name]) {
-      setErrors({
-        ...errors,
+    if (errors[name as keyof typeof errors]) {
+      setErrors(prev => ({
+        ...prev,
         [name]: "",
-      });
+      }));
     }
   };
 
@@ -71,22 +71,19 @@ const LoginPage = () => {
     return isValid;
   };
 
-  const handleLogin = async (e) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) return;
 
     setLoading(true);
-    setErrors({ ...errors, general: "" });
+    setErrors(prev => ({ ...prev, general: "" }));
 
     try {
-      const response = await axios.post(
-        "https://j9d3hc82-3001.asse.devtunnels.ms/api/admins/auth/login",
-        {
-          email: formData.email,
-          password: formData.password,
-        }
-      );
+      const response = await apiClient.post(endpoints.auth.login, {
+        email: formData.email,
+        password: formData.password,
+      });
 
       console.log("Login response:", response.data);
       setDebug(`Login response received: ${JSON.stringify(response.data)}`);
@@ -99,46 +96,47 @@ const LoginPage = () => {
           localStorage.setItem("adminInfo", JSON.stringify(response.data.admin));
         }
         
-        axios.defaults.headers.common["Authorization"] = `Bearer ${response.data.token}`;
-        
+        // Token is automatically set in the request interceptor
         router.push("/admin");
       } else {
-        setErrors({
-          ...errors,
+        setErrors(prev => ({
+          ...prev,
           general: "Login successful but no token received. Please try again."
-        });
+        }));
       }
-    } catch (err) {
-      console.error("Login error:", err);
-      setDebug(`Login error: ${err.message}, Status: ${err.response?.status}`);
+    } catch (error: any) {
+      console.error("Login error:", error);
+      const errorMessage = error.response?.data?.message || "An unexpected error occurred";
+      const statusCode = error.response?.status;
+      setDebug(`Login error: ${errorMessage}, Status: ${statusCode}`);
       
-      if (err.response) {
-        if (err.response.status === 401) {
-          setErrors({
-            ...errors,
+      if (error.response) {
+        if (error.response.status === 401) {
+          setErrors(prev => ({
+            ...prev,
             general: "Invalid email or password. Please try again."
-          });
-        } else if (err.response.status === 403) {
-          setErrors({
-            ...errors,
+          }));
+        } else if (error.response.status === 403) {
+          setErrors(prev => ({
+            ...prev,
             general: "Your account is disabled. Please contact an administrator."
-          });
+          }));
         } else {
-          setErrors({
-            ...errors,
-            general: err.response.data?.message || "An error occurred during login. Please try again."
-          });
+          setErrors(prev => ({
+            ...prev,
+            general: errorMessage
+          }));
         }
-      } else if (err.request) {
-        setErrors({
-          ...errors,
+      } else if (error.request) {
+        setErrors(prev => ({
+          ...prev,
           general: "Unable to connect to the server. Please check your internet connection."
-        });
+        }));
       } else {
-        setErrors({
-          ...errors,
+        setErrors(prev => ({
+          ...prev,
           general: "An unexpected error occurred. Please try again later."
-        });
+        }));
       }
     } finally {
       setLoading(false);

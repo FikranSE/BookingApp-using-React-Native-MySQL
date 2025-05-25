@@ -10,9 +10,63 @@ import { useParams } from "next/navigation";
 import { 
   Car, Edit, Trash2, CheckCircle, XCircle, ArrowLeft,
   CalendarDays, Clock, User, Users, FileText, AlertCircle, 
-  CheckCheck, Home, MessageSquare, MapPin
+  CheckCheck, Home, MessageSquare, MapPin, ImageIcon
 } from "lucide-react";
 import Image from "next/image";
+
+const API_BASE_URL = "https://j9d3hc82-3001.asse.devtunnels.ms";
+
+const fixImageUrl = (imageUrl: string | undefined | null): string | null => {
+  if (!imageUrl) return null;
+  
+  console.log(`Original image URL: ${imageUrl}`);
+  
+  let fixedUrl = imageUrl;
+  
+  // Handle local filesystem paths (should be in backend only)
+  if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
+    console.log(`Converting local path to API proxy: ${imageUrl}`);
+    return `/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+  }
+  
+  // Fix double slash issue in URLs
+  if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
+    fixedUrl = imageUrl.replace('//uploads', '/uploads');
+    console.log(`Fixed double slash: ${fixedUrl}`);
+  }
+  
+  // Ensure the URL has the correct protocol (https)
+  if (typeof fixedUrl === 'string' && fixedUrl.startsWith('http://')) {
+    fixedUrl = fixedUrl.replace('http://', 'https://');
+    console.log(`Fixed protocol: ${fixedUrl}`);
+  }
+  
+  // For absolute URLs that include the server domain, keep them as-is
+  if (typeof fixedUrl === 'string' && fixedUrl.startsWith('https://')) {
+    console.log(`Using absolute URL as-is: ${fixedUrl}`);
+    return fixedUrl;
+  }
+  
+  // For relative URLs starting with /uploads, prefix with API_BASE_URL
+  if (typeof fixedUrl === 'string' && fixedUrl.startsWith('/uploads')) {
+    fixedUrl = `${API_BASE_URL}${fixedUrl}`;
+    console.log(`Added API base URL to uploads path: ${fixedUrl}`);
+    return fixedUrl;
+  }
+  
+  // Add the server base URL if the image path is relative without a leading /
+  if (typeof fixedUrl === 'string' && 
+      !fixedUrl.startsWith('http') && 
+      !fixedUrl.startsWith('/') && 
+      !fixedUrl.startsWith('data:')) {
+    fixedUrl = `${API_BASE_URL}/uploads/${fixedUrl}`;
+    console.log(`Created full URL: ${fixedUrl}`);
+    return fixedUrl;
+  }
+  
+  console.log(`Final fixed URL: ${fixedUrl}`);
+  return fixedUrl || '';
+};
 
 const SingleTransportBookingPage = () => {
   const router = useRouter();
@@ -25,6 +79,11 @@ const SingleTransportBookingPage = () => {
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState(null);
   const [notes, setNotes] = useState("");
+  
+  // Image debugging states
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [debugMode, setDebugMode] = useState(false);
 
   // Create a custom axios instance
   const createApiClient = () => {
@@ -135,6 +194,89 @@ const SingleTransportBookingPage = () => {
     return booking.status;
   };
 
+  // Keep the processImageUrl function for backward compatibility
+  const processImageUrl = (imageUrl) => {
+    return fixImageUrl(imageUrl);
+  };
+
+  // Enhanced Transport Image Component with fallback and better URL handling
+  const TransportImage = ({ imageUrl, alt, className }) => {
+    const [imgSrc, setImgSrc] = useState<string | null>(null);
+    const [imgError, setImgError] = useState(false);
+    const [imgLoading, setImgLoading] = useState(true);
+
+    useEffect(() => {
+      if (!imageUrl) {
+        setImgError(true);
+        setImgLoading(false);
+        return;
+      }
+
+      const fixedUrl = fixImageUrl(imageUrl);
+      console.log(`🖼️ Processed image URL: ${fixedUrl} (from ${imageUrl})`);
+      
+      if (!fixedUrl) {
+        setImgError(true);
+        setImgLoading(false);
+        return;
+      }
+
+      setImgSrc(fixedUrl);
+      setImgError(false);
+      setImgLoading(true);
+    }, [imageUrl]);
+
+    const handleImageError = () => {
+      console.error(`❌ Transport image failed to load: ${imgSrc} (original: ${imageUrl})`);
+      setImgError(true);
+      setImgLoading(false);
+    };
+
+    const handleImageLoad = () => {
+      console.log(`✅ Transport image loaded successfully: ${imgSrc}`);
+      setImgError(false);
+      setImgLoading(false);
+    };
+
+    // If no image URL or error occurred, show fallback
+    if (!imgSrc || imgError) {
+      return (
+        <div className={`bg-gradient-to-br from-indigo-100 to-indigo-200 flex flex-col items-center justify-center ${className}`}>
+          <Car size={48} className="text-indigo-400 mb-2" />
+          <span className="text-xs text-indigo-600">No Image Available</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className={`relative ${className}`}>
+        {imgLoading && (
+          <div className="absolute inset-0 bg-indigo-50 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+          </div>
+        )}
+        
+        {/* Use regular img tag for better error handling */}
+        <img
+          src={imgSrc}
+          alt={alt || 'Transport Image'}
+          className="w-full h-full object-cover"
+          onError={handleImageError}
+          onLoad={handleImageLoad}
+          style={{ display: imgLoading ? 'none' : 'block' }}
+        />
+        
+        {debugMode && (
+          <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-xs p-2">
+            <div className="truncate">URL: {imgSrc}</div>
+            <div>Status: {imgLoading ? 'Loading...' : imgError ? 'Error' : 'Loaded'}</div>
+            <div className="text-xxs opacity-75">Original: {imageUrl}</div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Fetch transport booking data
   const fetchBookingData = async () => {
     setLoading(true);
@@ -144,8 +286,12 @@ const SingleTransportBookingPage = () => {
     if (!apiClient) return;
     
     try {
+      console.log("🚀 Fetching transport booking data for ID:", bookingId);
+      
       // First, fetch all transports to ensure we have the data
       const transportsResponse = await apiClient.get("/transports");
+      console.log("🚚 Transports response:", transportsResponse.data);
+      
       const transportsMap = new Map(
         transportsResponse.data.map((transport: any) => [
           transport.transport_id,
@@ -153,11 +299,13 @@ const SingleTransportBookingPage = () => {
             transport_id: transport.transport_id,
             vehicle_name: transport.vehicle_name,
             image: transport.image,
-            driver_name: transport.driver_name,
-            capacity: transport.capacity
+            capacity: transport.capacity,
+            driver_name: transport.driver_name
           }
         ])
       );
+
+      console.log("🗺️ Transports map created:", transportsMap);
 
       // Then fetch booking with its relations
       const response = await apiClient.get(`/transport-bookings/${bookingId}`, {
@@ -170,14 +318,18 @@ const SingleTransportBookingPage = () => {
         }
       });
 
+      console.log("📋 Transport booking response:", response.data);
+
       // Get transport data from our map
       const transportData = transportsMap.get(response.data.transport_id) || {
         transport_id: response.data.transport_id,
         vehicle_name: `Transport #${response.data.transport_id}`,
         image: null,
-        driver_name: 'No driver assigned',
-        capacity: 'Not specified'
+        capacity: 'Not specified',
+        driver_name: 'Not specified'
       };
+
+      console.log("🚚 Final transport data:", transportData);
 
       // Combine booking data with transport data
       const bookingData = {
@@ -186,9 +338,12 @@ const SingleTransportBookingPage = () => {
         user: response.data.user || null
       };
 
+      console.log("📋 Final transport booking data:", bookingData);
+      console.log("🖼️ Transport image URL in booking:", bookingData.transport?.image);
+
       setBooking(bookingData);
     } catch (err) {
-      console.error("Error fetching transport booking:", err);
+      console.error("💥 Error fetching transport booking:", err);
       
       // Check for unauthorized error
       if (err.response?.status === 401) {
@@ -213,12 +368,11 @@ const SingleTransportBookingPage = () => {
     
     const apiClient = createApiClient();
     if (!apiClient) return;
-    
+  
     try {
-      // Get current admin ID from localStorage if available
       const adminInfo = localStorage.getItem("adminInfo");
       let approver_id = null;
-      
+  
       if (adminInfo) {
         try {
           const adminData = JSON.parse(adminInfo);
@@ -227,20 +381,20 @@ const SingleTransportBookingPage = () => {
           console.error("Error parsing admin info:", e);
         }
       }
-      
-      // Prepare update data
+  
+      // Prepare the booking update data
       const updateData = {
         status: newStatus,
         approver_id: approver_id,
         approved_at: new Date().toISOString(),
         notes: notes
       };
-      
-      console.log(`Sending update request for transport booking ${bookingId} with status ${newStatus}`);
-      
-      // Update booking
+  
+      console.log(`Sending update request for booking ${bookingId} with status ${newStatus}`);
+  
+      // Update booking status
       const response = await apiClient.put(`/transport-bookings/${bookingId}`, updateData);
-      
+  
       // Check response
       if (response.status === 200) {
         setStatusMessage({
@@ -249,7 +403,7 @@ const SingleTransportBookingPage = () => {
             response.data.emailSent ? ' Notification email sent.' : ''
           }`
         });
-        
+  
         fetchBookingData(); // Refresh booking data
         setNotes(""); // Clear notes after successful update
       } else {
@@ -361,6 +515,7 @@ const SingleTransportBookingPage = () => {
   return (
     <div className="min-h-screen bg-white">
       <div className="container mx-auto px-4 py-6">
+
         {/* Status message */}
         {statusMessage && (
           <div className={`mb-6 p-4 rounded-xl ${statusMessage.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
@@ -416,20 +571,13 @@ const SingleTransportBookingPage = () => {
                         </h3>
                       </div>
                       <div className="p-4">
-                        {booking.transport?.image ? (
-                          <div className="relative w-full h-48 rounded-lg overflow-hidden mb-4">
-                            <Image
-                              src={booking.transport.image}
-                              alt={booking.transport.vehicle_name || "Transport"}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center mb-4">
-                            <Car size={48} className="text-gray-400" />
-                          </div>
-                        )}
+                        {/* Enhanced Transport Image Display with Better Fallback */}
+                        <TransportImage
+                          imageUrl={booking.transport?.image}
+                          alt={booking.transport?.vehicle_name || "Transport"}
+                          className="w-full h-48 rounded-lg overflow-hidden mb-4"
+                        />
+                        
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-medium text-gray-600">Vehicle Name:</span>

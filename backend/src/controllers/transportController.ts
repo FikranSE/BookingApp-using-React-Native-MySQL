@@ -10,7 +10,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Get server URL from environment variables or use a default
-const SERVER_URL = process.env.SERVER_URL || 'https://j9d3hc82-3001.asse.devtunnels.ms';
+const SERVER_URL = process.env.SERVER_URL;
 
 // IMPORTANT: This path must match the one in app.js and multerConfig.ts
 const uploadsDir = path.join(__dirname, '../utils/uploads');

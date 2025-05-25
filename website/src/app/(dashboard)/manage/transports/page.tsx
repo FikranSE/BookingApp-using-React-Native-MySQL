@@ -116,13 +116,6 @@ const fixImageUrl = (imageUrl) => {
   return fixedUrl;
 };
 
-// Better placeholder image with SVG data URI
-const getPlaceholderImage = () => {
-  // Return a data URI SVG of a car icon as a guaranteed fallback
-  return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24' fill='none' stroke='%23cccccc' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2m2 4h12a2 2 0 0 0 2-2v-1H2v1c0 1.1.9 2 2 2ZM6 16v1m12-1v1'/%3E%3C/svg%3E";
-};
-
-// Reusable Transport Image component
 const TransportImage = ({ 
   image, 
   alt, 
@@ -165,6 +158,15 @@ const TransportImage = ({
     />
   );
 };
+
+
+// Better placeholder image with SVG data URI
+const getPlaceholderImage = () => {
+  // Return a data URI SVG of a car icon as a guaranteed fallback
+  return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24' fill='none' stroke='%23cccccc' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2m2 4h12a2 2 0 0 0 2-2v-1H2v1c0 1.1.9 2 2 2ZM6 16v1m12-1v1'/%3E%3C/svg%3E";
+};
+
+// Reusable Transport Image component
 
 const TransportManagePage = () => {
   const router = useRouter();

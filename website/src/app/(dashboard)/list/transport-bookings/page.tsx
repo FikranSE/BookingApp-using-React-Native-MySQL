@@ -19,6 +19,125 @@ import {
 } from "lucide-react";
 import { exportToExcel, formatDateForExcel, formatTimeForExcel } from "@/utils/excelExport";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://j9d3hc82-3001.asse.devtunnels.ms';
+
+const fixImageUrl = (imageUrl: string | undefined | null): string | null => {
+  if (!imageUrl) return null;
+  
+  console.log(`Original image URL: ${imageUrl}`);
+  
+  let fixedUrl = imageUrl;
+  
+  // Handle local filesystem paths (should be in backend only)
+  if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
+    console.log(`Converting local path to API proxy: ${imageUrl}`);
+    return `/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+  }
+  
+  // Fix double slash issue in URLs
+  if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
+    fixedUrl = imageUrl.replace('//uploads', '/uploads');
+    console.log(`Fixed double slash: ${fixedUrl}`);
+  }
+  
+  // Ensure the URL has the correct protocol (https)
+  if (typeof fixedUrl === 'string' && fixedUrl.startsWith('http://')) {
+    fixedUrl = fixedUrl.replace('http://', 'https://');
+    console.log(`Fixed protocol: ${fixedUrl}`);
+  }
+  
+  // For absolute URLs that include the server domain, keep them as-is
+  if (typeof fixedUrl === 'string' && fixedUrl.startsWith('https://')) {
+    console.log(`Using absolute URL as-is: ${fixedUrl}`);
+    return fixedUrl;
+  }
+  
+  // For relative URLs starting with /uploads, prefix with API_BASE_URL
+  if (typeof fixedUrl === 'string' && fixedUrl.startsWith('/uploads')) {
+    fixedUrl = `${API_BASE_URL}${fixedUrl}`;
+    console.log(`Added API base URL to uploads path: ${fixedUrl}`);
+    return fixedUrl;
+  }
+  
+  // Add the server base URL if the image path is relative without a leading /
+  if (typeof fixedUrl === 'string' && 
+      !fixedUrl.startsWith('http') && 
+      !fixedUrl.startsWith('/') && 
+      !fixedUrl.startsWith('data:')) {
+    fixedUrl = `${API_BASE_URL}/uploads/${fixedUrl}`;
+    console.log(`Created full URL: ${fixedUrl}`);
+    return fixedUrl;
+  }
+  
+  console.log(`Final fixed URL: ${fixedUrl}`);
+  return fixedUrl || '';
+};
+
+const getPlaceholderImage = () => {
+  return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiA3NzljYWIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1jYXIiPjxwYXRoIGQ9Ik0xOSAxN2MwIDIuMi0yLjIgNC01IDRzLTUtMS44LTUtNFMyMSAxMyAxOSAxM3oiLz48cGF0aCBkPSJNMTMgMTkgSDlWMjBIMTVWMTlaIi8+PHBhdGggZD0iTTE5IDEzSDVjLTEuMSAwLTIgLjktMiAydjNoMTh2LTNjMC0xLjEtLjktMi0yLTJ6Ii8+PC9zdmc+';
+};
+
+const TransportImage = ({ 
+  image, 
+  alt = "Transport Image",
+  className = "w-full h-full object-cover", 
+  fallbackIcon = null 
+}: { 
+  image?: string | null; 
+  alt?: string;
+  className?: string;
+  fallbackIcon?: React.ReactNode;
+}) => {
+  const [imgSrc, setImgSrc] = useState<string | null>(null);
+  const [hasError, setHasError] = useState(false);
+  
+  useEffect(() => {
+    if (!image) {
+      setHasError(true);
+      return;
+    }
+    
+    const fixedUrl = fixImageUrl(image);
+    console.log(`TransportImage initial imgSrc: ${fixedUrl} (from ${image})`);
+    
+    // Basic URL validation
+    if (!fixedUrl) {
+      console.error('Invalid image URL after fixing');
+      setHasError(true);
+      return;
+    }
+    
+    setImgSrc(fixedUrl);
+    setHasError(false);
+    
+    // Debug log on component mount/update
+    console.log(`TransportImage rendering for image: ${image}`);
+    console.log(`Processed URL: ${fixedUrl}`);
+  }, [image]);
+  
+  const handleError = () => {
+    console.error(`Error loading image: ${imgSrc} (original: ${image})`);
+    setHasError(true);
+  };
+  
+  if (!image || hasError) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-100 rounded-lg">
+        {fallbackIcon || <Car size={24} className="text-gray-300" />}
+      </div>
+    );
+  }
+  
+  return (
+    <img 
+      src={imgSrc || ''}
+      alt={alt}
+      className={className}
+      onError={handleError}
+    />
+  );
+};
+
 type TransportBooking = {
   booking_id: number;
   user_id: number;
@@ -466,20 +585,14 @@ const TransportBookingListPage = () => {
         <td className="p-4">#{item.booking_id}</td>
         <td className="hidden md:table-cell p-4">
           <div className="flex items-center gap-2">
-            {item.transport?.image ? (
-              <div className="relative w-8 h-8 rounded-lg overflow-hidden">
-                <Image
-                  src={item.transport.image}
-                  alt={item.transport.vehicle_name || 'Transport Image'}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            ) : (
-              <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                <Car size={16} className="text-gray-400" />
-              </div>
-            )}
+            <div className="w-8 h-8 rounded-lg overflow-hidden">
+              <TransportImage 
+                image={item.transport?.image}
+                alt={item.transport?.vehicle_name || 'Transport Image'}
+                className="w-full h-full object-cover"
+                fallbackIcon={<Car size={16} className="text-gray-400" />}
+              />
+            </div>
             <div className="flex flex-col">
               <span className="font-medium text-gray-900">
                 {item.transport?.vehicle_name || `Transport #${item.transport_id}`}
@@ -800,21 +913,18 @@ const TransportBookingListPage = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-sky-800">#{item.booking_id}</td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
                           <div className="flex items-start">
-                            {item.transport?.image ? (
-                              <div className="flex-shrink-0 h-16 w-16 mr-4">
-                                <Image
-                                  src={item.transport.image}
-                                  alt={item.transport?.vehicle_name || `Transport ${item.transport_id}`}
-                                  width={64}
-                                  height={64}
-                                  className="rounded-lg object-cover"
-                                />
-                              </div>
-                            ) : (
-                              <div className="flex-shrink-0 h-16 w-16 mr-4 bg-gray-100 rounded-lg flex items-center justify-center">
-                                <Car size={32} className="text-gray-400" />
-                              </div>
-                            )}
+                            <div className="flex-shrink-0 h-16 w-16 mr-4">
+                              <TransportImage 
+                                image={item.transport?.image}
+                                alt={item.transport?.vehicle_name || 'Transport Image'}
+                                className="w-full h-full rounded-lg object-cover"
+                                fallbackIcon={
+                                  <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center">
+                                    <Car size={24} className="text-gray-400" />
+                                  </div>
+                                }
+                              />
+                            </div>
                             <div className="flex flex-col justify-center">
                               <div className="text-sm font-medium text-sky-800">
                                 {item.transport?.vehicle_name || `Transport ${item.transport_id}`}

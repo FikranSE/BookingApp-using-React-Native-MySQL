@@ -1,7 +1,7 @@
+
 "use client";
 
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
@@ -19,6 +19,7 @@ import {
   Download
 } from "lucide-react";
 import { exportToExcel, formatDateForExcel, formatTimeForExcel } from "@/utils/excelExport";
+import { apiClient, endpoints } from "@/lib/api-client";
 
 type RoomBooking = {
   booking_id: number;
@@ -53,7 +54,6 @@ type DateFilter = {
   endDate: string | null;
 };
 
-// Updated columns to include room name and image
 const columns = [
   {
     header: "Booking ID",
@@ -105,7 +105,7 @@ const RoomBookingListPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [authStatus, setAuthStatus] = useState<string>("Checking...");
-  
+
   // Delete confirmation states
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [bookingToDelete, setBookingToDelete] = useState<number | null>(null);
@@ -113,7 +113,7 @@ const RoomBookingListPage = () => {
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [alertType, setAlertType] = useState<'success' | 'error'>('success');
 
-  // New state for search, filter, and sort
+  // Filter states
   const [searchText, setSearchText] = useState("");
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<DateFilter>({ startDate: null, endDate: null });
@@ -129,30 +129,17 @@ const RoomBookingListPage = () => {
     { id: "status", label: "Status" }
   ];
 
-  // Create a custom axios instance to avoid conflicts 
-  const createApiClient = () => {
-    // Get token from localStorage
-    const token = localStorage.getItem("adminToken");
-    
+  // Check authentication status
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem("adminToken") : null;
     if (!token) {
       console.log("No admin token found, redirecting to login");
       router.push("/sign-in");
       setAuthStatus("No token found");
-      return null;
+      return;
     }
-    
     setAuthStatus(`Token found (${token.substring(0, 10)}...)`);
-    
-    // Create axios instance with auth header
-    const apiClient = axios.create({
-      baseURL: "https://j9d3hc82-3001.asse.devtunnels.ms/api",
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    
-    return apiClient;
-  };
+  }, [router]);
 
   // Apply search, filters, and sorting
   useEffect(() => {
@@ -168,6 +155,8 @@ const RoomBookingListPage = () => {
   const applyFiltersAndSort = () => {
     let result = [...roomBookings];
     
+    console.log("🔍 Applying filters to", result.length, "bookings");
+    
     // Apply search filter
     if (searchText) {
       const searchLower = searchText.toLowerCase();
@@ -178,6 +167,7 @@ const RoomBookingListPage = () => {
         booking.section.toLowerCase().includes(searchLower) ||
         booking.room_id.toString().includes(searchLower)
       );
+      console.log("🔍 After search filter:", result.length, "bookings");
     }
     
     // Apply status filter
@@ -185,6 +175,7 @@ const RoomBookingListPage = () => {
       result = result.filter(booking => 
         statusFilters.includes(booking.status.toLowerCase())
       );
+      console.log("🔍 After status filter:", result.length, "bookings");
     }
     
     // Apply date filter
@@ -206,6 +197,7 @@ const RoomBookingListPage = () => {
         
         return true;
       });
+      console.log("🔍 After date filter:", result.length, "bookings");
     }
     
     // Apply sorting
@@ -232,6 +224,7 @@ const RoomBookingListPage = () => {
       });
     }
     
+    console.log("✅ Final filtered bookings:", result.length);
     setFilteredBookings(result);
   };
 
@@ -239,75 +232,128 @@ const RoomBookingListPage = () => {
     setLoading(true);
     setError(null);
     
-    const apiClient = createApiClient();
-    if (!apiClient) return;
-    
     try {
-      console.log("Fetching room bookings...");
-      // First, fetch all rooms to ensure we have the data
-      const roomsResponse = await apiClient.get("/rooms");
+      console.log("🚀 Starting to fetch room bookings...");
+      
+      // Method 1: Try to fetch bookings directly first
+      console.log("📡 Fetching bookings from:", endpoints.bookings?.room || 'undefined endpoint');
+      
+      let bookingsResponse;
+      try {
+        // Try different API endpoints/methods
+        if (endpoints.bookings?.room) {
+          bookingsResponse = await apiClient.get(endpoints.bookings.room);
+        } else if (endpoints.bookings) {
+          bookingsResponse = await apiClient.get(endpoints.bookings);
+        } else {
+          // Fallback endpoint
+          bookingsResponse = await apiClient.get('/api/bookings/room');
+        }
+        
+        console.log("📋 Raw bookings response:", bookingsResponse);
+        console.log("📋 Bookings data:", bookingsResponse.data);
+        
+      } catch (bookingError: any) {
+        console.error("❌ Error fetching bookings:", bookingError);
+        console.log("📡 Response status:", bookingError.response?.status);
+        console.log("📡 Response data:", bookingError.response?.data);
+        
+        // Try alternative endpoint structure
+        try {
+          bookingsResponse = await apiClient.get('/room-bookings');
+        } catch (altError) {
+          throw bookingError; // Use original error
+        }
+      }
+
+      // Method 2: Fetch rooms data (if needed)
+      let roomsData = [];
+      try {
+        console.log("🏢 Fetching rooms from:", endpoints.rooms || 'undefined endpoint');
+        const roomsResponse = await apiClient.get(endpoints.rooms || '/api/rooms');
+        roomsData = roomsResponse.data.data || roomsResponse.data || [];
+        console.log("🏢 Rooms data:", roomsData);
+      } catch (roomError) {
+        console.warn("⚠️ Could not fetch rooms data:", roomError);
+        // Continue without rooms data
+      }
+
+      // Create rooms mapping
       const roomsMap = new Map(
-        roomsResponse.data.map((room: any) => [
+        roomsData.map((room: any) => [
           room.room_id,
           {
             room_id: room.room_id,
-            room_name: room.room_name,
+            room_name: room.room_name || room.name || `Room ${room.room_id}`,
             image: room.image,
-            capacity: room.capacity,
-            floor: room.floor
+            floor: room.floor,
+            capacity: room.capacity
           }
         ])
       );
 
-      // Then fetch bookings with their relations
-      const response = await apiClient.get("/room-bookings", {
-        params: {
-          include: 'room,user',
-          populate: {
-            room: true,
-            user: true
-          }
-        }
-      });
-      console.log("Room bookings API response:", response.data);
+      // Process bookings data
+      const responseData = bookingsResponse.data.data || bookingsResponse.data || [];
+      console.log("📊 Processing", responseData.length, "bookings");
       
-      // Transform the data to ensure room data is properly structured
-      const transformedData = response.data.map((booking: any) => {
-        console.log("Processing booking:", booking); // Debug log
-        
-        // Get room data from our map
-        const roomData = roomsMap.get(booking.room_id) || {
-          room_id: booking.room_id,
-          room_name: `Room #${booking.room_id}`,
-          image: null,
-          capacity: 'Not specified',
-          floor: 'Not specified'
-        };
+  
 
-        return {
-          ...booking,
-          room: roomData,
-          user: booking.user || null
+      // Transform the data
+      const transformedData = responseData.map((booking: any, index: number) => {
+        console.log(`🔄 Processing booking ${index + 1}:`, booking);
+        
+        const transformed = {
+          booking_id: booking.booking_id || booking.id,
+          user_id: booking.user_id,
+          room_id: booking.room_id,
+          booking_date: booking.booking_date || booking.date,
+          agenda: booking.agenda || booking.title || 'No agenda',
+          start_time: booking.start_time,
+          end_time: booking.end_time,
+          pic: booking.pic || booking.person_in_charge || 'Unknown',
+          section: booking.section || booking.department || 'Unknown',
+          description: booking.description,
+          status: booking.status || 'pending',
+          notes: booking.notes,
+          approver_id: booking.approver_id,
+          approved_at: booking.approved_at,
+          // Handle user data
+          user: booking.user || (booking.user_email ? { email: booking.user_email } : { email: 'Unknown' }),
+          // Handle room data
+          room: booking.room || roomsMap.get(booking.room_id) || {
+            room_id: booking.room_id,
+            room_name: booking.room_name || `Room ${booking.room_id}`,
+            floor: booking.floor || 'N/A',
+            capacity: booking.capacity || 'N/A'
+          }
         };
+        
+        console.log(`✅ Transformed booking ${index + 1}:`, transformed);
+        return transformed;
       });
       
-      console.log("Transformed data:", transformedData);
+      console.log("🎉 Successfully processed", transformedData.length, "bookings");
       setRoomBookings(transformedData);
       setAuthStatus("Authenticated and data loaded");
+      
+      
     } catch (error: any) {
-      console.error("Error fetching room bookings:", error);
+      console.error("💥 Error in fetchRoomBookings:", error);
       
       if (error.response?.status === 401) {
         setAuthStatus("Authentication failed (401) - token may be invalid");
-        localStorage.removeItem("adminToken");
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem("adminToken");
+        }
         router.push("/sign-in");
         return;
       }
       
-      setError(
-        error.response?.data?.message || 
-        "Unable to load room bookings. Please try again later."
-      );
+      const errorMessage = error.response?.data?.message || 
+        error.message ||
+        "Unable to load room bookings. Please try again later.";
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -343,6 +389,7 @@ const RoomBookingListPage = () => {
 
   // Format time to 12-hour format
   const formatTime = (timeString: string) => {
+    if (!timeString) return 'N/A';
     const [hours, minutes] = timeString.split(':');
     const date = new Date();
     date.setHours(parseInt(hours));
@@ -353,6 +400,7 @@ const RoomBookingListPage = () => {
 
   // Format date
   const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -365,11 +413,9 @@ const RoomBookingListPage = () => {
     if (!bookingToDelete) return;
     
     setIsDeleting(true);
-    const apiClient = createApiClient();
-    if (!apiClient) return;
     
     try {
-      await apiClient.delete(`/room-bookings/${bookingToDelete}`);
+      await apiClient.delete(`${endpoints.bookings.room}/${bookingToDelete}`);
       
       // Remove the deleted booking from state
       setRoomBookings(prevBookings => 
@@ -386,15 +432,21 @@ const RoomBookingListPage = () => {
       
     } catch (error: any) {
       console.error("Error deleting booking:", error);
-      setError(
-        error.response?.data?.message || 
-        "Unable to delete the room booking. Please try again later."
-      );
+      const errorMessage = error.response?.data?.message || 
+        "Unable to delete the room booking. Please try again later.";
+      
+      setError(errorMessage);
       
       // Show error alert
       setAlertType('error');
-      setAlertMessage(error.response?.data?.message || 
-        "Unable to delete the room booking. Please try again later.");
+      setAlertMessage(errorMessage);
+      
+      if (error.response?.status === 401) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem("adminToken");
+        }
+        router.push("/sign-in");
+      }
     } finally {
       setIsDeleting(false);
     }
@@ -442,7 +494,7 @@ const RoomBookingListPage = () => {
 
   // Function to check if booking is expired
   const checkIfExpired = (booking: RoomBooking) => {
-    if (!booking) return false;
+    if (!booking || !booking.booking_date || !booking.end_time) return false;
     
     const now = new Date();
     const bookingDate = new Date(booking.booking_date);
@@ -488,8 +540,7 @@ const RoomBookingListPage = () => {
   };
 
   const renderRow = (item: RoomBooking) => {
-    console.log("Rendering row with data:", item); // Debug log
-    console.log("Room data in render:", item.room); // Debug log for room data
+    console.log("Rendering row with data:", item);
     
     return (
       <tr
@@ -579,31 +630,6 @@ const RoomBookingListPage = () => {
         />
       )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Auth status (for debugging - remove in production) */}
-        <div className="bg-gray-50 p-2 mb-4 rounded text-xs text-gray-600 border flex justify-between">
-          <div>
-            <span>Auth status: {authStatus}</span>
-          </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => {
-                localStorage.removeItem("adminToken");
-                localStorage.removeItem("adminInfo");
-                router.push("/sign-in");
-              }}
-              className="text-red-500 hover:underline text-xs"
-            >
-              Sign out
-            </button>
-            <button
-              onClick={() => window.location.reload()}
-              className="text-blue-500 hover:underline text-xs"
-            >
-              Reload page
-            </button>
-          </div>
-        </div>
-
         {/* TOP */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-sky-100 mb-6">
           <div className="flex items-center justify-between mb-6">
@@ -702,7 +728,7 @@ const RoomBookingListPage = () => {
             <h3 className="font-bold mb-2">Error</h3>
             <p>{error}</p>
             <button 
-              onClick={() => window.location.reload()}
+              onClick={fetchRoomBookings}
               className="mt-3 px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200"
             >
               Try Again

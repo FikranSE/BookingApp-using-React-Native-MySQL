@@ -11,6 +11,11 @@ import {
 import { Calendar as BigCalendar, momentLocalizer, View as CalendarView } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
+
 
 // Custom CSS to override calendar styles - add this after the import
 const calendarStyles = `
