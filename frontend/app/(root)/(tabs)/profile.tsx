@@ -45,7 +45,7 @@ const Profile = () => {
 
   const handleEditProfile = async () => {
     try {
-      const response = await api.put('https://j9d3hc82-3001.asse.devtunnels.ms/api/auth/edit-profile', {
+      const response = await api.put('http://20.251.153.107:3001/api/auth/edit-profile', {
         id: user.id,
         name: updatedUser.name,
         email: updatedUser.email,

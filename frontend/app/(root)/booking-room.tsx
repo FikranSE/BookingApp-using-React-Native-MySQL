@@ -306,9 +306,9 @@ const BookingRoom = () => {
   
       // Daftar endpoint booking room (cari yang sesuai di backend)
       const possibleEndpoints = [
-        `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings/room/${roomId}`,
-        `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings/by-room/${roomId}`,
-        `https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings?room_id=${roomId}`,
+        `http://20.251.153.107:3001/api/room-bookings/room/${roomId}`,
+        `http://20.251.153.107:3001/api/room-bookings/by-room/${roomId}`,
+        `http://20.251.153.107:3001/api/room-bookings?room_id=${roomId}`,
       ];
   
       let response;
@@ -398,7 +398,7 @@ const BookingRoom = () => {
           router.push('/(auth)/sign-in');
           return;
         }
-        const response = await axios.get('https://j9d3hc82-3001.asse.devtunnels.ms/api/rooms', {
+        const response = await axios.get('http://20.251.153.107:3001/api/rooms', {
           headers: { 'Authorization': `Bearer ${authToken}` },
         });
         if (response.data && Array.isArray(response.data)) {
@@ -531,7 +531,7 @@ const BookingRoom = () => {
       }
       const formattedDate = formatApiDate(form.booking_date);
       const bookingData = { ...form, booking_date: formattedDate };
-      const response = await axios.post('https://j9d3hc82-3001.asse.devtunnels.ms/api/room-bookings', bookingData, {
+      const response = await axios.post('http://20.251.153.107:3001/api/room-bookings', bookingData, {
         headers: { 'Authorization': `Bearer ${authToken}` },
       });
       if (response.status === 201) {
@@ -931,7 +931,7 @@ const BookingRoom = () => {
   
     // Handle local filesystem paths
     if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
-      return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+      return `http://20.251.153.107:3001/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
     }
   
     // Fix double slash issue in URLs
@@ -943,7 +943,7 @@ const BookingRoom = () => {
     if (typeof imageUrl === 'string' && !imageUrl.startsWith('http')) {
       // Remove any leading slashes to avoid double slashes
       const cleanPath = imageUrl.replace(/^\/+/, '');
-      return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
+      return `http://20.251.153.107:3001/${cleanPath}`;
     }
   
     return imageUrl;

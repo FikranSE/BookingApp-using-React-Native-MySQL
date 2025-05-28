@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+.gradle/
+build/
+
+# Development files
+.git/
+.gitignore
+.DS_Store
+*.log
+
+# IDE files
+.idea/
+.vscode/
+
+# Test files
+__tests__/
+*.test.*
+*.spec.*
+
+# Documentation
+README.md
+docs/
+
+# Local development files
+.env*
+*.local 

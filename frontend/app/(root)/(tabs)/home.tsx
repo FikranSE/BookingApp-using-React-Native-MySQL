@@ -61,7 +61,7 @@ interface IBooking {
   image?: string;
 }
 
-const BASE_URL = 'https://j9d3hc82-3001.asse.devtunnels.ms/api';
+const BASE_URL = 'http://20.251.153.107:3001/api';
 
 // Custom Alert Component - Similar to the one used in detail page
 const CustomAlert = ({ 
@@ -238,7 +238,7 @@ const Home = () => {
     if (imageUrl === 'null') return undefined;
     
     if (typeof imageUrl === 'string' && (imageUrl.startsWith('E:') || imageUrl.startsWith('C:'))) {
-      return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+      return `http://20.251.153.107:3001/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
     }
     
     if (typeof imageUrl === 'string' && imageUrl.includes('//uploads')) {
@@ -247,7 +247,7 @@ const Home = () => {
     
     if (typeof imageUrl === 'string' && !imageUrl.startsWith('http')) {
       const cleanPath = imageUrl.replace(/^\/+/, '');
-      return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
+      return `http://20.251.153.107:3001/${cleanPath}`;
     }
     
     return imageUrl;

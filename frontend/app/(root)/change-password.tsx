@@ -98,7 +98,7 @@ const ChangePassword = () => {
 
       // API call to change password
       const response = await axios.post(
-        "https://j9d3hc82-3001.asse.devtunnels.ms/api/auth/change-password/",
+        "http://20.251.153.107:3001/api/auth/change-password/",
         {
           currentPassword,
           newPassword,

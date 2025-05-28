@@ -392,9 +392,9 @@ const BookingTransport = () => {
       // Daftar endpoint transport booking (cari yang sesuai di backend)
       // Contoh saja, silakan disesuaikan:
       const possibleEndpoints = [
-        `https://j9d3hc82-3001.asse.devtunnels.ms/api/transport-bookings/transport/${transportId}`,
-        `https://j9d3hc82-3001.asse.devtunnels.ms/api/transport-bookings/by-transport/${transportId}`,
-        `https://j9d3hc82-3001.asse.devtunnels.ms/api/transport-bookings?transport_id=${transportId}`,
+        `http://20.251.153.107:3001/api/transport-bookings/transport/${transportId}`,
+        `http://20.251.153.107:3001/api/transport-bookings/by-transport/${transportId}`,
+        `http://20.251.153.107:3001/api/transport-bookings?transport_id=${transportId}`,
       ];
   
       let response;
@@ -521,7 +521,7 @@ const BookingTransport = () => {
           router.push('/(auth)/sign-in');
           return;
         }
-        const response = await axios.get('https://j9d3hc82-3001.asse.devtunnels.ms/api/transports', {
+        const response = await axios.get('http://20.251.153.107:3001/api/transports', {
           headers: { 'Authorization': `Bearer ${authToken}` },
         });
 
@@ -763,7 +763,7 @@ const BookingTransport = () => {
       const bookingData = { ...form, booking_date: formattedDate };
       // Panggil API pembuatan booking transport
       const response = await axios.post(
-        'https://j9d3hc82-3001.asse.devtunnels.ms/api/transport-bookings', 
+        'http://20.251.153.107:3001/api/transport-bookings', 
         bookingData, 
         { headers: { 'Authorization': `Bearer ${authToken}` } }
       );
@@ -999,7 +999,7 @@ const BookingTransport = () => {
   
     // Handle local filesystem paths
     if (typeof imageUrl === 'string' && imageUrl.startsWith('E:')) {
-      return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+      return `http://20.251.153.107:3001/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
     }
   
     // Fix double slash issue in URLs
@@ -1011,7 +1011,7 @@ const BookingTransport = () => {
     if (typeof imageUrl === 'string' && !imageUrl.startsWith('http')) {
       // Remove any leading slashes to avoid double slashes
       const cleanPath = imageUrl.replace(/^\/+/, '');
-      return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
+      return `http://20.251.153.107:3001/${cleanPath}`;
     }
   
     return imageUrl;

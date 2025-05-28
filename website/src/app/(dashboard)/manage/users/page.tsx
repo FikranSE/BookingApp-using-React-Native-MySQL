@@ -278,7 +278,7 @@ const UserManagePage = () => {
     
     // Create axios instance with auth header
     const apiClient = axios.create({
-      baseURL: "https://j9d3hc82-3001.asse.devtunnels.ms/api",
+      baseURL: "http://20.251.153.107:3001/api",
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -402,7 +402,7 @@ const UserManagePage = () => {
       
       setAuthStatus(`Token found (${token.substring(0, 10)}...)`);
       
-      const response = await axios.get("https://j9d3hc82-3001.asse.devtunnels.ms/api/users", {
+      const response = await axios.get("http://20.251.153.107:3001/api/users", {
         headers: {
           Authorization: `Bearer ${token}`
         }

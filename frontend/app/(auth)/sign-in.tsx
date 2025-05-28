@@ -150,10 +150,10 @@ const SignIn = () => {
               placeholder="Enter your password"
               error={errors.password}
             />
-            
+{/*             
             <TouchableOpacity className="self-end mt-3 mb-2">
               <Text className="text-sm text-sky-600 font-medium">Forgot Password?</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             {/* Sign In Button */}
             <TouchableOpacity
@@ -171,15 +171,10 @@ const SignIn = () => {
               )}
             </TouchableOpacity>
 
-            {/* Divider */}
-            <View className="flex-row items-center my-4">
-              <View className="flex-1 h-0.5 bg-gray-200" />
-              <Text className="text-gray-400 px-4">or</Text>
-              <View className="flex-1 h-0.5 bg-gray-200" />
-            </View>
+         
 
             {/* Sign Up Button */}
-            <TouchableOpacity
+            {/* <TouchableOpacity
               onPress={() => router.push("/(auth)/sign-up")}
               className="bg-white border border-orange-400 py-4 rounded-xl flex-row justify-center items-center shadow-sm"
             >
@@ -187,7 +182,7 @@ const SignIn = () => {
               <Text className="text-center text-orange-500 font-bold">
                 Create New Account
               </Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
 
           {/* Bottom text */}

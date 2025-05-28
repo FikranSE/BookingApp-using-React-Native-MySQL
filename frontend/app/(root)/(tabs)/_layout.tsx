@@ -12,24 +12,27 @@ const TabIcon = ({
   focused: boolean;
   label: string;
 }) => (
-  <View className="flex items-center">
-    <View
-      className={`rounded-full w-12 h-12 items-center justify-start`}
-    >
-      <Image
-        source={source}
-        tintColor={focused ? "#0EA5E9" : "#9ca3af"} // Changed focus color to dark blue
-        resizeMode="contain"
-        style={{
-          width: 20, // Icon width
-          height: 20, // Icon height
-        }}
-      />
-    </View>
+  <View className="flex items-center justify-center" style={{ width: 60, marginTop: 20 }}>
+    <Image
+      source={source}
+      tintColor={focused ? "#0EA5E9" : "#9ca3af"}
+      resizeMode="contain"
+      style={{
+        width: 22,
+        height: 22,
+        marginBottom: 2,
+      }}
+    />
     <Text
-      className={`text-xs mt-[-25px] ${
-        focused ? "text-[#0EA5E9]" : "text-[#9ca3af]"
-      }`}
+      className={`text-xs font-semibold`}
+      style={{
+        color: focused ? "#0EA5E9" : "#9ca3af",
+        marginTop: 2,
+        width: 56,
+        textAlign: "center",
+      }}
+      numberOfLines={1}
+      ellipsizeMode="tail"
     >
       {label}
     </Text>
@@ -87,13 +90,12 @@ export default function Layout() {
                 width: 60,
                 height: 60,
                 borderRadius: 35,
-                backgroundColor: "#0EA5E9", // Changed to dark blue
+                backgroundColor: "#0EA5E9",
                 justifyContent: "center",
                 alignItems: "center",
-                marginBottom: 40, 
-                borderWidth: 8, 
-                borderColor: "white", 
-                // Add shadow for more depth
+                marginBottom: 24,
+                borderWidth: 8,
+                borderColor: "white",
                 shadowColor: "#0EA5E9",
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.3,
@@ -104,8 +106,8 @@ export default function Layout() {
               <Image
                 source={icons.plus}
                 style={{
-                  width: 18, 
-                  height: 18, 
+                  width: 18,
+                  height: 18,
                   tintColor: "white",
                 }}
               />

@@ -5,7 +5,7 @@ const nextConfig = {
     domains: [
       'bookingsisi.maturino.my.id',
       'localhost',
-      'j9d3hc82-3001.asse.devtunnels.ms'
+      'http://20.251.153.107:3001/'
     ],
     remotePatterns: [
       {
@@ -16,7 +16,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'j9d3hc82-3001.asse.devtunnels.ms',
+        hostname: 'http://20.251.153.107:3001/',
         pathname: '/uploads/**',
       },
     ],

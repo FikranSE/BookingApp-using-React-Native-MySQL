@@ -18,7 +18,7 @@ The API client is configured in `src/lib/api-client.ts` and provides the followi
 
 ## Configuration
 
-The base URL is configured using the `NEXT_PUBLIC_API_BASE_URL` environment variable. If not set, it defaults to `https://j9d3hc82-3001.asse.devtunnels.ms`.
+The base URL is configured using the `NEXT_PUBLIC_API_BASE_URL` environment variable. If not set, it defaults to `http://20.251.153.107:3001`.
 
 ## Usage
 

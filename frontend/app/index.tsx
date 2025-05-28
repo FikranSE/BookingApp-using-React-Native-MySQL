@@ -8,8 +8,7 @@ const Page = () => {
   const { isAuthenticated } = useContext(AuthContext);
 
   if (isAuthenticated) return <Redirect href="/(root)/(tabs)/home" />;
-
-  return <Redirect href="/(auth)/welcome" />;
+  return <Redirect href="/(auth)/sign-in" />;
 };
 
 export default Page;

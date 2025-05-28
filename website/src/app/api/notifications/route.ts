@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 
 // Base API URL configuration
-const API_BASE_URL = "https://j9d3hc82-3001.asse.devtunnels.ms";
+const API_BASE_URL = "http://20.251.153.107:3001";
 const API_ENDPOINT = `${API_BASE_URL}/api`;
 
 // GET handler for fetching notifications

@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { exportToExcel, formatDateForExcel, formatTimeForExcel } from "@/utils/excelExport";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://j9d3hc82-3001.asse.devtunnels.ms';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://20.251.153.107:3001';
 
 const fixImageUrl = (imageUrl: string | undefined | null): string | null => {
   if (!imageUrl) return null;
@@ -236,7 +236,7 @@ const TransportBookingListPage = () => {
     
     // Create axios instance with auth header
     const apiClient = axios.create({
-      baseURL: "https://j9d3hc82-3001.asse.devtunnels.ms/api",
+      baseURL: "http://20.251.153.107:3001/api",
       headers: {
         Authorization: `Bearer ${token}`
       }

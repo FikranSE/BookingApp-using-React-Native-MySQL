@@ -1,5 +1,8 @@
 {
-  "platforms": ["ios", "android"],
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["LocationModule"]
+  },
   "android": {
     "modules": ["expo.modules.location.LocationModule"]
   }

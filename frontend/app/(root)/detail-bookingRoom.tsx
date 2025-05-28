@@ -161,7 +161,7 @@ const DetailBookingRoom = () => {
     
     // Handle local filesystem paths
     if (imageUrl.startsWith('E:') || imageUrl.startsWith('C:')) {
-      return `https://j9d3hc82-3001.asse.devtunnels.ms/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
+      return `http://20.251.153.107:3001/api/image-proxy?path=${encodeURIComponent(imageUrl)}`;
     }
     
     // Fix double slash issue
@@ -172,7 +172,7 @@ const DetailBookingRoom = () => {
     // Add base URL for relative paths
     if (!imageUrl.startsWith('http')) {
       const cleanPath = imageUrl.replace(/^\/+/, '');
-      return `https://j9d3hc82-3001.asse.devtunnels.ms/${cleanPath}`;
+      return `http://20.251.153.107:3001/${cleanPath}`;
     }
     
     return imageUrl;
@@ -199,7 +199,7 @@ const DetailBookingRoom = () => {
         }
     
         const axiosInstance = axios.create({
-          baseURL: 'https://j9d3hc82-3001.asse.devtunnels.ms/api',
+          baseURL: 'http://20.251.153.107:3001/api',
           headers: {
             Authorization: `Bearer ${authToken}`,
             'Content-Type': 'application/json',
@@ -457,7 +457,7 @@ const DetailBookingRoom = () => {
       setLoading(true);
 
       const axiosInstance = axios.create({
-        baseURL: 'https://j9d3hc82-3001.asse.devtunnels.ms/api',
+        baseURL: 'http://20.251.153.107:3001/api',
         headers: {
           Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',

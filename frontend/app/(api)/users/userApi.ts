@@ -1,6 +1,6 @@
 // app/users/userApi.ts
 
-const API_URL = 'https://j9d3hc82-3001.asse.devtunnels.ms/api';
+const API_URL = 'http://20.251.153.107:3001/api';
 
 interface UserData {
   name: string;

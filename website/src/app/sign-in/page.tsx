@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LockIcon, MailIcon, EyeIcon, EyeOffIcon, AlertCircleIcon } from "lucide-react";
 import { apiClient, endpoints } from "@/lib/api-client";
@@ -21,7 +20,6 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [debug, setDebug] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
@@ -85,18 +83,13 @@ const LoginPage = () => {
         password: formData.password,
       });
 
-      console.log("Login response:", response.data);
-      setDebug(`Login response received: ${JSON.stringify(response.data)}`);
-
       if (response.data && response.data.token) {
         localStorage.setItem("adminToken", response.data.token);
-        console.log("Token saved:", response.data.token);
         
         if (response.data.admin) {
           localStorage.setItem("adminInfo", JSON.stringify(response.data.admin));
         }
         
-        // Token is automatically set in the request interceptor
         router.push("/admin");
       } else {
         setErrors(prev => ({
@@ -107,8 +100,6 @@ const LoginPage = () => {
     } catch (error: any) {
       console.error("Login error:", error);
       const errorMessage = error.response?.data?.message || "An unexpected error occurred";
-      const statusCode = error.response?.status;
-      setDebug(`Login error: ${errorMessage}, Status: ${statusCode}`);
       
       if (error.response) {
         if (error.response.status === 401) {
@@ -169,14 +160,6 @@ const LoginPage = () => {
             <div className="mb-6 p-3 bg-red-50 rounded-lg flex items-start gap-2">
               <AlertCircleIcon className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
               <span className="text-red-600 text-sm">{errors.general}</span>
-            </div>
-          )}
-
-          {/* Debug info (hidden in production) */}
-          {debug && (
-            <div className="mb-4 p-2 bg-gray-50 rounded-lg text-xs text-gray-500 border">
-              <div>Debug info:</div>
-              <div className="font-mono mt-1 break-words">{debug}</div>
             </div>
           )}
 
@@ -244,26 +227,19 @@ const LoginPage = () => {
               )}
             </div>
 
-            {/* Remember me and forgot password */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded"
-                  checked={rememberMe}
-                  onChange={() => setRememberMe(!rememberMe)}
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-xs text-gray-600">
-                  Remember me
-                </label>
-              </div>
-              <div className="text-xs">
-                <Link href="/admin/forgot-password" className="text-sky-600 hover:text-sky-800 font-medium">
-                  Forgot password?
-                </Link>
-              </div>
+            {/* Remember me */}
+            <div className="flex items-center mb-6">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded"
+                checked={rememberMe}
+                onChange={() => setRememberMe(!rememberMe)}
+              />
+              <label htmlFor="remember-me" className="ml-2 block text-xs text-gray-600">
+                Remember me
+              </label>
             </div>
 
             {/* Submit button */}
@@ -284,32 +260,6 @@ const LoginPage = () => {
                 "Sign in"
               )}
             </button>
-
-            {/* Utils for debugging - hidden in small screen */}
-            <div className="mt-4 flex justify-center gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  localStorage.removeItem("adminToken");
-                  localStorage.removeItem("adminInfo");
-                  setDebug("Cleared localStorage tokens");
-                }}
-                className="text-red-400 hover:text-red-500 text-xs"
-              >
-                Clear tokens
-              </button>
-              <span className="text-gray-300">|</span>
-              <button
-                type="button"
-                onClick={() => {
-                  const token = localStorage.getItem("adminToken");
-                  setDebug(`Current token: ${token ? token.substring(0, 15) + "..." : "none"}`);
-                }}
-                className="text-sky-400 hover:text-sky-500 text-xs"
-              >
-                Check token
-              </button>
-            </div>
 
             {/* Security indicator */}
             <div className="flex items-center justify-center mt-5 text-xs text-gray-400">

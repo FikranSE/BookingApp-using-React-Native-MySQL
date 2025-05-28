@@ -157,7 +157,7 @@ export const onboarding = [
     title: "Welcome to SISI Booking!",
     description:
       "Temukan kemudahan dalam booking meeting room dan transportasi.",
-    image: images.onboarding1,
+    image: images.getStarted,
   },
   {
     id: 2,
